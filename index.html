@@ -228,24 +228,39 @@ body {
 
     #time-now-line {
         position: absolute;
-        left: 0; right: 0;
-        height: 1px;
-        background: #ff3b30;
-        box-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
+        left: 80px;
+        right: 20px;
+        height: 2px;
+        background: linear-gradient(90deg, #ff3b30 0%, #ff3b30 100%);
+        box-shadow: 0 0 12px rgba(255, 59, 48, 0.5);
         z-index: 100;
         pointer-events: none;
+        transition: top 1s linear;
+    }
+
+    #time-now-line::before {
+        content: '';
+        position: absolute;
+        left: -6px;
+        top: -4px;
+        width: 10px;
+        height: 10px;
+        background: #ff3b30;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(255, 59, 48, 0.6);
     }
 
 .ghost-selection {
     position: absolute;
-    left: 120px; 
-    right: 140px; 
-    background: rgba(0, 122, 255, 0.1);
-    border: 1px dashed rgba(0, 122, 255, 0.5);
-    border-radius: 8px;
-    z-index: 5;
-    /* CRITICAL: This allows the mouseup to "pass through" to the ledger-container */
-    pointer-events: none; 
+    left: 100px;
+    width: calc(100% - 240px);
+    background: rgba(0, 122, 255, 0.08);
+    border-left: 3px solid #007AFF;
+    border-radius: 6px;
+    z-index: 50;
+    pointer-events: none;
+    transition: top 0.05s ease-out, height 0.05s ease-out;
+    backdrop-filter: blur(4px);
 }
 
     /* --- 5. ENGINE SIDEBAR: Real-time Context & Focus --- */
@@ -311,27 +326,78 @@ body {
     pointer-events: none;
 }
 
-    /* --- 6. MODAL SYSTEM: Consolidated High-Fidelity Overlay --- */
+    /* --- 6. MODAL SYSTEM: Centered Glass Panel --- */
 #modal-overlay {
-    display: none; 
-    position: absolute; /* Changed from fixed to absolute */
+    display: none;
+    position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.6); /* Slightly darker to pop against sidebar */
-    backdrop-filter: blur(10px);
-    z-index: 100; /* Higher than other sidebar items */
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 1000;
     justify-content: center;
-    align-items: flex-start;
-    padding: 20px;
+    align-items: center;
+    padding: 40px;
 }
 
 .meeting-panel {
-    background: rgba(28, 28, 30, 0.98) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 24px;
-    padding: 24px;
-    width: 100%; /* Fit within the 340px sidebar */
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-    /* Remove width: 600px; */
+    background: rgba(30, 30, 32, 0.85) !important;
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 28px;
+    padding: 32px;
+    width: 100%;
+    max-width: 680px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
+    animation: modalSlideIn 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes modalSlideIn {
+    from { transform: scale(0.95) translateY(20px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Date Navigation */
+.date-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-nav-btn {
+    background: rgba(255,255,255,0.08);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.date-nav-btn:hover {
+    background: rgba(255,255,255,0.15);
+    color: white;
+}
+
+.date-nav-btn:active {
+    transform: scale(0.95);
+}
+
+.date-display-main {
+    font-family: 'SF Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    min-width: 100px;
+    text-align: center;
 }
 
     .panel-section {
@@ -673,9 +739,13 @@ body {
 
 <div id="viewport">
     <div id="day-view" class="view-content active">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 id="day-title" style="margin: 0;">Daily Ledger</h1>
-            <div style="font-family:'SF Mono'; font-size:11px; color:var(--text-dim); letter-spacing: 1px;">SYSTEM_STABLE // 24H_CLOCK</div>
+            <div class="date-nav">
+                <button class="date-nav-btn" onclick="ENGINE.navigateDate(-1)">‹</button>
+                <span id="current-date-display" class="date-display-main">2026-01-30</span>
+                <button class="date-nav-btn" onclick="ENGINE.navigateDate(1)">›</button>
+            </div>
         </div>
         <div style="display: flex; flex-direction: column; height: calc(100% - 60px); gap: 16px;">
             <div id="ledger-wrapper" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
@@ -719,18 +789,6 @@ body {
 
 <aside id="engine-sidebar" style="background: rgba(10,10,10,0.8); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 30px 20px; position: relative;">
 
-    <!-- Modal Overlay for Meeting Details -->
-    <div id="modal-overlay">
-        <div class="meeting-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 16px;">NEW MEETING</h2>
-                <button onclick="ENGINE.closeModal()" style="background: transparent; border: none; color: rgba(255,255,255,0.5); font-size: 20px; cursor: pointer;">&times;</button>
-            </div>
-            <div id="dynamic-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
-            <button onclick="ENGINE.saveSession()" style="width: 100%; margin-top: 20px; padding: 14px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE SESSION</button>
-        </div>
-    </div>
-
     <div style="margin-bottom: 40px; text-align: center;">
         <div id="clock-display" style="font-size: 42px; font-weight: 200; color: white; letter-spacing: -1px; opacity: 0.9;">16:07:22</div>
         <div id="date-display" style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 5px; letter-spacing: 1px;">
@@ -767,8 +825,8 @@ body {
             <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(50,215,75,0.1); border: 1px solid #32D74B; color: #32D74B; border-radius: 8px; font-size: 18px;">+</button>
         </div>
 
-        <div id="recent-transactions" style="display: flex; flex-direction: column; gap: 10px;">
-            </div>
+        <div id="recent-transactions" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
+        </div>
 
         <button onclick="ENGINE.openAudit()" style="width: 100%; margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px;">AUDIT LEDGER</button>
     </div>
@@ -783,31 +841,161 @@ const ENGINE = {
     activeType: 'MEETING',
     activeTypeContext: { isRemote: true },
     rates: { INDIVIDUAL: 150, TEAM: 1200, INSTITUTION: 8500 },
-    selectedDate: "2026-01-30",
-    db: { "2026-01-30": [{ start: 9, end: 10, label: 'Systems Architecture', type: 'MEETING' }] },
+    selectedDate: new Date().toISOString().split('T')[0],
+    currentEventIdx: null, // Track which event is being edited
+
+    // Hardcoded database - events persist here
+    db: {
+        "2026-02-04": [
+            { id: 'evt-001', start: 9, end: 10.5, label: 'Morning Standup', type: 'MEETING' },
+            { id: 'evt-002', start: 14, end: 15.5, label: 'Architecture Review', type: 'MEETING' },
+            { id: 'evt-003', start: 16, end: 17, label: 'Code Review Session', type: 'TASK' }
+        ],
+        "2026-02-05": [
+            { id: 'evt-004', start: 10, end: 11, label: 'Sprint Planning', type: 'MEETING' },
+            { id: 'evt-005', start: 13, end: 14.5, label: 'Client Call', type: 'EVENT' }
+        ]
+    },
+
+    // Sample transactions for reference
+    transactions: [
+        { id: 'tx-001', date: '2026-02-04', time: '09:30', desc: 'Vercel Pro Subscription', amount: -20.00, category: 'Infrastructure' },
+        { id: 'tx-002', date: '2026-02-04', time: '11:00', desc: 'Client Retainer Deposit', amount: 2500.00, category: 'Income' },
+        { id: 'tx-003', date: '2026-02-03', time: '14:22', desc: 'AWS S3 Storage', amount: -45.00, category: 'Infrastructure' },
+        { id: 'tx-004', date: '2026-02-03', time: '16:00', desc: 'Figma Team License', amount: -15.00, category: 'Tools' },
+        { id: 'tx-005', date: '2026-02-02', time: '10:15', desc: 'Consulting Payment', amount: 1800.00, category: 'Income' }
+    ],
+
     isDragging: false,
     dragStartH: null,
     dragEndH: null,
     meetingStartTime: null,
     burnRatePerSecond: 0,
-    notesHistory: [], // [{timestamp: Date, text: string}]
+    notesHistory: [],
     activeBurnRate: 150,
     currentNet: 23550.00,
     isMeetingActive: false,
-    GRID_TOP_OFFSET: 25, 
+    GRID_TOP_OFFSET: 0,
     HOUR_HEIGHT: 100,
+    nextEventId: 100, // For generating unique IDs
 
 
 init() {
     this.loadState();
     this.injectStyles();
+    this.updateDateDisplay();
     this.render();
+    this.renderTransactions();
     this.updatePanelContext();
     this.initFinancialPulse();
+    this.startTimelineUpdater();
 
-    // ADD THESE GLOBAL LISTENERS:
+    // Global listeners for smooth drag
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     window.addEventListener('mouseup', () => this.handleMouseUp());
+
+    // Initial timeline position
+    setTimeout(() => this.updateTimeline(true), 100);
+},
+
+// Date Navigation
+navigateDate(delta) {
+    const current = new Date(this.selectedDate);
+    current.setDate(current.getDate() + delta);
+    this.selectedDate = current.toISOString().split('T')[0];
+    this.updateDateDisplay();
+    this.renderDay();
+},
+
+updateDateDisplay() {
+    const el = document.getElementById('current-date-display');
+    if (el) el.textContent = this.selectedDate;
+},
+
+goToToday() {
+    this.selectedDate = new Date().toISOString().split('T')[0];
+    this.updateDateDisplay();
+    this.renderDay();
+    this.updateTimeline(true);
+},
+
+// Persistent red line updater
+startTimelineUpdater() {
+    // Update every second for smooth movement
+    setInterval(() => {
+        this.updateTimeline(false);
+    }, 1000);
+},
+
+// Delete event functionality
+deleteCurrentEvent() {
+    if (this.currentEventIdx === null) return;
+
+    const events = this.db[this.selectedDate];
+    if (!events || !events[this.currentEventIdx]) return;
+
+    // Remove the event
+    events.splice(this.currentEventIdx, 1);
+
+    // Clean up empty date entries
+    if (events.length === 0) {
+        delete this.db[this.selectedDate];
+    }
+
+    this.saveState();
+    this.closeModal();
+    this.renderDay();
+},
+
+// Generate unique event ID
+generateEventId() {
+    return `evt-${Date.now()}-${this.nextEventId++}`;
+},
+
+// Render recent transactions in sidebar
+renderTransactions() {
+    const container = document.getElementById('recent-transactions');
+    if (!container) return;
+
+    const recentTx = this.transactions.slice(0, 5);
+    container.innerHTML = recentTx.map(tx => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+            <div>
+                <div style="font-size: 11px; color: white; font-weight: 500;">${tx.desc}</div>
+                <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${tx.date}</div>
+            </div>
+            <div style="font-family: 'SF Mono'; font-size: 12px; font-weight: 600; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
+                ${tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(2)}
+            </div>
+        </div>
+    `).join('');
+},
+
+// Add a new transaction
+addTransaction(desc, amount, category = 'General') {
+    const now = new Date();
+    const tx = {
+        id: `tx-${Date.now()}`,
+        date: now.toISOString().split('T')[0],
+        time: now.toTimeString().slice(0, 5),
+        desc,
+        amount: parseFloat(amount),
+        category
+    };
+    this.transactions.unshift(tx);
+    this.currentNet += tx.amount;
+    this.saveState();
+    this.renderTransactions();
+    return tx;
+},
+
+// Quick transaction buttons
+quickTx(sign) {
+    const amount = prompt(`Enter ${sign > 0 ? 'income' : 'expense'} amount:`);
+    if (!amount || isNaN(parseFloat(amount))) return;
+
+    const desc = prompt('Description:') || (sign > 0 ? 'Income' : 'Expense');
+    this.addTransaction(desc, sign * Math.abs(parseFloat(amount)));
 },
 
 updateLifeClock() {
@@ -983,32 +1171,38 @@ handleMouseUp() {
     if (!this.isDragging) return;
 
     const step = 0.25; // 15 min increments
-    // Snap both start and end to the nearest 15 minutes
     let start = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
     let end = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
 
     // Minimum duration of 15 mins if user just clicked
-    if (start === end) end += 0.25; 
+    if (start === end) end += 0.25;
 
     if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
 
     const hasOverlap = this.db[this.selectedDate].some(s => (start < s.end && end > s.start));
 
-    if (!hasOverlap) {
-        this.db[this.selectedDate].push({ 
-            start, 
-            end, 
-            label: "New Infrastructure Session", 
+    if (!hasOverlap && (end - start) >= 0.25) {
+        const newEvent = {
+            id: this.generateEventId(),
+            start,
+            end,
+            label: "New Session",
             type: this.activeType || 'MEETING',
-            id: `session-${Date.now()}`
-        });
+            isNew: true
+        };
+        this.db[this.selectedDate].push(newEvent);
         this.saveState();
     }
 
+    // Clean up drag state
     this.isDragging = false;
     this.dragStartH = null;
     this.dragEndH = null;
-    
+
+    // Hide the ghost
+    const ghost = document.getElementById('ghost-selection');
+    if (ghost) ghost.style.display = 'none';
+
     this.renderDay();
 },
 
@@ -1017,22 +1211,13 @@ updateGhost() {
     if (!g) {
         g = document.createElement('div');
         g.id = 'ghost-selection';
-        g.style.cssText = `
-            position: absolute; 
-            left: 100px; 
-            width: calc(100% - 240px); 
-            background: rgba(0, 122, 255, 0.05); 
-            border-left: 3px solid #007AFF; 
-            pointer-events: none; 
-            z-index: 50; /* BELOW BLOCKS */
-            display: none;
-        `;
+        g.className = 'ghost-selection';
         document.getElementById('ledger-container').appendChild(g);
     }
-    
-    if (!this.isDragging) { 
-        g.style.display = 'none'; 
-        return; 
+
+    if (!this.isDragging) {
+        g.style.display = 'none';
+        return;
     }
 
     const step = 0.25;
@@ -1040,14 +1225,22 @@ updateGhost() {
     let bottomH = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
     if (topH === bottomH) bottomH += 0.25;
 
+    const duration = bottomH - topH;
+    const hours = Math.floor(duration);
+    const mins = Math.round((duration - hours) * 60);
+    const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
     g.style.display = 'block';
-    g.style.top = `${(topH * this.HOUR_HEIGHT)}px`;
-    g.style.height = `${(bottomH - topH) * this.HOUR_HEIGHT}px`;
-    
-    // No digits, just a clean HIG-aligned status
+    g.style.top = `${topH * this.HOUR_HEIGHT}px`;
+    g.style.height = `${duration * this.HOUR_HEIGHT}px`;
+
     g.innerHTML = `
-        <div style="padding: 10px; color: #007AFF; font-family: 'SF Mono'; font-size: 9px; font-weight: 800;">
-            PROPOSED_ALLOCATION
+        <div style="padding: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div style="color: #007AFF; font-size: 8px; font-weight: 900; letter-spacing: 1.5px; margin-bottom: 4px;">${this.activeType}</div>
+                <div style="color: white; font-size: 13px; font-weight: 600;">New Session</div>
+            </div>
+            <div style="color: #007AFF; font-family: 'SF Mono'; font-size: 11px; font-weight: 600;">${timeStr}</div>
         </div>
     `;
 },
@@ -1189,8 +1382,17 @@ renderAuditGraph() {
     audit() { alert("Strategic Audit Log: 24h cycle verified."); },
     
 closeModal() {
-    this.isMeetingActive = false; // Stops the Financial Pulse burn
+    this.isMeetingActive = false;
+    this.currentEventIdx = null;
     document.getElementById('modal-overlay').style.display = 'none';
+
+    // Reset sidebar button
+    const btn = document.querySelector('.btn-focus');
+    if (btn) {
+        btn.innerText = "START";
+        btn.style.background = "white";
+        btn.style.color = "black";
+    }
 },
 
 injectStyles() {
@@ -1406,23 +1608,41 @@ saveSession() {
     this.renderDay(); // Refresh the ledger view
 },
 
-// Add these to the ENGINE object
+// State persistence
 saveState() {
     localStorage.setItem('ENGINE_DB', JSON.stringify(this.db));
+    localStorage.setItem('ENGINE_TX', JSON.stringify(this.transactions));
     localStorage.setItem('ENGINE_NET', this.currentNet.toString());
 },
 
 loadState() {
     const savedDb = localStorage.getItem('ENGINE_DB');
+    const savedTx = localStorage.getItem('ENGINE_TX');
     const savedNet = localStorage.getItem('ENGINE_NET');
+
     if (savedDb) this.db = JSON.parse(savedDb);
+    if (savedTx) this.transactions = JSON.parse(savedTx);
     if (savedNet) this.currentNet = parseFloat(savedNet);
 },
     
 openMeeting(idx) {
     this.isMeetingActive = true;
+    this.currentEventIdx = idx;
     document.getElementById('modal-overlay').style.display = 'flex';
-    
+
+    // Show delete button for existing events
+    const deleteBtn = document.getElementById('delete-event-btn');
+    if (deleteBtn) {
+        deleteBtn.style.display = idx !== null ? 'block' : 'none';
+    }
+
+    // Update modal title based on context
+    const modalTitle = document.getElementById('modal-main-title');
+    const events = this.db[this.selectedDate] || [];
+    if (modalTitle && events[idx]) {
+        modalTitle.textContent = events[idx].label || 'Edit Session';
+    }
+
     // Sync the sidebar button state
     const btn = document.querySelector('.btn-focus');
     if (btn) {
@@ -1430,7 +1650,7 @@ openMeeting(idx) {
         btn.style.background = "#ff453a";
         btn.style.color = "white";
     }
-    
+
     this.updatePanelContext();
 },
 
@@ -1474,34 +1694,38 @@ togglePreRead(el) {
 
 renderDay() {
     const events = this.db[this.selectedDate] || [];
-    const transactions = this.db.transactions?.[this.selectedDate] || []; 
     const container = document.getElementById('ledger-container');
     if (!container) return;
 
-    this.HOUR_HEIGHT = 100; 
+    this.HOUR_HEIGHT = 100;
     const colors = { MEETING: '#007AFF', EVENT: '#FF9500', TASK: '#FF3B30' };
-    
-    // 1. Static Grid (Visual Layer)
+
+    // Format time helper
+    const formatTime = (h) => {
+        const hours = Math.floor(h);
+        const mins = Math.round((h - hours) * 60);
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    };
+
+    // 1. Static Grid + Time Now Line
     let html = '<div id="time-now-line"></div>';
-    for(let h=0; h<=23; h++) {
+    for (let h = 0; h <= 23; h++) {
         html += `
             <div class="hour-row" style="height:${this.HOUR_HEIGHT}px; border-bottom: 1px solid rgba(255,255,255,0.03); position:relative;">
-                <div class="hour-label" style="width: 80px; color: rgba(255,255,255,0.1); font-family: 'SF Mono'; font-size: 11px; padding-top: 10px;">
+                <div class="hour-label" style="width: 80px; color: rgba(255,255,255,0.15); font-family: 'SF Mono'; font-size: 11px; padding-top: 8px;">
                     ${h.toString().padStart(2, '0')}:00
                 </div>
             </div>`;
     }
 
-    // 2. Interaction Layer removed - ledger-container already handles mousedown
-
-    // 3. Saved Blocks (High Priority Layer)
+    // 2. Event Blocks
     events.forEach((session, idx) => {
-        const topPos = (session.start * this.HOUR_HEIGHT) + (this.GRID_TOP_OFFSET || 0); 
+        const topPos = session.start * this.HOUR_HEIGHT;
         const height = (session.end - session.start) * this.HOUR_HEIGHT;
         const color = colors[session.type] || colors.MEETING;
-        const isCompact = height <= 45;
+        const duration = session.end - session.start;
+        const durationStr = duration >= 1 ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : `${Math.round(duration * 60)}m`;
 
-        // Inside renderDay(), update the block template:
         html += `
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
@@ -1509,41 +1733,60 @@ renderDay() {
                     top: ${topPos}px;
                     height: ${height}px;
                     left: 100px;
-                    width: calc(100% - 240px);
+                    width: calc(100% - 140px);
                     border-left: 3px solid ${color};
-                    background: rgba(255,255,255,0.03);
                     position: absolute;
                     cursor: pointer;
-                    z-index: 200;
+                    z-index: 60;
                     pointer-events: all;
                 ">
-
-                <div style="padding: 12px; pointer-events: none;">
-                    <div style="color: ${color}; font-size: 8px; font-weight: 900; letter-spacing: 1.5px;">${session.type}</div>
-                    <div style="color: white; font-weight: 600; font-size: 14px;">${session.label}</div>
+                <div style="padding: 10px 14px; pointer-events: none; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="color: ${color}; font-size: 9px; font-weight: 800; letter-spacing: 1px; margin-bottom: 2px;">${session.type}</div>
+                        <div style="color: white; font-weight: 600; font-size: ${height > 60 ? '14' : '12'}px;">${session.label}</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; opacity: 0.5;">
+                        <span style="font-family: 'SF Mono'; font-size: 10px; color: white;">${formatTime(session.start)} - ${formatTime(session.end)}</span>
+                        <span style="font-family: 'SF Mono'; font-size: 10px; color: ${color};">${durationStr}</span>
+                    </div>
                 </div>
             </div>`;
         session.isNew = false;
     });
 
     container.innerHTML = html;
+
+    // Update the red line after render
+    this.updateTimeline(false);
 },
     
 updateTimeline(shouldScroll = false) {
     const line = document.getElementById('time-now-line');
     if (!line) return;
-    
+
+    // Only show line for today
+    const today = new Date().toISOString().split('T')[0];
+    if (this.selectedDate !== today) {
+        line.style.display = 'none';
+        return;
+    }
+
+    line.style.display = 'block';
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    const totalHours = hours + (minutes / 60);
-    
-    // 100px per hour + 25px offset for the header
-    const topPos = (totalHours * 100) + 25; 
+    const seconds = now.getSeconds();
+    const totalHours = hours + (minutes / 60) + (seconds / 3600);
+
+    const topPos = totalHours * this.HOUR_HEIGHT;
     line.style.top = `${topPos}px`;
 
     if (shouldScroll) {
-        line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const container = document.getElementById('ledger-container');
+        if (container) {
+            const scrollTarget = topPos - (container.clientHeight / 2);
+            container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+        }
     }
 },
 
@@ -1614,6 +1857,25 @@ window.addEventListener('mouseup', () => {
 });
     
 </script>
+
+<!-- Modal Overlay - Centered Glass Panel -->
+<div id="modal-overlay">
+    <div class="meeting-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="delete-event-btn" onclick="ENGINE.deleteCurrentEvent()" style="background: rgba(255,59,48,0.1); border: 1px solid rgba(255,59,48,0.3); color: #FF453A; padding: 8px 16px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; display: none;">DELETE</button>
+                <button onclick="ENGINE.closeModal()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
+            </div>
+        </div>
+        <div id="dynamic-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;"></div>
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE SESSION</button>
+        </div>
+    </div>
+</div>
+
 </body>
 
 </html>
