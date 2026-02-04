@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
+<style>
+    /* --- 1. SYSTEM CORE: Variables & Global Resets --- */
+    :root {
+        --bg-canvas: #000000; 
+        --panel-bg: rgba(255, 255, 255, 0.05); 
+        --border: rgba(255, 255, 255, 0.1); 
+        --text-main: #ffffff; 
+        --text-dim: #86868b; 
+        --accent-blue: #007AFF; 
+    }
+
+    * {
+        font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif !important;
+        -webkit-font-smoothing: antialiased;
+        box-sizing: border-box;
+    }
+
+body { 
+    margin: 0; 
+    background: var(--bg-canvas); 
+    background-image: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #000000 100%);
+    /* Removed flex centering to prevent layout jitter */
+    height: 100vh; 
+    overflow: hidden; 
+}
+
+    #ledger-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    #ledger-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    #ledger-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+    #ledger-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+/* --- 2. SHELL ARCHITECTURE: Fixed Grid Layout --- */
+#tablet-shell { 
+    display: grid; 
+    grid-template-columns: 1fr 340px; /* Force the 2-column split */
+    grid-template-rows: 100%;
+    width: 98vw; 
+    height: 95vh; 
+    background: rgba(10, 10, 12, 0.98); 
+    border-radius: 36px; 
+    border: 1px solid rgba(255, 255, 255, 0.08); 
+    overflow: hidden;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+    z-index: 1;
+}
+
+#content-area { 
+    display: flex; 
+    flex-direction: column; 
+    padding: 40px; 
+    overflow: hidden; 
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative; /* Anchor for ledger items */
+}
+
+#engine-sidebar {
+    height: 100%;
+    background: rgba(255, 255, 255, 0.01);
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    border-left: 1px solid rgba(255, 255, 255, 0.08); /* Visual separation */
+}
+
+    /* --- 3. NAVIGATION & IDENTITY: Brand and Controls --- */
+    .header-top { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 24px; 
+    }
+
+    .brand, h1, #day-title {
+        color: #ffffff !important;
+    }
+
+    .nav-tabs { 
+        display: flex; 
+        background: rgba(255, 255, 255, 0.08); 
+        border-radius: 10px; 
+        margin-bottom: 30px; 
+        align-self: flex-start; 
+        padding: 2px; 
+        border: 0.5px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tab { 
+        padding: 8px 18px; 
+        font-size: 13px; 
+        font-weight: 500; 
+        cursor: pointer; 
+        border-radius: 8px; 
+        color: rgba(255, 255, 255, 0.5); 
+        transition: 0.2s;
+    }
+
+    .tab.active { 
+        background: rgba(255, 255, 255, 0.15); 
+        color: #ffffff; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+    }
+
+    .config-button {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-family: "SF Mono", monospace;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        color: rgba(255, 255, 255, 0.6);
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+    }
+
+    .config-button:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+    }
+
+    /* --- 4. DAILY LEDGER ARCHITECTURE: Grid & Interactive Blocks --- */
+    #ledger-container {
+        user-select: none;
+        -webkit-user-select: none;
+        overflow-y: auto; 
+        flex: 1; 
+        padding: 20px 20px 20px 60px; 
+        position: relative;
+    }
+
+    .hour-row {
+        display: flex;
+        height: 100px; 
+        border: none !important;
+        background: transparent !important;
+        position: relative;
+        align-items: flex-start;
+        cursor: crosshair;
+    }
+
+    .hour-label {
+        color: rgba(255, 255, 255, 0.5) !important;
+        font-family: 'SF Mono', monospace;
+        font-size: 16px; 
+        font-weight: 600;
+        z-index: 2;
+        padding-top: 10px;
+        width: 60px;
+    }
+
+.block-space {
+    position: absolute;
+    left: 100px; /* Aligned with grid */
+    right: 20px;  /* Pushed to the far right of the pane */
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    border-radius: 6px; 
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    display: flex;
+    flex-direction: row; /* CRITICAL: Side-by-side columns */
+    justify-content: space-between;
+    align-items: stretch;
+    padding: 0 !important; /* Managed by internal columns now */
+    box-sizing: border-box;
+    z-index: 30 !important;
+    pointer-events: all !important; 
+    cursor: pointer;
+    overflow: hidden; /* Keeps the "receipt" column contained */
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease;
+}
+
+.block-space:hover {
+    transform: scale(1.005);
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+    .type-pill {
+        font-size: 9px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.3) !important;
+        color: rgba(255, 255, 255, 0.4);
+        font-weight: 800;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.2s ease;
+    }
+
+    .type-pill-active {
+        background: var(--pill-color) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .finance-meta-outer {
+        position: absolute;
+        right: 25px; 
+        width: 150px;
+        text-align: right;
+        color: rgba(255, 255, 255, 0.7) !important;
+        font-size: 13px;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    #time-now-line {
+        position: absolute;
+        left: 0; right: 0;
+        height: 1px;
+        background: #ff3b30;
+        box-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
+        z-index: 100;
+        pointer-events: none;
+    }
+
+.ghost-selection {
+    position: absolute;
+    left: 120px; 
+    right: 140px; 
+    background: rgba(0, 122, 255, 0.1);
+    border: 1px dashed rgba(0, 122, 255, 0.5);
+    border-radius: 8px;
+    z-index: 5;
+    /* CRITICAL: This allows the mouseup to "pass through" to the ledger-container */
+    pointer-events: none; 
+}
+
+    /* --- 5. ENGINE SIDEBAR: Real-time Context & Focus --- */
+    #engine-sidebar {
+        background: transparent;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 40px 24px;
+    }
+
+    .timer-card {
+        background: rgba(255, 255, 255, 0.03); 
+        backdrop-filter: blur(30px) saturate(150%);
+        -webkit-backdrop-filter: blur(30px) saturate(150%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 28px;
+        padding: 30px 20px;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+
+    .timer-val { 
+        color: #ffffff !important; 
+        font-size: 38px; 
+        margin: 15px 0;
+    }
+
+    .intent-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 20px;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 500;
+        margin-top: 12px;
+    }
+
+#graph-stage {
+    flex: none; /* Don't let flexbox squish it */
+    height: 180px; /* Fixed height for stability */
+    background: rgba(255, 255, 255, 0.01) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 20px;
+    position: relative; /* REQUIRED to anchor the label */
+    overflow: hidden;
+    background-image: radial-gradient(rgba(0, 122, 255, 0.1) 1px, transparent 0) !important;
+    background-size: 24px 24px !important;
+    margin-top: 20px;
+}
+
+/* Add this new rule to your CSS to center the label inside the stage */
+#graph-stage span {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'SF Mono', monospace;
+    font-size: 10px;
+    color: var(--accent-blue);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+    /* --- 6. MODAL SYSTEM: Consolidated High-Fidelity Overlay --- */
+#modal-overlay {
+    display: none; 
+    position: absolute; /* Changed from fixed to absolute */
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6); /* Slightly darker to pop against sidebar */
+    backdrop-filter: blur(10px);
+    z-index: 100; /* Higher than other sidebar items */
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+.meeting-panel {
+    background: rgba(28, 28, 30, 0.98) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 24px;
+    padding: 24px;
+    width: 100%; /* Fit within the 340px sidebar */
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    /* Remove width: 600px; */
+}
+
+    .panel-section {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .meeting-panel textarea {
+        width: 100%; height: 120px;
+        background: rgba(255, 255, 255, 0.02) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 14px; padding: 18px; color: #ffffff;
+        outline: none; resize: none; transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
+
+    .meeting-panel textarea:focus {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: var(--accent-blue) !important;
+    }
+
+    /* --- 7. UTILITIES & TYPOGRAPHY: Global Overrides --- */
+    h1, .brand, .tab, .session-label, .p-label, .timer-val, h2 {
+        font-weight: 700 !important;
+        letter-spacing: -0.02em;
+    }
+
+    .p-label, label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    opacity: 0.5;
+    }
+
+    .modal-title-input {
+    caret-color: var(--accent-blue);
+    }
+
+    .modal-title-input::placeholder {
+        color: rgba(255, 255, 255, 0.15);
+    }
+
+    .session-label {
+        font-size: 18px !important;
+    }
+
+    .btn-focus { 
+        width: 100%; padding: 16px; border-radius: 12px; border: none; 
+        background: var(--text-main); color: #000; font-weight: 700; 
+        cursor: pointer; font-size: 12px; transition: opacity 0.2s;
+    }
+
+    .btn-focus:active { opacity: 0.8; }
+
+    #monthly-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+
+    @keyframes modalScale {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+/* Container to keep squircle and menu aligned */
+.type-lockup-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* The Menu: Positioned below with a vertical stack */
+#type-selector-expanded {
+    display: none; 
+    position: absolute !important;
+    top: 50px; /* Sits exactly below the 44px squircle */
+    left: 0 !important;
+    flex-direction: column; /* Stack vertically */
+    width: 120px;
+    background: rgba(28, 28, 30, 0.98) !important;
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    padding: 6px;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+}
+
+/* List items inside the menu */
+.initial-opt {
+    width: 100%;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.5);
+    transition: all 0.2s;
+}
+
+.initial-opt:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+
+/* Note Popover (Google Sheets style) */
+.preread-note-overlay {
+    position: absolute;
+    background: #1c1c1e;
+    border: 1px solid var(--accent-blue);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    z-index: 3000;
+    width: 300px;
+    display: none;
+}
+
+/* Agenda List Styling */
+.agenda-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Cash Flow Grid */
+.cashflow-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.cash-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    font-size: 10px;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+/* Real-time Ticker */
+#burn-ticker {
+    font-family: 'SF Mono', monospace;
+    color: #32D74B;
+    font-size: 14px;
+    background: rgba(50, 215, 75, 0.1);
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+
+/* --- Agenda Scrolling System --- */
+    .agenda-scroll-container {
+        max-height: 288px; /* Approx 48px * 6 items */
+        overflow-y: auto;
+        padding-right: 8px;
+        margin-bottom: 12px;
+    }
+
+    /* Match the Ledger scrollbar style */
+    .agenda-scroll-container::-webkit-scrollbar { width: 4px; }
+    .agenda-scroll-container::-webkit-scrollbar-track { background: transparent; }
+    .agenda-scroll-container::-webkit-scrollbar-thumb { 
+        background: rgba(255, 255, 255, 0.1); 
+        border-radius: 10px; 
+    }
+
+    .agenda-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        transition: background 0.2s ease;
+    }
+
+    .agenda-row:hover { background: rgba(255, 255, 255, 0.02); }
+
+    .agenda-number {
+        font-family: 'SF Mono', monospace;
+        font-size: 10px;
+        color: var(--accent-blue);
+        opacity: 0.6;
+        width: 20px;
+    }
+
+    .agenda-input {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 13px;
+        width: 100%;
+        outline: none;
+    }
+
+    .add-point-btn {
+        width: 100%;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+    }
+
+    .add-point-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--accent-blue);
+        color: white;
+    }
+    
+
+/* Ensure only the active tab is visible and takes up the full viewport space */
+.view-content { 
+    display: none; 
+    height: 100%; 
+    flex-direction: column; 
+    overflow: hidden; 
+    padding-bottom: 20px;
+}
+
+.view-content.active { 
+    display: flex !important; 
+    flex-direction: column;
+    height: 100%;
+}
+
+/* This is the "kill switch" for inactive views */
+.view-content:not(.active) {
+    display: none !important;
+}
+
+/* Prevents the viewport from becoming a scroll-pit for the whole page */
+#viewport {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden; 
+    min-height: 0; 
+}
+
+#weekly-columns, #monthly-grid, #yearly-grid {
+    overflow-y: auto;
+    padding-right: 10px;
+    scrollbar-width: thin;
+}
+
+/* Breathing Colons */
+.colon-breathe {
+    animation: breathe 2s infinite ease-in-out;
+}
+
+@keyframes breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
+
+/* Creation Animation (Top to Bottom Wipe) */
+.block-creation-anim {
+    animation: wipeDown 0.5s cubic-bezier(0.2, 0, 0, 1) forwards;
+    transform-origin: top;
+}
+
+@keyframes wipeDown {
+    from { transform: scaleY(0); opacity: 0; }
+    to { transform: scaleY(1); opacity: 1; }
+}
+
+/* Subtle Financial Buttons */
+.tx-btn {
+    flex: 1;
+    height: 44px;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tx-neg { border: 1px solid rgba(255, 69, 58, 0.2); color: rgba(255, 69, 58, 0.5); }
+.tx-neg:hover { background: rgba(255, 69, 58, 0.1); color: #FF453A; border-color: #FF453A; }
+
+.tx-pos { border: 1px solid rgba(50, 215, 75, 0.2); color: rgba(50, 215, 75, 0.5); }
+.tx-pos:hover { background: rgba(50, 215, 75, 0.1); color: #32D74B; border-color: #32D74B; }
+
+/* Subtle Select Dropdown */
+.subtle-select {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    outline: none;
+    appearance: none;
+}
+    
+
+</style>
+
+
+</head>
+
+<body class="mode-architect lens-both">
+<div id="tablet-shell">
+    <div id="content-area">
+        <div class="header-top">
+            <div class="brand">DEEPWORKSZT</div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="config-button" id="cfg-level" onclick="ENGINE.cycle('scope')">LEVEL: INDIVIDUAL</button>
+                <button class="config-button" id="cfg-role" onclick="ENGINE.cycle('role')">ROLE: ARCHITECT</button>
+                <button class="config-button" id="cfg-lens" onclick="ENGINE.cycle('lens')">LENS: BOTH</button>
+            </div>
+        </div>
+
+        <nav class="nav-tabs">
+            <div class="tab" onclick="ENGINE.switchTab('year', this)">Yearly Audit</div>
+            <div class="tab" onclick="ENGINE.switchTab('month', this)">Monthly Ledger</div>
+            <div class="tab" onclick="ENGINE.switchTab('week', this)">Weekly Tactical</div>
+            <div class="tab active" onclick="ENGINE.switchTab('day', this)">Daily Ledger</div>
+        </nav>
+
+<div id="viewport">
+    <div id="day-view" class="view-content active">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px;">
+            <h1 id="day-title" style="margin: 0;">Daily Ledger</h1>
+            <div style="font-family:'SF Mono'; font-size:11px; color:var(--text-dim); letter-spacing: 1px;">SYSTEM_STABLE // 24H_CLOCK</div>
+        </div>
+        <div style="display: flex; flex-direction: column; height: calc(100% - 60px); gap: 16px;">
+            <div id="ledger-wrapper" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+                <div id="ledger-container" 
+                     onmousedown="ENGINE.handleMouseDown(event)" 
+                     style="overflow-y: auto; flex: 1; padding: 20px 20px 20px 60px; position: relative; cursor: crosshair;">
+                </div>
+            </div>
+            <div id="graph-stage" style="height: 180px; flex-shrink: 0;">
+                <span>Audit Lens Stage</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="week-view" class="view-content">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
+            <h1>Weekly Tactical</h1>
+            <div style="font-family:'SF Mono'; font-size: 12px; color: #007AFF;">WEEK 05 / 2026</div>
+        </div>
+        <div id="weekly-columns" style="display: grid; grid-template-columns: 60px repeat(7, 1fr); gap: 10px; flex: 1; overflow-y: auto;"></div>
+    </div>
+
+    <div id="month-view" class="view-content">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
+            <h1>Monthly Analysis</h1>
+            <div id="month-burn-total" style="font-family:'SF Mono'; font-weight:700; color:#32D74B;">TOTAL: $0.00</div>
+        </div>
+        <div id="monthly-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; flex: 1; overflow-y: auto;"></div>
+    </div>
+
+    <div id="year-view" class="view-content">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
+            <h1>Yearly Audit</h1>
+            <div style="font-family:'SF Mono'; font-size: 12px; color: var(--text-dim);">FY_2026_STRATEGY</div>
+        </div>
+        <div id="yearly-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; flex: 1; overflow-y: auto;"></div>
+    </div>
+</div>
+        
+    </div>
+
+<aside id="engine-sidebar" style="background: rgba(10,10,10,0.8); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 30px 20px;">
+    
+    <div style="margin-bottom: 40px; text-align: center;">
+        <div id="clock-display" style="font-size: 42px; font-weight: 200; color: white; letter-spacing: -1px; opacity: 0.9;">16:07:22</div>
+        <div id="date-display" style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 5px; letter-spacing: 1px;">
+            03 FEB 2026 // SYSTEM_ACTIVE
+        </div>
+    </div>
+
+    <div style="margin-bottom: 30px;">
+        <label class="p-label" style="font-size: 9px; opacity: 0.4; margin-bottom: 8px; display: block;">STRATEGIC CONTEXT</label>
+        <textarea id="sidebar-notes" 
+            style="width: 100%; height: 100px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: white; padding: 12px; font-size: 13px; outline: none; resize: none;" 
+            placeholder="Capture thoughts..."></textarea>
+    </div>
+
+    <div style="margin-bottom: 40px;">
+        <button id="commence-btn" class="btn-focus" style="width: 100%; height: 50px; background: white; color: black; font-weight: 700; border-radius: 10px; margin-bottom: 15px; border: none; cursor: pointer;" onclick="ENGINE.commence()">START</button>
+        
+        <div class="search-container" style="position: relative;">
+            <input type="text" id="project-search" 
+                style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); height: 40px; border-radius: 8px; padding: 0 15px; color: white; font-size: 12px;" 
+                placeholder="Search Projects..."
+                onkeyup="ENGINE.filterProjects(this.value)">
+            </div>
+
+        <div id="active-intent-panel" style="margin-top: 15px; padding: 15px; background: rgba(0,122,255,0.05); border-left: 2px solid #007AFF; border-radius: 4px;">
+            <div style="font-size: 10px; color: #007AFF; font-weight: 800; margin-bottom: 4px;">ACTIVE_INTENT</div>
+            <div id="active-intent-label" style="font-size: 13px; color: white; font-weight: 500;">Infrastructure Refactoring</div>
+        </div>
+    </div>
+
+    <div style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.1); border: 1px solid #FF453A; color: #FF453A; border-radius: 8px; font-size: 18px;">-</button>
+            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(50,215,75,0.1); border: 1px solid #32D74B; color: #32D74B; border-radius: 8px; font-size: 18px;">+</button>
+        </div>
+
+        <div id="recent-transactions" style="display: flex; flex-direction: column; gap: 10px;">
+            </div>
+
+        <button onclick="ENGINE.openAudit()" style="width: 100%; margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px;">AUDIT LEDGER</button>
+    </div>
+</aside>
+</div>
+
+<script>
+const ENGINE = {
+    role: 'ARCHITECT',
+    lens: 'BOTH',
+    scope: 'INDIVIDUAL',
+    activeType: 'MEETING',
+    activeTypeContext: { isRemote: true },
+    rates: { INDIVIDUAL: 150, TEAM: 1200, INSTITUTION: 8500 },
+    selectedDate: "2026-01-30",
+    db: { "2026-01-30": [{ start: 9, end: 10, label: 'Systems Architecture', type: 'MEETING' }] },
+    isDragging: false,
+    dragStartH: null,
+    dragEndH: null,
+    meetingStartTime: null,
+    burnRatePerSecond: 0,
+    notesHistory: [], // [{timestamp: Date, text: string}]
+    activeBurnRate: 150,
+    currentNet: 23550.00,
+    isMeetingActive: false,
+    GRID_TOP_OFFSET: 25, 
+    HOUR_HEIGHT: 100,
+
+
+init() {
+    this.loadState();
+    this.injectStyles();
+    this.render();
+    this.updatePanelContext();
+    this.initFinancialPulse();
+
+    // ADD THESE GLOBAL LISTENERS:
+    window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    window.addEventListener('mouseup', () => this.handleMouseUp());
+},
+
+updateLifeClock() {
+    const now = new Date();
+    const blocks = this.db[this.selectedDate] || [];
+    
+    // Sum allocated time from blocks (ms)
+    const allocatedMs = blocks.reduce((acc, b) => acc + (b.end - b.start) * 3600000, 0);
+    
+    // Current time in ms since start of day
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const currentTimeMs = now.getTime() - dayStart;
+    
+    // Available Life = Current Time - Used Time
+    const lifeClockMs = Math.max(0, currentTimeMs - allocatedMs);
+    
+    // Formatting
+    const hrs = Math.floor(lifeClockMs / 3600000).toString().padStart(2, '0');
+    const mins = Math.floor((lifeClockMs % 3600000) / 60000).toString().padStart(2, '0');
+    const secs = Math.floor((lifeClockMs % 60000) / 1000).toString().padStart(2, '0');
+
+    const clockEl = document.getElementById('clock-display');
+    if (clockEl) {
+        // Toggle breathing class on colons if session is active
+        const colonClass = this.isMeetingActive ? 'class="colon-breathe"' : '';
+        clockEl.innerHTML = `${hrs}<span ${colonClass}>:</span>${mins}<span ${colonClass}>:</span>${secs}`;
+    }
+},
+
+    
+    
+initFinancialPulse() {
+    // 1. Prevent multiple intervals from running simultaneously
+    if (this.fiscalInterval) clearInterval(this.fiscalInterval);
+
+    // 2. Inject Styles safely (singleton pattern)
+    if (!document.getElementById('engine-pulse-styles')) {
+        const style = document.createElement('style');
+        style.id = 'engine-pulse-styles';
+        style.innerHTML = `
+            @keyframes pulse-red {
+                0%, 100% { color: #32D74B; opacity: 1; }
+                50% { color: #ff453a; opacity: 0.7; }
+            }
+            .burning { animation: pulse-red 1.5s ease-in-out infinite; }
+            .progress-line { 
+                position: absolute; bottom: 0; left: 0; height: 4px; 
+                background: #007AFF; transition: width 1s linear; 
+                box-shadow: 0 0 10px rgba(0,122,255,0.5);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // 3. Set up the execution loop
+    this.fiscalInterval = setInterval(() => {
+        if (!this.isMeetingActive) {
+            const sideBurn = document.getElementById('sidebar-burn');
+            if (sideBurn) sideBurn.classList.remove('burning');
+            return;
+        }
+
+        const totalBudget = 25000;
+        const burnPerSec = this.activeBurnRate / 3600;
+        
+        // Update Internal State
+        this.currentNet -= burnPerSec;
+
+        // --- DOM UPDATES ---
+
+        // A. Update Sidebar Text & Animation
+        const sideBurn = document.getElementById('sidebar-burn');
+        if (sideBurn) {
+            sideBurn.innerText = `BURN: $${burnPerSec.toFixed(4)}/SEC`;
+            sideBurn.classList.add('burning');
+        }
+
+        // B. Update Graph Stage (The Audit Lens)
+        const stage = document.getElementById('graph-stage');
+        if (stage) {
+            const percent = (this.currentNet / totalBudget) * 100;
+            
+            // Update or Create the progress line
+            let line = stage.querySelector('.progress-line');
+            if (!line) {
+                line = document.createElement('div');
+                line.className = 'progress-line';
+                stage.appendChild(line);
+            }
+            line.style.width = `${percent}%`;
+
+            // Update the Label
+            const label = stage.querySelector('span');
+            if (label) label.innerText = `FISCAL_STABILITY: ${percent.toFixed(2)}%`;
+        }
+
+        // C. Update Ledger Display (If viewing the Ledger)
+        const netDisplay = document.getElementById('net-remaining-display');
+        if (netDisplay) {
+            netDisplay.innerText = `$${this.currentNet.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        } else {
+            // If we are in another tab, update the sidebar's net display instead
+            const sideNet = document.getElementById('sidebar-net-total');
+            if (sideNet) sideNet.innerText = `$${Math.floor(this.currentNet).toLocaleString()}`;
+        }
+
+        // 4. Auto-save every 10 seconds to prevent data loss on refresh
+        if (Math.floor(Date.now() / 1000) % 10 === 0) {
+            this.saveState();
+        }
+
+    }, 1000);
+},
+
+setBurnGear(val) {
+    this.activeBurnRate = parseFloat(val);
+},
+
+handleMouseDown(e) {
+    // If we click a block directly, handle it as a block click
+    const block = e.target.closest('.block-space');
+    if (block) {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = parseInt(block.dataset.blockIdx, 10);
+        this.openMeeting(idx);
+        return;
+    }
+
+    const container = document.getElementById('ledger-container');
+    const rect = container.getBoundingClientRect();
+    const offsetY = (e.clientY - rect.top) + container.scrollTop;
+
+    this.isDragging = true;
+    this.dragStartH = Math.max(0, (offsetY - (this.GRID_TOP_OFFSET || 0)) / this.HOUR_HEIGHT);
+    this.dragEndH = this.dragStartH;
+
+    // Ensure ghost starts fresh
+    this.updateGhost();
+},
+
+handleMouseMove(e) {
+    if (!this.isDragging) return;
+    
+    const container = document.getElementById('ledger-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    
+    // This allows dragging even if the mouse leaves the container boundaries
+    const scrollOffset = container.scrollTop;
+    const relativeY = (e.clientY - rect.top) + scrollOffset;
+    
+    // Constrain to 0-24 hour range
+    const rawH = (relativeY - this.GRID_TOP_OFFSET) / this.HOUR_HEIGHT;
+    this.dragEndH = Math.max(0, Math.min(24, rawH));
+    
+    this.updateGhost(); 
+},
+
+    handleMouseOver(h, isHalf) {
+        if (!this.isDragging) return;
+        const val = isHalf ? h + 0.5 : h;
+        if (this.dragEndH === val) return;
+        this.dragEndH = val;
+        this.renderDay();
+    },
+
+handleMouseUp() {
+    if (!this.isDragging) return;
+
+    const step = 0.25; // 15 min increments
+    // Snap both start and end to the nearest 15 minutes
+    let start = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
+    let end = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
+
+    // Minimum duration of 15 mins if user just clicked
+    if (start === end) end += 0.25; 
+
+    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
+
+    const hasOverlap = this.db[this.selectedDate].some(s => (start < s.end && end > s.start));
+
+    if (!hasOverlap) {
+        this.db[this.selectedDate].push({ 
+            start, 
+            end, 
+            label: "New Infrastructure Session", 
+            type: this.activeType || 'MEETING',
+            id: `session-${Date.now()}`
+        });
+        this.saveState();
+    }
+
+    this.isDragging = false;
+    this.dragStartH = null;
+    this.dragEndH = null;
+    
+    this.renderDay();
+},
+
+updateGhost() {
+    let g = document.getElementById('ghost-selection');
+    if (!g) {
+        g = document.createElement('div');
+        g.id = 'ghost-selection';
+        g.style.cssText = `
+            position: absolute; 
+            left: 100px; 
+            width: calc(100% - 240px); 
+            background: rgba(0, 122, 255, 0.05); 
+            border-left: 3px solid #007AFF; 
+            pointer-events: none; 
+            z-index: 50; /* BELOW BLOCKS */
+            display: none;
+        `;
+        document.getElementById('ledger-container').appendChild(g);
+    }
+    
+    if (!this.isDragging) { 
+        g.style.display = 'none'; 
+        return; 
+    }
+
+    const step = 0.25;
+    const topH = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
+    let bottomH = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
+    if (topH === bottomH) bottomH += 0.25;
+
+    g.style.display = 'block';
+    g.style.top = `${(topH * this.HOUR_HEIGHT)}px`;
+    g.style.height = `${(bottomH - topH) * this.HOUR_HEIGHT}px`;
+    
+    // No digits, just a clean HIG-aligned status
+    g.innerHTML = `
+        <div style="padding: 10px; color: #007AFF; font-family: 'SF Mono'; font-size: 9px; font-weight: 800;">
+            PROPOSED_ALLOCATION
+        </div>
+    `;
+},
+    
+    cycle(prop) {
+        const options = {
+            scope: ['INDIVIDUAL', 'TEAM', 'INSTITUTION'],
+            role: ['ARCHITECT', 'SUPERVISOR'],
+            lens: ['PROD', 'FINANCE', 'BOTH']
+        };
+        let current = this[prop];
+        let idx = (options[prop].indexOf(current) + 1) % options[prop].length;
+        let next = options[prop][idx];
+        
+        if(prop === 'scope') this.setLevel(next);
+        if(prop === 'role') this.setRole(next);
+        if(prop === 'lens') this.setLens(next);
+    },
+
+setLevel(level) {
+    this.scope = level;
+    this.activeBurnRate = this.rates[level]; // THIS LINE IS VITAL
+    
+    const btn = document.getElementById('cfg-level');
+    if(btn) btn.innerText = `LEVEL: ${level}`;
+    
+    this.render();
+},
+
+    setRole(role) {
+        this.role = role;
+        const btn = document.getElementById('cfg-role');
+        if(btn) btn.innerText = `ROLE: ${role}`;
+        this.render();
+    },
+
+    setLens(lens) {
+        this.lens = lens;
+        const btn = document.getElementById('cfg-lens');
+        if(btn) btn.innerText = `LENS: ${lens}`;
+        document.body.className = `mode-${this.role.toLowerCase()} lens-${lens.toLowerCase()}`;
+        this.render();
+    },
+
+switchTab(view, el) {
+    // 1. Clear all active states
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+    
+    // 2. Activate current
+    el.classList.add('active');
+    const target = document.getElementById(view + '-view');
+    if (target) target.classList.add('active');
+
+    // 3. Trigger specific renders
+    if (view === 'day') this.renderDay();
+    if (view === 'week') this.renderWeek();
+    if (view === 'month') this.renderMonth();
+    if (view === 'year') this.renderYear();
+},
+
+renderAuditGraph() {
+    const stage = document.getElementById('graph-stage');
+    if (!stage) return;
+    
+    const total = 25000;
+    const percent = Math.max(0, (this.currentNet / total) * 100);
+    
+    // Clear and redraw with z-index protection
+    stage.style.position = "relative";
+    stage.innerHTML = `
+        <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.05);">
+        </div>
+        
+        <div style="position:absolute; bottom:0; left:0; width:${percent}%; height:4px; background:#007AFF; box-shadow: 0 0 15px #007AFF; transition: width 0.5s ease; z-index: 2;">
+        </div>
+
+    `;
+},
+    
+    render() {
+        this.renderDay();
+        this.renderMonth();
+        this.renderYear();
+    },
+
+    toggleTypeMenu() {
+      const menu = document.getElementById('type-selector-expanded');
+      if (!menu) return;
+      
+      const isHidden = menu.style.display === 'none' || menu.style.display === '';
+      
+      if (isHidden) {
+          menu.style.display = 'flex';
+          menu.animate([
+              { opacity: 0, transform: 'translateY(-10px)' },
+              { opacity: 1, transform: 'translateY(0)' }
+          ], { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
+      } else {
+          menu.style.display = 'none';
+      }
+    },
+
+    setType(type) {
+        this.activeType = type;
+        const avatar = document.getElementById('avatar-main-initial');
+        const trigger = document.getElementById('type-avatar-trigger');
+        const colors = { MEETING: '#007AFF', EVENT: '#FF9500', TASK: '#FF3B30' };
+        const typeDisplay = document.getElementById('active-type-text');
+        if (typeDisplay) typeDisplay.innerText = type;
+        
+        if (avatar) avatar.innerText = type.charAt(0);
+        if (trigger) {
+            trigger.style.color = colors[type];
+            trigger.style.borderColor = colors[type];
+        }
+
+        document.getElementById('type-selector-expanded').style.display = 'none';
+        this.updatePanelContext();
+    },
+
+    // Helper to add new agenda items dynamically
+    addAgendaPoint() {
+        const list = document.getElementById('agenda-items-list');
+        const count = list.children.length + 1;
+        const div = document.createElement('div');
+        div.style.cssText = "display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);";
+        div.innerHTML = `
+            <span style="font-family:'SF Mono'; font-size:10px; color:#007AFF; opacity:0.4;">0${count}</span>
+            <input type="text" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
+            <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
+        `;
+        list.appendChild(div);
+    },
+
+    // Financial Actions
+    addExpense() { console.log("Expense added"); },
+    addIncome() { console.log("Income added"); },
+    audit() { alert("Strategic Audit Log: 24h cycle verified."); },
+    
+closeModal() {
+    this.isMeetingActive = false; // Stops the Financial Pulse burn
+    document.getElementById('modal-overlay').style.display = 'none';
+},
+
+injectStyles() {
+    if (document.getElementById('engine-core-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'engine-core-styles';
+    style.innerHTML = `
+        @keyframes breathe { ... }
+        .breathing-roi { ... }
+        #agenda-items-list::-webkit-scrollbar { ... }
+    `;
+    document.head.appendChild(style);
+},
+
+updatePanelContext() {
+    const container = document.getElementById('dynamic-fields-container');
+    const modalTitle = document.getElementById('modal-main-title');
+    const activeColor = { MEETING: '#007AFF', EVENT: '#FF9500', TASK: '#FF3B30' }[this.activeType];
+    
+    // --- 0. INTERACTION LAYER FIX ---
+    // Ensure the modal layer doesn't intercept drag events meant for the ledger
+    container.style.pointerEvents = "none"; 
+    container.style.zIndex = "100"; // High visual priority
+    
+    const now = new Date();
+    const todayISO = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+
+    const ledger = [
+        { desc: 'Vercel Edge Config', amt: -20.00, time: '2026-02-02 16:42' },
+        { desc: 'Retainer Deposit', amt: 2500.00, time: '2026-02-02 12:05' },
+        { desc: 'S3 Storage Bucket', amt: -45.00, time: '2026-02-01 09:00' }
+    ];
+
+    const historicalNotes = [
+        { date: '2026-02-02', text: 'Confirmed migration architecture.' },
+        { date: '2026-02-01', text: 'Security audit passed.' },
+        { date: '2026-01-28', text: 'Budget approval for Q1.' },
+        { date: '2026-01-25', text: 'Initial scoping session.' },
+        { date: '2026-01-20', text: 'Vendor compliance check.' },
+        { date: '2026-01-15', text: 'Project kickoff.' }
+    ];
+
+    const totalBudget = 25000.00; 
+    const netRemaining = 27435.00;
+
+    modalTitle.innerText = `NEW ${this.activeType}`;
+
+    if (ENGINE.activeTypeContext.isRemote === undefined) ENGINE.activeTypeContext.isRemote = true;
+    const isRemote = ENGINE.activeTypeContext.isRemote;
+
+    let html = '';
+    
+    // --- 1. HEADER (Strategic Objective) ---
+    html += `
+        <div style="grid-column: span 2; pointer-events: all; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px;">
+            <div style="flex: 1;">
+                <label style="color: ${activeColor}; font-weight: 800; font-size: 10px; letter-spacing: 2px; text-transform:uppercase;">Strategic Objective</label>
+                <input type="text" value="Infrastructure Session" 
+                       style="background:transparent; border:none; color:white; font-size:28px; font-weight:700; width:100%; outline:none; letter-spacing: -1px;">
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <input type="date" value="${todayISO}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px;">
+                <input type="time" value="${currentTime}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px;">
+            </div>
+        </div>
+    `;
+
+    // --- 2. LOCATION / URL TOGGLE ---
+    html += `
+        <div style="grid-column: span 2; pointer-events: all; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03);">
+            <div style="display: flex; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px;">
+                <button onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
+                        style="background: rgba(255,255,255,0.1); border: none; cursor: pointer; padding: 4px 10px; border-radius: 6px; font-size: 14px;">
+                    ${isRemote ? '🌐' : '📍'}
+                </button>
+            </div>
+            <div style="flex: 1;">
+                <label style="opacity: 0.3; font-size: 8px; font-weight: 800; text-transform:uppercase; display: block;">${isRemote ? 'Meeting URL' : 'Location'}</label>
+                <input type="text" id="modal-location" value="${isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A'}" 
+                       style="background: transparent; border: none; color: white; font-size: 12px; width: 100%; outline: none; font-family: 'SF Mono';">
+            </div>
+        </div>
+    `;
+
+    // --- 3. SESSION AGENDA ---
+    html += `
+        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 14px 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                <label style="opacity: 0.3; font-size: 9px; font-weight: 800; text-transform:uppercase;">Session Agenda</label>
+                <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color:${activeColor}; font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
+            </div>
+            <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
+                ${[1, 2, 3, 4].map(i => `
+                    <div style="display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                        <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i}</span>
+                        <input type="text" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
+                        <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    // --- 4. STAKEHOLDERS & NOTES ---
+    html += `
+        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; margin-bottom: 12px;">
+            <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <label style="opacity: 0.3; font-size: 8px; font-weight: 800; text-transform:uppercase;">Stakeholders</label>
+                    <span onclick="ENGINE.addStakeholder()" style="color:${activeColor}; font-size:8px; font-weight:800; cursor:pointer;">+ INVITE</span>
+                </div>
+                <div id="stakeholder-list" style="max-height: 105px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                    ${['S. Chen (Arch)', 'A. Marcus (Dev)', 'J. Doe (PM)', 'K. Sato (Sec)', 'L. Wright (Ops)'].map(name => `
+                        <div style="font-size:11px; color:rgba(255,255,255,0.8); display:flex; align-items:center;">
+                            <span style="color:${activeColor}; margin-right:8px;">●</span>${name}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
+                <div style="display:flex; gap:8px; margin-bottom:10px;">
+                    <input type="text" placeholder="Quick note..." style="flex:1; background:rgba(255,255,255,0.04); border:none; color:white; font-size:11px; padding: 6px 10px; border-radius: 6px; outline:none;">
+                    <button style="background:${activeColor}; border:none; color:white; font-size:8px; font-weight:800; padding:0 12px; border-radius:6px;">SAVE</button>
+                </div>
+                <div id="notes-history" style="max-height: 85px; overflow-y: auto; opacity: 0.6;">
+                    ${historicalNotes.map(n => `
+                        <div style="font-size: 10px; margin-bottom: 8px; font-family:'SF Mono'; display: flex; gap: 32px;">
+                            <span style="color:${activeColor}; font-weight:bold; white-space: nowrap;">[${n.date}]</span>
+                            <span style="color: rgba(255,255,255,0.8);">${n.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+
+    // --- 5. FINANCE BAR ---
+    html += `
+        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div>
+                        <label style="opacity:0.2; font-size: 8px; font-weight: 800; text-transform:uppercase; display:block; margin-bottom:2px;">Net Remaining</label>
+                        <span style="color:white; font-size: 22px; font-weight: 600; font-family:'SF Mono';">$${netRemaining.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+                    <div style="height: 24px; width: 1px; background: rgba(255,255,255,0.08);"></div>
+                    <div>
+                        <label style="opacity:0.2; font-size: 8px; font-weight: 800; text-transform:uppercase; display:block; margin-bottom:2px;">Budget Cap</label>
+                        <span style="color:rgba(255,255,255,0.4); font-size: 14px; font-family:'SF Mono';">$${totalBudget.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="ENGINE.addExpense()" style="background:rgba(255,59,48,0.1); border:1px solid rgba(255,59,48,0.2); color:#FF3B30; width:38px; height:38px; border-radius:10px; cursor:pointer; font-size:18px;">−</button>
+                    <button onclick="ENGINE.addIncome()" style="background:rgba(50,215,75,0.1); border:1px solid rgba(50,215,75,0.2); color:#32D74B; width:38px; height:38px; border-radius:10px; cursor:pointer; font-size:18px;">+</button>
+                    <button onclick="ENGINE.audit()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; font-size:9px; font-weight:800; padding:0 18px; border-radius:10px; cursor:pointer; letter-spacing:1px;">AUDIT</button>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.04);">
+                ${ledger.map(t => `
+                    <div style="display:flex; flex-direction:column; flex: 1;">
+                        <label style="opacity:0.15; font-size:7px; text-transform:uppercase; white-space:nowrap; margin-bottom:2px;">${t.desc}</label>
+                        <span style="font-size:11px; font-family:'SF Mono'; font-weight:700; color:${t.amt > 0 ? '#32D74B' : 'rgba(255,255,255,0.7)'};">
+                            ${t.amt > 0 ? '+' : ''}${t.amt.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </span>
+                        <span style="opacity:0.15; font-size:7px; font-family:'SF Mono'; margin-top:1px;">${t.time}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+},
+
+    
+// --- Restored Helper Methods ---
+
+setLocMode(mode) {
+    const input = document.getElementById('modal-location');
+    if (!input) return;
+    ENGINE.activeTypeContext.isRemote = (mode === 'web');
+    this.updatePanelContext();
+},
+
+addStakeholder() {
+    const name = prompt("Enter Stakeholder Name:");
+    if (!name) return;
+    const list = document.getElementById('stakeholder-list');
+    const div = document.createElement('div');
+    div.style.cssText = "display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:8px;";
+    div.innerHTML = `<span><span style="color:${this.activeType === 'MEETING' ? '#007AFF' : '#FF9500'}; margin-right:8px;">●</span>${name}</span><span style="font-size:10px; opacity:0.2; cursor:pointer;" onclick="this.parentElement.remove()">✕</span>`;
+    list.appendChild(div);
+},
+
+saveSession() {
+    const titleInput = document.getElementById('strategic-objective-input');
+    const title = titleInput ? titleInput.value : "New Infrastructure Session";
+    
+    // Logic to update the last session or create new
+    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
+    
+    // If we just added one via handleMouseUp, update its label
+    const sessions = this.db[this.selectedDate];
+    if (sessions.length > 0) {
+        sessions[sessions.length - 1].label = title;
+        sessions[sessions.length - 1].type = this.activeType;
+    }
+
+    document.getElementById('modal-overlay').style.display = 'none';
+    this.renderDay(); // Refresh the ledger view
+},
+
+// Add these to the ENGINE object
+saveState() {
+    localStorage.setItem('ENGINE_DB', JSON.stringify(this.db));
+    localStorage.setItem('ENGINE_NET', this.currentNet.toString());
+},
+
+loadState() {
+    const savedDb = localStorage.getItem('ENGINE_DB');
+    const savedNet = localStorage.getItem('ENGINE_NET');
+    if (savedDb) this.db = JSON.parse(savedDb);
+    if (savedNet) this.currentNet = parseFloat(savedNet);
+},
+    
+openMeeting(idx) {
+    this.isMeetingActive = true;
+    document.getElementById('modal-overlay').style.display = 'flex';
+    
+    // Sync the sidebar button state
+    const btn = document.querySelector('.btn-focus');
+    if (btn) {
+        btn.innerText = "TERMINATE FOCUS";
+        btn.style.background = "#ff453a";
+        btn.style.color = "white";
+    }
+    
+    this.updatePanelContext();
+},
+
+togglePreRead(el) {
+    let popover = document.getElementById('preread-popover');
+    if (!popover) {
+        popover = document.createElement('div');
+        popover.id = 'preread-popover';
+        popover.style.cssText = "position:absolute; background:#1c1c1e; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:15px; box-shadow:0 20px 40px rgba(0,0,0,0.5); z-index:3000; width:280px; display:none;";
+        popover.innerHTML = `
+            <label style="color:rgba(255,255,255,0.4); margin-bottom:10px; display:block; font-weight:800; font-size:9px; letter-spacing:1px;">CONTEXT / PRE-READ</label>
+            <textarea style="width:100%; height:100px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); color:white; font-size:12px; border-radius:8px; padding:10px; outline:none; resize:none;" placeholder="Links or briefing notes..."></textarea>
+        `;
+        document.body.appendChild(popover);
+    }
+    
+    const isHidden = popover.style.display === 'none' || popover.style.display === '';
+    if (isHidden) {
+        const rect = el.getBoundingClientRect();
+        popover.style.display = 'block';
+        popover.style.top = `${rect.bottom + 10}px`;
+        popover.style.left = `${rect.left - 200}px`;
+    } else {
+        popover.style.display = 'none';
+    }
+},
+
+    startMeetingTicker(hourlyRate) {
+        const ticker = document.getElementById('burn-ticker');
+        if(!ticker) return;
+        const ratePerSec = hourlyRate / 3600;
+        let elapsedSec = 0;
+        
+        if(this.tickerInterval) clearInterval(this.tickerInterval);
+        
+        this.tickerInterval = setInterval(() => {
+            elapsedSec++;
+            ticker.innerText = `$${(elapsedSec * ratePerSec).toFixed(2)} LIVE`;
+        }, 1000);
+    },
+
+renderDay() {
+    const events = this.db[this.selectedDate] || [];
+    const transactions = this.db.transactions?.[this.selectedDate] || []; 
+    const container = document.getElementById('ledger-container');
+    if (!container) return;
+
+    this.HOUR_HEIGHT = 100; 
+    const colors = { MEETING: '#007AFF', EVENT: '#FF9500', TASK: '#FF3B30' };
+    
+    // 1. Static Grid (Visual Layer)
+    let html = '<div id="time-now-line"></div>';
+    for(let h=0; h<=23; h++) {
+        html += `
+            <div class="hour-row" style="height:${this.HOUR_HEIGHT}px; border-bottom: 1px solid rgba(255,255,255,0.03); position:relative;">
+                <div class="hour-label" style="width: 80px; color: rgba(255,255,255,0.1); font-family: 'SF Mono'; font-size: 11px; padding-top: 10px;">
+                    ${h.toString().padStart(2, '0')}:00
+                </div>
+            </div>`;
+    }
+
+    // 2. Interaction Layer removed - ledger-container already handles mousedown
+
+    // 3. Saved Blocks (High Priority Layer)
+    events.forEach((session, idx) => {
+        const topPos = (session.start * this.HOUR_HEIGHT) + (this.GRID_TOP_OFFSET || 0); 
+        const height = (session.end - session.start) * this.HOUR_HEIGHT;
+        const color = colors[session.type] || colors.MEETING;
+        const isCompact = height <= 45;
+
+        // Inside renderDay(), update the block template:
+        html += `
+            <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
+                data-block-idx="${idx}"
+                style="
+                    top: ${topPos}px;
+                    height: ${height}px;
+                    left: 100px;
+                    width: calc(100% - 240px);
+                    border-left: 3px solid ${color};
+                    background: rgba(255,255,255,0.03);
+                    position: absolute;
+                    cursor: pointer;
+                    z-index: 200;
+                    pointer-events: all;
+                ">
+
+                <div style="padding: 12px; pointer-events: none;">
+                    <div style="color: ${color}; font-size: 8px; font-weight: 900; letter-spacing: 1.5px;">${session.type}</div>
+                    <div style="color: white; font-weight: 600; font-size: 14px;">${session.label}</div>
+                </div>
+            </div>`;
+        session.isNew = false;
+    });
+
+    container.innerHTML = html;
+},
+    
+updateTimeline(shouldScroll = false) {
+    const line = document.getElementById('time-now-line');
+    if (!line) return;
+    
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const totalHours = hours + (minutes / 60);
+    
+    // 100px per hour + 25px offset for the header
+    const topPos = (totalHours * 100) + 25; 
+    line.style.top = `${topPos}px`;
+
+    if (shouldScroll) {
+        line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+},
+
+    renderWeek() {
+        const container = document.getElementById('weekly-columns');
+        if (!container) return;
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        let html = '<div style="margin-top: 30px;">' + Array.from({length: 24}, (_, h) => `<div style="height:40px; font-size:9px; color:var(--text-dim); text-align:right; padding-right:10px;">${h.toString().padStart(2,'0')}:00</div>`).join('') + '</div>';
+        days.forEach((day, i) => {
+            html += `<div class="week-day-col"><div class="p-label" style="text-align:center;">${day}</div><div style="height:960px; position:relative; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05);"></div></div>`;
+        });
+        container.innerHTML = html;
+    },
+
+    renderMonth() {
+        const container = document.getElementById('monthly-grid');
+        if (!container) return;
+        let html = '';
+        for(let d=1; d<=31; d++) {
+            html += `<div class="month-day-card"><div class="day-num">${d}</div></div>`;
+        }
+        container.innerHTML = html;
+    },
+
+    renderYear() {
+        const container = document.getElementById('yearly-grid');
+        if (!container) return;
+        const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        container.innerHTML = months.map(m => `<div><div class="p-label">${m}</div><div class="cal-grid">${Array.from({length:31}, () => `<div class="dot"></div>`).join('')}</div></div>`).join('');
+    },
+
+commence() {
+    this.isMeetingActive = !this.isMeetingActive;
+    const btn = document.getElementById('commence-btn');
+    
+    if (this.isMeetingActive) {
+        btn.innerText = "TERMINATE SESSION";
+        btn.style.background = "#FF453A"; 
+        btn.style.color = "white";
+        // Start recording time logic...
+    } else {
+        btn.innerText = "START";
+        btn.style.background = "#FFFFFF";
+        btn.style.color = "#000000";
+        // Finalize transaction logic...
+    }
+}
+    
+};
+
+// Global Execution Logic
+setInterval(() => {
+    const clock = document.getElementById('clock-display');
+    if (clock) {
+        const now = new Date();
+        clock.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
+    // Update the red "Now" line on the ledger every minute
+    if (new Date().getSeconds() === 0) ENGINE.updateTimeline();
+}, 1000);
+
+// Initialize the Engine on window load
+window.onload = () => ENGINE.init();
+
+// Add this to your script to catch the end of a drag anywhere on the screen
+window.addEventListener('mouseup', () => {
+    if (ENGINE.isDragging) ENGINE.handleMouseUp();
+});
+    
+</script>
+</body>
+
+</html>
