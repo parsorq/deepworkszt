@@ -897,6 +897,75 @@ body {
 </div>
 
 <script>
+function showLoginUI({ status = '', buttonLabel = 'Sign in', onLogin = null } = {}) {
+    let overlay = document.getElementById('engine-login-overlay');
+    let statusEl;
+    let buttonEl;
+
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'engine-login-overlay';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; z-index:2000;';
+
+        const panel = document.createElement('div');
+        panel.style.cssText = 'background:rgba(20,20,22,0.95); border:1px solid rgba(255,255,255,0.1); border-radius:18px; padding:24px; width:360px; text-align:center; color:white;';
+
+        const title = document.createElement('div');
+        title.textContent = 'ENGINE CONNECT';
+        title.style.cssText = 'font-size:14px; font-weight:700; letter-spacing:2px; margin-bottom:12px;';
+
+        statusEl = document.createElement('div');
+        statusEl.dataset.role = 'status';
+        statusEl.style.cssText = 'font-size:12px; color:rgba(255,255,255,0.6); margin-bottom:20px;';
+
+        buttonEl = document.createElement('button');
+        buttonEl.dataset.role = 'button';
+        buttonEl.style.cssText = 'width:100%; padding:12px 14px; border-radius:10px; border:none; background:#007AFF; color:white; font-weight:700; cursor:pointer; font-size:12px;';
+
+        panel.appendChild(title);
+        panel.appendChild(statusEl);
+        panel.appendChild(buttonEl);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+    } else {
+        statusEl = overlay.querySelector('[data-role="status"]');
+        buttonEl = overlay.querySelector('[data-role="button"]');
+    }
+
+    if (statusEl) statusEl.textContent = status;
+    if (buttonEl) {
+        buttonEl.textContent = buttonLabel;
+        buttonEl.onclick = onLogin;
+        buttonEl.disabled = false;
+        buttonEl.style.opacity = '1';
+        buttonEl.style.cursor = 'pointer';
+    }
+
+    overlay.style.display = 'flex';
+
+    return {
+        setStatus: (text, isError = false) => {
+            if (statusEl) {
+                statusEl.textContent = text;
+                statusEl.style.color = isError ? '#FF453A' : 'rgba(255,255,255,0.6)';
+            }
+        },
+        setButtonLabel: (label) => {
+            if (buttonEl) buttonEl.textContent = label;
+        },
+        setButtonEnabled: (enabled) => {
+            if (buttonEl) {
+                buttonEl.disabled = !enabled;
+                buttonEl.style.opacity = enabled ? '1' : '0.6';
+                buttonEl.style.cursor = enabled ? 'pointer' : 'not-allowed';
+            }
+        },
+        hide: () => {
+            overlay.style.display = 'none';
+        }
+    };
+}
+
 const ENGINE = {
     role: 'ARCHITECT',
     lens: 'BOTH',
@@ -906,28 +975,24 @@ const ENGINE = {
     rates: { INDIVIDUAL: 150, TEAM: 1200, INSTITUTION: 8500 },
     selectedDate: new Date().toISOString().split('T')[0],
     currentEventIdx: null, // Track which event is being edited
-
-    // Hardcoded database - events persist here
-    db: {
-        "2026-02-04": [
-            { id: 'evt-001', start: 9, end: 10.5, label: 'Morning Standup', type: 'MEETING' },
-            { id: 'evt-002', start: 14, end: 15.5, label: 'Architecture Review', type: 'MEETING' },
-            { id: 'evt-003', start: 16, end: 17, label: 'Code Review Session', type: 'TASK' }
-        ],
-        "2026-02-05": [
-            { id: 'evt-004', start: 10, end: 11, label: 'Sprint Planning', type: 'MEETING' },
-            { id: 'evt-005', start: 13, end: 14.5, label: 'Client Call', type: 'EVENT' }
-        ]
-    },
-
-    // Sample transactions for reference
-    transactions: [
-        { id: 'tx-001', date: '2026-02-04', time: '09:30', desc: 'Vercel Pro Subscription', amount: -20.00, category: 'Infrastructure' },
-        { id: 'tx-002', date: '2026-02-04', time: '11:00', desc: 'Client Retainer Deposit', amount: 2500.00, category: 'Income' },
-        { id: 'tx-003', date: '2026-02-03', time: '14:22', desc: 'AWS S3 Storage', amount: -45.00, category: 'Infrastructure' },
-        { id: 'tx-004', date: '2026-02-03', time: '16:00', desc: 'Figma Team License', amount: -15.00, category: 'Tools' },
-        { id: 'tx-005', date: '2026-02-02', time: '10:15', desc: 'Consulting Payment', amount: 1800.00, category: 'Income' }
+    googleClientId: '199336032000-71cs5iokgfg8ondge7orb4e1brjv7lpi.apps.googleusercontent.com',
+    masterRegistryId: '1SM8gIhluzuNX6HNRgZ149EBUypBq7v9ve8m5gTw8vg8',
+    userDataFileName: 'ENGINE_USER_DATA_V1',
+    scopes: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email',
+    discoveryDocs: [
+        'https://sheets.googleapis.com/$discovery/rest?version=v4',
+        'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
     ],
+    tokenClient: null,
+    isAuthenticated: false,
+    userEmail: null,
+    userSpreadsheetId: null,
+    eventRowIndex: {},
+    transactionRowIndex: {},
+    metaRowIndex: {},
+    loginUI: null,
+    db: {},
+    transactions: [],
 
     isDragging: false,
     dragStartH: null,
@@ -942,9 +1007,464 @@ const ENGINE = {
     HOUR_HEIGHT: 100,
     nextEventId: 100, // For generating unique IDs
 
+bootstrap() {
+    this.loginUI = showLoginUI({
+        status: 'Loading Google APIs...',
+        buttonLabel: 'Sign in with Google',
+        onLogin: () => this.requestAuth()
+    });
+    if (this.loginUI) this.loginUI.setButtonEnabled(false);
 
-init() {
-    this.loadState();
+    this.loadGoogleApis()
+        .then(() => {
+            if (this.loginUI) {
+                this.loginUI.setStatus('Ready to connect.');
+                this.loginUI.setButtonEnabled(true);
+            }
+        })
+        .catch((err) => {
+            console.error('Google API load failed', err);
+            if (this.loginUI) {
+                this.loginUI.setStatus('Failed to load Google APIs. Refresh to retry.', true);
+                this.loginUI.setButtonEnabled(false);
+            }
+        });
+},
+
+loadGoogleApis() {
+    return Promise.all([
+        this.loadScriptOnce('https://apis.google.com/js/api.js', 'google-api'),
+        this.loadScriptOnce('https://accounts.google.com/gsi/client', 'google-gis')
+    ]).then(() => this.initGapiClient());
+},
+
+loadScriptOnce(src, id) {
+    return new Promise((resolve, reject) => {
+        if (document.getElementById(id)) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.id = id;
+        script.src = src;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.appendChild(script);
+    });
+},
+
+initGapiClient() {
+    return new Promise((resolve, reject) => {
+        gapi.load('client', async () => {
+            try {
+                await gapi.client.init({
+                    clientId: this.googleClientId,
+                    scope: this.scopes,
+                    discoveryDocs: this.discoveryDocs
+                });
+                this.tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: this.googleClientId,
+                    scope: this.scopes,
+                    callback: (tokenResponse) => this.handleAuthResponse(tokenResponse)
+                });
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
+    });
+},
+
+requestAuth() {
+    if (!this.tokenClient) return;
+    if (this.loginUI) {
+        this.loginUI.setStatus('Waiting for Google authorization...');
+        this.loginUI.setButtonEnabled(false);
+    }
+    this.tokenClient.requestAccessToken({ prompt: this.isAuthenticated ? '' : 'consent' });
+},
+
+async handleAuthResponse(tokenResponse) {
+    if (tokenResponse.error) {
+        if (this.loginUI) {
+            this.loginUI.setStatus('Authorization failed. Please retry.', true);
+            this.loginUI.setButtonEnabled(true);
+        }
+        return;
+    }
+
+    this.isAuthenticated = true;
+    gapi.client.setToken({ access_token: tokenResponse.access_token });
+
+    try {
+        if (this.loginUI) this.loginUI.setStatus('Validating access...');
+        this.userEmail = await this.fetchUserEmail();
+        const authorized = await this.validateRegistry(this.userEmail);
+        if (!authorized) {
+            if (this.loginUI) {
+                this.loginUI.setStatus('Access denied. Contact the administrator.', true);
+                this.loginUI.setButtonLabel('Try another account');
+                this.loginUI.setButtonEnabled(true);
+            }
+            this.isAuthenticated = false;
+            return;
+        }
+
+        if (this.loginUI) this.loginUI.setStatus('Preparing storage...');
+        await this.ensureUserSpreadsheet();
+
+        if (this.loginUI) this.loginUI.setStatus('Loading data...');
+        await this.init();
+
+        if (this.loginUI) this.loginUI.hide();
+    } catch (err) {
+        console.error('Authentication flow failed', err);
+        if (this.loginUI) {
+            this.loginUI.setStatus('Authentication failed. Check console for details.', true);
+            this.loginUI.setButtonEnabled(true);
+        }
+    }
+},
+
+async fetchUserEmail() {
+    const token = gapi.client.getToken();
+    if (!token || !token.access_token) throw new Error('Missing access token.');
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token.access_token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch user profile.');
+    const profile = await response.json();
+    return profile.email || '';
+},
+
+async validateRegistry(email) {
+    if (!email) return false;
+    const registryMeta = await gapi.client.sheets.spreadsheets.get({
+        spreadsheetId: this.masterRegistryId,
+        fields: 'sheets(properties(title))'
+    });
+    const sheetTitle = registryMeta.result.sheets?.[0]?.properties?.title || 'Sheet1';
+    const registryValues = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: this.masterRegistryId,
+        range: `${sheetTitle}!A:A`
+    });
+    const rows = registryValues.result.values || [];
+    const normalized = email.trim().toLowerCase();
+    return rows.some((row) => (row[0] || '').trim().toLowerCase() === normalized);
+},
+
+async ensureUserSpreadsheet() {
+    const cachedId = localStorage.getItem('ENGINE_USER_SHEET_ID');
+    if (cachedId) {
+        try {
+            await gapi.client.drive.files.get({ fileId: cachedId, fields: 'id' });
+            this.userSpreadsheetId = cachedId;
+            return;
+        } catch (err) {
+            localStorage.removeItem('ENGINE_USER_SHEET_ID');
+        }
+    }
+
+    const listResponse = await gapi.client.drive.files.list({
+        q: `name = '${this.userDataFileName}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+        fields: 'files(id, name, modifiedTime)',
+        orderBy: 'modifiedTime desc',
+        spaces: 'drive'
+    });
+
+    const existing = listResponse.result.files || [];
+    if (existing.length > 0) {
+        this.userSpreadsheetId = existing[0].id;
+        localStorage.setItem('ENGINE_USER_SHEET_ID', this.userSpreadsheetId);
+        return;
+    }
+
+    const createResponse = await gapi.client.sheets.spreadsheets.create({
+        resource: {
+            properties: { title: this.userDataFileName },
+            sheets: [
+                { properties: { title: 'Events' } },
+                { properties: { title: 'Transactions' } },
+                { properties: { title: 'Meta' } }
+            ]
+        }
+    });
+
+    this.userSpreadsheetId = createResponse.result.spreadsheetId;
+    localStorage.setItem('ENGINE_USER_SHEET_ID', this.userSpreadsheetId);
+},
+
+async ensureSheetStructure() {
+    if (!this.userSpreadsheetId) return;
+    const sheetMeta = await gapi.client.sheets.spreadsheets.get({
+        spreadsheetId: this.userSpreadsheetId,
+        fields: 'sheets(properties(title))'
+    });
+    const existingTitles = new Set(
+        (sheetMeta.result.sheets || []).map((sheet) => sheet.properties.title)
+    );
+    const requiredSheets = ['Events', 'Transactions', 'Meta'];
+    const addRequests = requiredSheets
+        .filter((title) => !existingTitles.has(title))
+        .map((title) => ({ addSheet: { properties: { title } } }));
+    if (addRequests.length > 0) {
+        await gapi.client.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.userSpreadsheetId,
+            resource: { requests: addRequests }
+        });
+    }
+
+    const headers = [
+        { sheet: 'Events', values: ['id', 'date', 'start', 'end', 'label', 'type'] },
+        { sheet: 'Transactions', values: ['id', 'date', 'time', 'desc', 'amount', 'category'] },
+        { sheet: 'Meta', values: ['key', 'value'] }
+    ];
+
+    for (const { sheet, values } of headers) {
+        const endCol = String.fromCharCode(64 + values.length);
+        const range = `${sheet}!A1:${endCol}1`;
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSpreadsheetId,
+            range
+        });
+        const existing = response.result.values?.[0] || [];
+        const needsUpdate = existing.length < values.length || existing[0] !== values[0];
+        if (needsUpdate) {
+            await gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: this.userSpreadsheetId,
+                range,
+                valueInputOption: 'RAW',
+                resource: { values: [values] }
+            });
+        }
+    }
+},
+
+async loadData() {
+    if (!this.userSpreadsheetId) return;
+    await this.ensureSheetStructure();
+
+    const eventsResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: this.userSpreadsheetId,
+        range: 'Events!A2:F'
+    });
+    const eventRows = eventsResponse.result.values || [];
+    this.db = {};
+    this.eventRowIndex = {};
+    eventRows.forEach((row, idx) => {
+        if (!row || row.length === 0 || !row[0]) return;
+        const [id, date, start, end, label, type] = row;
+        if (!date) return;
+        const startVal = parseFloat(start);
+        const endVal = parseFloat(end);
+        if (Number.isNaN(startVal) || Number.isNaN(endVal)) return;
+        const event = {
+            id,
+            date,
+            start: startVal,
+            end: endVal,
+            label: label || 'Session',
+            type: type || 'MEETING'
+        };
+        if (!this.db[date]) this.db[date] = [];
+        this.db[date].push(event);
+        this.eventRowIndex[id] = idx + 2;
+    });
+
+    Object.keys(this.db).forEach((date) => {
+        this.db[date].sort((a, b) => a.start - b.start);
+    });
+
+    const txResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: this.userSpreadsheetId,
+        range: 'Transactions!A2:F'
+    });
+    const txRows = txResponse.result.values || [];
+    this.transactions = [];
+    this.transactionRowIndex = {};
+    txRows.forEach((row, idx) => {
+        if (!row || row.length === 0 || !row[0]) return;
+        const [id, date, time, desc, amount, category] = row;
+        const amountVal = parseFloat(amount);
+        if (Number.isNaN(amountVal)) return;
+        this.transactions.push({
+            id,
+            date,
+            time,
+            desc,
+            amount: amountVal,
+            category: category || 'General'
+        });
+        this.transactionRowIndex[id] = idx + 2;
+    });
+    this.transactions.sort((a, b) => {
+        const aTime = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
+        const bTime = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
+        return bTime - aTime;
+    });
+
+    const metaResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: this.userSpreadsheetId,
+        range: 'Meta!A2:B'
+    });
+    const metaRows = metaResponse.result.values || [];
+    this.metaRowIndex = {};
+    metaRows.forEach((row, idx) => {
+        if (!row || row.length === 0 || !row[0]) return;
+        const [key, value] = row;
+        this.metaRowIndex[key] = idx + 2;
+        if (key === 'CURRENT_NET' && value !== undefined) {
+            this.currentNet = parseFloat(value);
+        }
+    });
+},
+
+async saveEvent(event) {
+    if (!event) return;
+    const date = event.date || this.selectedDate;
+    if (!date) return;
+    const updated = {
+        ...event,
+        date,
+        label: event.label || 'Session',
+        type: event.type || 'MEETING'
+    };
+
+    if (!this.db[date]) this.db[date] = [];
+    const existingIdx = this.db[date].findIndex((item) => item.id === updated.id);
+    if (existingIdx >= 0) {
+        this.db[date][existingIdx] = updated;
+    } else {
+        this.db[date].push(updated);
+    }
+    this.db[date].sort((a, b) => a.start - b.start);
+
+    if (!this.userSpreadsheetId) return;
+    try {
+        const values = [[
+            updated.id,
+            updated.date,
+            updated.start,
+            updated.end,
+            updated.label,
+            updated.type
+        ]];
+        const rowIndex = this.eventRowIndex[updated.id];
+        if (rowIndex) {
+            await gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: this.userSpreadsheetId,
+                range: `Events!A${rowIndex}:F${rowIndex}`,
+                valueInputOption: 'RAW',
+                resource: { values }
+            });
+        } else {
+            const appendResponse = await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: this.userSpreadsheetId,
+                range: 'Events!A:F',
+                valueInputOption: 'RAW',
+                insertDataOption: 'INSERT_ROWS',
+                resource: { values }
+            });
+            const updatedRange = appendResponse.result.updates?.updatedRange || '';
+            const match = updatedRange.match(/![A-Z]+(\d+):/);
+            if (match) {
+                this.eventRowIndex[updated.id] = parseInt(match[1], 10);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to save event', err);
+    }
+},
+
+async deleteEventById(eventId) {
+    if (!eventId || !this.userSpreadsheetId) return;
+    const rowIndex = this.eventRowIndex[eventId];
+    if (!rowIndex) return;
+    try {
+        await gapi.client.sheets.spreadsheets.values.clear({
+            spreadsheetId: this.userSpreadsheetId,
+            range: `Events!A${rowIndex}:F${rowIndex}`
+        });
+        delete this.eventRowIndex[eventId];
+    } catch (err) {
+        console.error('Failed to delete event', err);
+    }
+},
+
+async saveTransaction(tx) {
+    if (!tx || !this.userSpreadsheetId) return;
+    try {
+        const values = [[
+            tx.id,
+            tx.date,
+            tx.time,
+            tx.desc,
+            tx.amount,
+            tx.category || 'General'
+        ]];
+        const rowIndex = this.transactionRowIndex[tx.id];
+        if (rowIndex) {
+            await gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: this.userSpreadsheetId,
+                range: `Transactions!A${rowIndex}:F${rowIndex}`,
+                valueInputOption: 'RAW',
+                resource: { values }
+            });
+        } else {
+            const appendResponse = await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: this.userSpreadsheetId,
+                range: 'Transactions!A:F',
+                valueInputOption: 'RAW',
+                insertDataOption: 'INSERT_ROWS',
+                resource: { values }
+            });
+            const updatedRange = appendResponse.result.updates?.updatedRange || '';
+            const match = updatedRange.match(/![A-Z]+(\d+):/);
+            if (match) {
+                this.transactionRowIndex[tx.id] = parseInt(match[1], 10);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to save transaction', err);
+    }
+},
+
+async saveMeta() {
+    if (!this.userSpreadsheetId) return;
+    try {
+        const key = 'CURRENT_NET';
+        const values = [[key, this.currentNet]];
+        const rowIndex = this.metaRowIndex[key];
+        if (rowIndex) {
+            await gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: this.userSpreadsheetId,
+                range: `Meta!A${rowIndex}:B${rowIndex}`,
+                valueInputOption: 'RAW',
+                resource: { values }
+            });
+        } else {
+            const appendResponse = await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: this.userSpreadsheetId,
+                range: 'Meta!A:B',
+                valueInputOption: 'RAW',
+                insertDataOption: 'INSERT_ROWS',
+                resource: { values }
+            });
+            const updatedRange = appendResponse.result.updates?.updatedRange || '';
+            const match = updatedRange.match(/![A-Z]+(\d+):/);
+            if (match) {
+                this.metaRowIndex[key] = parseInt(match[1], 10);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to save meta', err);
+    }
+},
+
+async init() {
+    await this.loadData();
     this.injectStyles();
     this.updateDateDisplay();
     this.render();
@@ -1018,14 +1538,14 @@ deleteCurrentEvent() {
     if (!events || !events[this.currentEventIdx]) return;
 
     // Remove the event
-    events.splice(this.currentEventIdx, 1);
+    const removed = events.splice(this.currentEventIdx, 1)[0];
 
     // Clean up empty date entries
     if (events.length === 0) {
         delete this.db[this.selectedDate];
     }
 
-    this.saveState();
+    if (removed) this.deleteEventById(removed.id);
     this.closeModal();
     this.renderDay();
 },
@@ -1067,7 +1587,8 @@ addTransaction(desc, amount, category = 'General') {
     };
     this.transactions.unshift(tx);
     this.currentNet += tx.amount;
-    this.saveState();
+    this.saveTransaction(tx);
+    this.saveMeta();
     this.renderTransactions();
     return tx;
 },
@@ -1190,7 +1711,7 @@ initFinancialPulse() {
 
         // 4. Auto-save every 10 seconds to prevent data loss on refresh
         if (Math.floor(Date.now() / 1000) % 10 === 0) {
-            this.saveState();
+            this.saveMeta();
         }
 
     }, 1000);
@@ -1271,21 +1792,23 @@ handleMouseUp() {
     // Minimum duration of 15 mins if user just clicked
     if (start === end) end += 0.25;
 
-    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
+    const dateKey = this.selectedDate;
+    if (!this.db[dateKey]) this.db[dateKey] = [];
 
-    const hasOverlap = this.db[this.selectedDate].some(s => (start < s.end && end > s.start));
+    const hasOverlap = this.db[dateKey].some(s => (start < s.end && end > s.start));
 
     if (!hasOverlap && (end - start) >= 0.25) {
         const newEvent = {
             id: this.generateEventId(),
+            date: dateKey,
             start,
             end,
             label: "New Session",
             type: this.activeType || 'MEETING',
             isNew: true
         };
-        this.db[this.selectedDate].push(newEvent);
-        this.saveState();
+        this.db[dateKey].push(newEvent);
+        this.saveEvent(newEvent);
     }
 
     // Clean up drag state
@@ -1695,36 +2218,23 @@ saveSession() {
     const title = titleInput ? titleInput.value : "New Infrastructure Session";
     
     // Logic to update the last session or create new
-    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
+    const dateKey = this.selectedDate;
+    if (!this.db[dateKey]) this.db[dateKey] = [];
     
     // If we just added one via handleMouseUp, update its label
-    const sessions = this.db[this.selectedDate];
+    const sessions = this.db[dateKey];
     if (sessions.length > 0) {
-        sessions[sessions.length - 1].label = title;
-        sessions[sessions.length - 1].type = this.activeType;
+        const session = sessions[sessions.length - 1];
+        session.label = title;
+        session.type = this.activeType;
+        session.date = dateKey;
+        this.saveEvent(session);
     }
 
     document.getElementById('modal-overlay').style.display = 'none';
     this.renderDay(); // Refresh the ledger view
 },
 
-// State persistence
-saveState() {
-    localStorage.setItem('ENGINE_DB', JSON.stringify(this.db));
-    localStorage.setItem('ENGINE_TX', JSON.stringify(this.transactions));
-    localStorage.setItem('ENGINE_NET', this.currentNet.toString());
-},
-
-loadState() {
-    const savedDb = localStorage.getItem('ENGINE_DB');
-    const savedTx = localStorage.getItem('ENGINE_TX');
-    const savedNet = localStorage.getItem('ENGINE_NET');
-
-    if (savedDb) this.db = JSON.parse(savedDb);
-    if (savedTx) this.transactions = JSON.parse(savedTx);
-    if (savedNet) this.currentNet = parseFloat(savedNet);
-},
-    
 openMeeting(idx) {
     this.isMeetingActive = true;
     this.currentEventIdx = idx;
@@ -1928,10 +2438,10 @@ deleteEvent(idx) {
     const events = this.db[this.selectedDate];
     if (!events || !events[idx]) return;
 
-    events.splice(idx, 1);
+    const removed = events.splice(idx, 1)[0];
     if (events.length === 0) delete this.db[this.selectedDate];
 
-    this.saveState();
+    if (removed) this.deleteEventById(removed.id);
     this.renderDay();
 },
     
@@ -2024,7 +2534,7 @@ setInterval(() => {
 }, 1000);
 
 // Initialize the Engine on window load
-window.onload = () => ENGINE.init();
+window.onload = () => ENGINE.bootstrap();
 
 // Add this to your script to catch the end of a drag anywhere on the screen
 window.addEventListener('mouseup', () => {
