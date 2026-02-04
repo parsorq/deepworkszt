@@ -717,8 +717,20 @@ body {
         
     </div>
 
-<aside id="engine-sidebar" style="background: rgba(10,10,10,0.8); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 30px 20px;">
-    
+<aside id="engine-sidebar" style="background: rgba(10,10,10,0.8); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 30px 20px; position: relative;">
+
+    <!-- Modal Overlay for Meeting Details -->
+    <div id="modal-overlay">
+        <div class="meeting-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 16px;">NEW MEETING</h2>
+                <button onclick="ENGINE.closeModal()" style="background: transparent; border: none; color: rgba(255,255,255,0.5); font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="dynamic-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
+            <button onclick="ENGINE.saveSession()" style="width: 100%; margin-top: 20px; padding: 14px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE SESSION</button>
+        </div>
+    </div>
+
     <div style="margin-bottom: 40px; text-align: center;">
         <div id="clock-display" style="font-size: 42px; font-weight: 200; color: white; letter-spacing: -1px; opacity: 0.9;">16:07:22</div>
         <div id="date-display" style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 5px; letter-spacing: 1px;">
