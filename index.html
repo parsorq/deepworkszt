@@ -318,7 +318,7 @@ body {
 .ghost-selection {
     position: absolute;
     left: 80px;
-    right: 212px;
+    right: 12px;
     background: rgba(0, 122, 255, 0.06);
     border-left: 3px solid #007AFF;
     border-radius: 6px;
@@ -1301,12 +1301,18 @@ handleMouseUp() {
 },
 
 updateGhost() {
+    // Find the events column to append ghost to
+    const eventsCol = document.querySelector('.ledger-events-col');
+    if (!eventsCol) return;
+
     let g = document.getElementById('ghost-selection');
     if (!g) {
         g = document.createElement('div');
         g.id = 'ghost-selection';
         g.className = 'ghost-selection';
-        document.getElementById('ledger-container').appendChild(g);
+        eventsCol.appendChild(g);
+    } else if (g.parentElement !== eventsCol) {
+        eventsCol.appendChild(g);
     }
 
     if (!this.isDragging) {
@@ -1329,7 +1335,7 @@ updateGhost() {
     g.style.height = `${duration * this.HOUR_HEIGHT}px`;
 
     g.innerHTML = `
-        <div style="padding: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <div style="color: #007AFF; font-size: 8px; font-weight: 900; letter-spacing: 1.5px; margin-bottom: 4px;">${this.activeType}</div>
                 <div style="color: white; font-size: 13px; font-weight: 600;">New Session</div>
@@ -1887,9 +1893,9 @@ renderDay() {
     // Transactions column
     html += `<div class="ledger-transactions-col" style="position: relative;">`;
 
-    // Hour guides for transactions
+    // Hour guides for transactions (no lines, just spacing)
     for (let h = 0; h <= 23; h++) {
-        html += `<div style="height:${this.HOUR_HEIGHT}px; border-bottom: 1px solid rgba(255,255,255,0.02);"></div>`;
+        html += `<div style="height:${this.HOUR_HEIGHT}px;"></div>`;
     }
 
     // Transaction markers
