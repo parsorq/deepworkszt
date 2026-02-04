@@ -192,9 +192,74 @@ body {
 }
 
 .block-space:hover {
-    transform: scale(1.005);
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.block-space:hover .block-delete-btn {
+    opacity: 1;
+}
+
+.block-delete-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 59, 48, 0.9);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+}
+
+.block-delete-btn:hover {
+    background: #FF453A;
+}
+
+/* Two-column ledger layout */
+.ledger-grid {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 0;
+    height: 100%;
+}
+
+.ledger-events-col {
+    position: relative;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ledger-transactions-col {
+    position: relative;
+    padding-left: 12px;
+}
+
+.transaction-marker {
+    position: absolute;
+    right: 0;
+    left: 12px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+    font-size: 11px;
+    pointer-events: none;
+    border-left: 2px solid transparent;
+}
+
+.transaction-marker.income {
+    border-left-color: rgba(50, 215, 75, 0.5);
+}
+
+.transaction-marker.expense {
+    border-left-color: rgba(255, 59, 48, 0.5);
 }
 
     .type-pill {
@@ -252,15 +317,13 @@ body {
 
 .ghost-selection {
     position: absolute;
-    left: 100px;
-    width: calc(100% - 240px);
-    background: rgba(0, 122, 255, 0.08);
+    left: 80px;
+    right: 212px;
+    background: rgba(0, 122, 255, 0.06);
     border-left: 3px solid #007AFF;
     border-radius: 6px;
     z-index: 50;
     pointer-events: none;
-    transition: top 0.05s ease-out, height 0.05s ease-out;
-    backdrop-filter: blur(4px);
 }
 
     /* --- 5. ENGINE SIDEBAR: Real-time Context & Focus --- */
@@ -894,6 +957,26 @@ init() {
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     window.addEventListener('mouseup', () => this.handleMouseUp());
 
+    // Modal close on Esc key
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('modal-overlay');
+            if (modal && modal.style.display === 'flex') {
+                this.closeModal();
+            }
+        }
+    });
+
+    // Modal close on click outside
+    const modal = document.getElementById('modal-overlay');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeModal();
+            }
+        });
+    }
+
     // Initial timeline position
     setTimeout(() => this.updateTimeline(true), 100);
 },
@@ -1118,6 +1201,9 @@ setBurnGear(val) {
 },
 
 handleMouseDown(e) {
+    // Ignore if clicking delete button
+    if (e.target.closest('.block-delete-btn')) return;
+
     // If we click a block directly, handle it as a block click
     const block = e.target.closest('.block-space');
     if (block) {
@@ -1128,35 +1214,43 @@ handleMouseDown(e) {
         return;
     }
 
+    // Only start drag on left mouse button in events column
+    if (e.button !== 0) return;
+    const eventsCol = e.target.closest('.ledger-events-col') || e.target.closest('#ledger-container');
+    if (!eventsCol) return;
+
     const container = document.getElementById('ledger-container');
     const rect = container.getBoundingClientRect();
-    const offsetY = (e.clientY - rect.top) + container.scrollTop;
+    const scrollTop = container.scrollTop;
+    const offsetY = e.clientY - rect.top + scrollTop;
+
+    // Calculate hour position
+    const rawH = offsetY / this.HOUR_HEIGHT;
 
     this.isDragging = true;
-    this.dragStartH = Math.max(0, (offsetY - (this.GRID_TOP_OFFSET || 0)) / this.HOUR_HEIGHT);
+    this.dragStartH = Math.max(0, Math.min(24, rawH));
     this.dragEndH = this.dragStartH;
 
-    // Ensure ghost starts fresh
-    this.updateGhost();
+    // Immediately show ghost for responsiveness
+    requestAnimationFrame(() => this.updateGhost());
 },
 
 handleMouseMove(e) {
     if (!this.isDragging) return;
-    
+
     const container = document.getElementById('ledger-container');
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
-    
-    // This allows dragging even if the mouse leaves the container boundaries
-    const scrollOffset = container.scrollTop;
-    const relativeY = (e.clientY - rect.top) + scrollOffset;
-    
+    const scrollTop = container.scrollTop;
+    const relativeY = e.clientY - rect.top + scrollTop;
+
     // Constrain to 0-24 hour range
-    const rawH = (relativeY - this.GRID_TOP_OFFSET) / this.HOUR_HEIGHT;
+    const rawH = relativeY / this.HOUR_HEIGHT;
     this.dragEndH = Math.max(0, Math.min(24, rawH));
-    
-    this.updateGhost(); 
+
+    // Use requestAnimationFrame for smooth updates
+    requestAnimationFrame(() => this.updateGhost());
 },
 
     handleMouseOver(h, isHalf) {
@@ -1707,18 +1801,26 @@ renderDay() {
         return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
     };
 
-    // 1. Static Grid + Time Now Line
-    let html = '<div id="time-now-line"></div>';
+    // Get transactions for today
+    const todayTx = this.transactions.filter(tx => tx.date === this.selectedDate);
+
+    // Build two-column layout
+    let html = `
+        <div class="ledger-grid" style="position: relative; height: ${24 * this.HOUR_HEIGHT}px;">
+            <div class="ledger-events-col" style="position: relative;">
+                <div id="time-now-line"></div>`;
+
+    // Hour grid lines
     for (let h = 0; h <= 23; h++) {
         html += `
             <div class="hour-row" style="height:${this.HOUR_HEIGHT}px; border-bottom: 1px solid rgba(255,255,255,0.03); position:relative;">
-                <div class="hour-label" style="width: 80px; color: rgba(255,255,255,0.15); font-family: 'SF Mono'; font-size: 11px; padding-top: 8px;">
+                <div class="hour-label" style="width: 70px; color: rgba(255,255,255,0.12); font-family: 'SF Mono'; font-size: 10px; padding-top: 8px;">
                     ${h.toString().padStart(2, '0')}:00
                 </div>
             </div>`;
     }
 
-    // 2. Event Blocks
+    // Event Blocks
     events.forEach((session, idx) => {
         const topPos = session.start * this.HOUR_HEIGHT;
         const height = (session.end - session.start) * this.HOUR_HEIGHT;
@@ -1726,38 +1828,105 @@ renderDay() {
         const duration = session.end - session.start;
         const durationStr = duration >= 1 ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : `${Math.round(duration * 60)}m`;
 
+        // Responsive content based on block height
+        const isCompact = height <= 35;  // 15min or less
+        const isMedium = height > 35 && height <= 60;  // 30min
+
+        let blockContent = '';
+        if (isCompact) {
+            // Ultra-compact: just label
+            blockContent = `
+                <div style="padding: 4px 8px; pointer-events: none; display: flex; align-items: center; justify-content: space-between; height: 100%;">
+                    <span style="color: white; font-weight: 600; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${session.label}</span>
+                    <span style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-left: 8px;">${durationStr}</span>
+                </div>`;
+        } else if (isMedium) {
+            // Medium: type + label
+            blockContent = `
+                <div style="padding: 6px 10px; pointer-events: none; height: 100%;">
+                    <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
+                    <div style="color: white; font-weight: 600; font-size: 12px; margin-top: 2px;">${session.label}</div>
+                </div>`;
+        } else {
+            // Full: all info
+            blockContent = `
+                <div style="padding: 10px 12px; pointer-events: none; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px; margin-bottom: 2px;">${session.type}</div>
+                        <div style="color: white; font-weight: 600; font-size: 13px;">${session.label}</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                        <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">${formatTime(session.start)} – ${formatTime(session.end)}</span>
+                        <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3);">${durationStr}</span>
+                    </div>
+                </div>`;
+        }
+
         html += `
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
                 style="
                     top: ${topPos}px;
                     height: ${height}px;
-                    left: 100px;
-                    width: calc(100% - 140px);
+                    left: 80px;
+                    right: 12px;
                     border-left: 3px solid ${color};
                     position: absolute;
                     cursor: pointer;
                     z-index: 60;
                     pointer-events: all;
                 ">
-                <div style="padding: 10px 14px; pointer-events: none; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="color: ${color}; font-size: 9px; font-weight: 800; letter-spacing: 1px; margin-bottom: 2px;">${session.type}</div>
-                        <div style="color: white; font-weight: 600; font-size: ${height > 60 ? '14' : '12'}px;">${session.label}</div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; opacity: 0.5;">
-                        <span style="font-family: 'SF Mono'; font-size: 10px; color: white;">${formatTime(session.start)} - ${formatTime(session.end)}</span>
-                        <span style="font-family: 'SF Mono'; font-size: 10px; color: ${color};">${durationStr}</span>
-                    </div>
-                </div>
+                <button class="block-delete-btn" onclick="event.stopPropagation(); ENGINE.deleteEvent(${idx});" title="Delete">×</button>
+                ${blockContent}
             </div>`;
         session.isNew = false;
     });
 
-    container.innerHTML = html;
+    html += `</div>`; // Close events column
 
-    // Update the red line after render
+    // Transactions column
+    html += `<div class="ledger-transactions-col" style="position: relative;">`;
+
+    // Hour guides for transactions
+    for (let h = 0; h <= 23; h++) {
+        html += `<div style="height:${this.HOUR_HEIGHT}px; border-bottom: 1px solid rgba(255,255,255,0.02);"></div>`;
+    }
+
+    // Transaction markers
+    todayTx.forEach(tx => {
+        const [hours, mins] = tx.time.split(':').map(Number);
+        const timeDecimal = hours + (mins / 60);
+        const topPos = timeDecimal * this.HOUR_HEIGHT;
+        const isIncome = tx.amount >= 0;
+
+        html += `
+            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${tx.desc}</span>
+                    <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); margin-left: 8px;">
+                        ${isIncome ? '+' : ''}${tx.amount.toFixed(0)}
+                    </span>
+                </div>
+                <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 2px;">${tx.time}</div>
+            </div>`;
+    });
+
+    html += `</div></div>`; // Close transactions column and grid
+
+    container.innerHTML = html;
     this.updateTimeline(false);
+},
+
+// Delete event directly from block
+deleteEvent(idx) {
+    const events = this.db[this.selectedDate];
+    if (!events || !events[idx]) return;
+
+    events.splice(idx, 1);
+    if (events.length === 0) delete this.db[this.selectedDate];
+
+    this.saveState();
+    this.renderDay();
 },
     
 updateTimeline(shouldScroll = false) {
