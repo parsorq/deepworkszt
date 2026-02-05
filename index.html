@@ -559,6 +559,7 @@ body.dragging .events-hit-layer {
         transform: translateY(-1px);
         background: rgba(255,255,255,0.03);
         border-color: rgba(255,255,255,0.08);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
 
     @keyframes spark {
@@ -1453,15 +1454,20 @@ async init() {
         this.handleContextMenu(e);
     }, true);
     document.addEventListener('mousedown', (e) => {
-        const menu = document.getElementById('block-context-menu');
-        if (menu && menu.style.display === 'flex' && !e.target.closest('#block-context-menu')) {
-            this.hideBlockMenu();
-        }
-        const quick = document.getElementById('quick-create-menu');
-        if (quick && quick.style.display === 'flex' && !e.target.closest('#quick-create-menu')) {
-            this.hideQuickCreateMenu();
-        }
+        this.hideMenusOnOutsideClick(e);
     }, true);
+    document.addEventListener('pointerdown', (e) => {
+        this.hideMenusOnOutsideClick(e);
+    }, true);
+    document.addEventListener('wheel', () => {
+        this.hideAllMenus();
+    }, true);
+    document.addEventListener('keydown', () => {
+        this.hideAllMenus();
+    }, true);
+    window.addEventListener('resize', () => {
+        this.hideAllMenus();
+    });
     document.addEventListener('mousemove', (e) => {
         this.updateBlockHover(e.clientX, e.clientY);
     }, true);
@@ -2232,6 +2238,22 @@ showQuickCreateMenu(x, y, startH) {
 hideQuickCreateMenu() {
     const menu = document.getElementById('quick-create-menu');
     if (menu) menu.style.display = 'none';
+},
+
+hideAllMenus() {
+    this.hideBlockMenu();
+    this.hideQuickCreateMenu();
+},
+
+hideMenusOnOutsideClick(e) {
+    const menu = document.getElementById('block-context-menu');
+    if (menu && menu.style.display === 'flex' && !e.target.closest('#block-context-menu')) {
+        this.hideBlockMenu();
+    }
+    const quick = document.getElementById('quick-create-menu');
+    if (quick && quick.style.display === 'flex' && !e.target.closest('#quick-create-menu')) {
+        this.hideQuickCreateMenu();
+    }
 },
 
 createQuickEvent(type) {
@@ -3398,8 +3420,8 @@ renderDay() {
             } else {
                 const topPos = session.start * this.HOUR_HEIGHT;
                 reminderMarkers.push(`
-                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; right: 22px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 900; pointer-events: auto; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent;"
-                        onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
+                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; right: 22px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 950; pointer-events: auto; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent;"
+                        onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
                         <div style="display:flex; align-items:center; gap:8px; pointer-events:none; text-align:right;">
                             <div style="width:6px; height:6px; border-radius:50%; background:${color}; opacity:0.85; box-shadow: 0 0 0 2px rgba(255,255,255,0.04);"></div>
                             <div style="font-size:10px; color: rgba(255,255,255,0.7); font-weight:600;">${label}</div>
