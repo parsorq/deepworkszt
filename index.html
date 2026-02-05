@@ -1575,9 +1575,10 @@ handleMouseDown(e) {
     if (e.target.closest('#quick-create-menu')) return;
     if (e.target.closest('#block-context-menu')) return;
 
-    // If we click a block directly, handle it as a block click
+    // If we click a block directly, handle it as a block click (left click only)
     const block = e.target.closest('.block-space');
     if (block) {
+        if (e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         const idx = parseInt(block.dataset.blockIdx, 10);
@@ -4085,10 +4086,6 @@ document.addEventListener('mousedown', (e) => {
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <input id="transaction-date" type="text" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                 <input id="transaction-time" type="text" placeholder="HH:MM" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45);">Category</div>
-                <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45);">Subcategory</div>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <select id="transaction-category" class="subtle-select" style="font-size: 11px;"></select>
