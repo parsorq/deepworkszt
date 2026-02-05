@@ -1454,6 +1454,7 @@ async init() {
         if (e.pointerType === 'mouse' && e.ctrlKey) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
+        if (this.getReminderAtPoint(e.clientX, e.clientY) !== null) return;
         if (e.target.closest('.reminder-marker')) return;
         if (e.target.closest('[data-block-idx]')) return;
         const bounds = this.getEventsBounds();
