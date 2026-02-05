@@ -1098,6 +1098,7 @@ const ENGINE = {
     teams: [],
     profiles: [],
     institutions: [],
+    projects: [],
     userEmail: null,
     userSheetId: null,
     sheetInfo: null,
@@ -1108,7 +1109,8 @@ const ENGINE = {
         meta: 'Meta',
         teams: 'Teams',
         profiles: 'Profiles',
-        institutions: 'Institutions'
+        institutions: 'Institutions',
+        projects: 'Projects'
     },
 
     isDragging: false,
@@ -1946,9 +1948,10 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type']),
         this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
-        this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt'])
+        this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt'])
     ]);
 },
 
@@ -1964,7 +1967,7 @@ async writeHeaders(sheetName, headers) {
 
 async loadData() {
     await this.ensureUserStorage();
-    const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes] = await Promise.all([
+    const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.events}!A:F`
@@ -1979,15 +1982,19 @@ async loadData() {
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.teams}!A:E`
+            range: `${this.sheetNames.teams}!A:F`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.profiles}!A:E`
+            range: `${this.sheetNames.profiles}!A:F`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.institutions}!A:E`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.projects}!A:E`
         })
     ]);
 
@@ -1997,6 +2004,7 @@ async loadData() {
     const teamRows = teamsRes.result.values || [];
     const profileRows = profilesRes.result.values || [];
     const institutionRows = institutionsRes.result.values || [];
+    const projectRows = projectsRes.result.values || [];
 
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
@@ -2037,12 +2045,37 @@ async loadData() {
     });
     if (meta.currentNet) this.currentNet = parseFloat(meta.currentNet);
 
-    this.teams = this.parseEntities(teamRows);
-    this.profiles = this.parseEntities(profileRows);
+    this.projects = this.parseProjects(projectRows);
+    this.teams = this.parseTeams(teamRows);
+    this.profiles = this.parseProfiles(profileRows);
     this.institutions = this.parseEntities(institutionRows);
 },
 
 parseEntities(rows) {
+    return rows.slice(1).map((row) => {
+        const [id, name, notes, createdAt, updatedAt] = row;
+        if (!id) return null;
+        return { id, name, notes, createdAt, updatedAt };
+    }).filter(Boolean);
+},
+
+parseTeams(rows) {
+    return rows.slice(1).map((row) => {
+        const [id, name, projectId, notes, createdAt, updatedAt] = row;
+        if (!id) return null;
+        return { id, name, projectId, notes, createdAt, updatedAt };
+    }).filter(Boolean);
+},
+
+parseProfiles(rows) {
+    return rows.slice(1).map((row) => {
+        const [id, name, email, notes, createdAt, updatedAt] = row;
+        if (!id) return null;
+        return { id, name, email, notes, createdAt, updatedAt };
+    }).filter(Boolean);
+},
+
+parseProjects(rows) {
     return rows.slice(1).map((row) => {
         const [id, name, notes, createdAt, updatedAt] = row;
         if (!id) return null;
@@ -2058,6 +2091,7 @@ getSheetNameForEntity(type) {
     if (type === 'teams') return this.sheetNames.teams;
     if (type === 'profiles') return this.sheetNames.profiles;
     if (type === 'institutions') return this.sheetNames.institutions;
+    if (type === 'projects') return this.sheetNames.projects;
     return null;
 },
 
@@ -2065,19 +2099,30 @@ async saveEntity(type, entity) {
     const sheetName = this.getSheetNameForEntity(type);
     if (!sheetName || !entity || !entity.id) return;
     await this.ensureUserStorage();
-    const row = [entity.id, entity.name, entity.notes || '', entity.createdAt, entity.updatedAt];
+    let row = [];
+    if (type === 'teams') {
+        row = [entity.id, entity.name, entity.projectId || '', entity.notes || '', entity.createdAt, entity.updatedAt];
+    } else if (type === 'profiles') {
+        row = [entity.id, entity.name, entity.email || '', entity.notes || '', entity.createdAt, entity.updatedAt];
+    } else if (type === 'projects') {
+        row = [entity.id, entity.name, entity.notes || '', entity.createdAt, entity.updatedAt];
+    } else {
+        row = [entity.id, entity.name, entity.notes || '', entity.createdAt, entity.updatedAt];
+    }
     const rowIndex = await this.findRowById(sheetName, entity.id);
+    const columnCount = row.length;
+    const columnEnd = String.fromCharCode(64 + columnCount);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${sheetName}!A${rowIndex}:E${rowIndex}`,
+            range: `${sheetName}!A${rowIndex}:${columnEnd}${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${sheetName}!A:E`,
+            range: `${sheetName}!A:${columnEnd}`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -2495,6 +2540,8 @@ updateTimeline(shouldScroll = false) {
                 <div style="display:flex; flex-direction:column; gap:4px;">
                     <div style="font-size: 12px; color: #ffffff; font-weight: 600;">${item.name}</div>
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family:'SF Mono';">${item.id}</div>
+                    ${type === 'profiles' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Email: ${item.email || ''}</div>` : ''}
+                    ${type === 'teams' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Project: ${this.getProjectNameById(item.projectId) || 'Unassigned'}</div>` : ''}
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4);">${item.notes || ''}</div>
                 </div>
                 <div style="display:flex; gap:6px;">
@@ -2507,15 +2554,25 @@ updateTimeline(shouldScroll = false) {
         const teamList = document.getElementById('settings-team-list');
         const profileList = document.getElementById('settings-profile-list');
         const institutionList = document.getElementById('settings-institution-list');
+        const projectList = document.getElementById('settings-project-list');
+        const projectSelect = document.getElementById('settings-teams-project');
 
         if (teamList) teamList.innerHTML = this.teams.length ? renderList(this.teams, 'teams') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No teams yet.</div>';
         if (profileList) profileList.innerHTML = this.profiles.length ? renderList(this.profiles, 'profiles') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No profiles yet.</div>';
         if (institutionList) institutionList.innerHTML = this.institutions.length ? renderList(this.institutions, 'institutions') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No institutions yet.</div>';
+        if (projectList) projectList.innerHTML = this.projects.length ? renderList(this.projects, 'projects') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No projects yet.</div>';
+        if (projectSelect) {
+            const options = ['<option value="">Link to Project</option>']
+                .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
+            projectSelect.innerHTML = options.join('');
+        }
     },
 
     async addEntity(type) {
         const nameInput = document.getElementById(`settings-${type}-name`);
         const notesInput = document.getElementById(`settings-${type}-notes`);
+        const projectSelect = document.getElementById('settings-teams-project');
+        const emailInput = document.getElementById('settings-profiles-email');
         if (!nameInput) return;
         const name = nameInput.value.trim();
         if (!name) return;
@@ -2527,10 +2584,18 @@ updateTimeline(shouldScroll = false) {
             createdAt: now,
             updatedAt: now
         };
+        if (type === 'teams' && projectSelect) {
+            entity.projectId = projectSelect.value || '';
+        }
+        if (type === 'profiles' && emailInput) {
+            entity.email = emailInput.value.trim();
+        }
         this[type].unshift(entity);
         await this.saveEntity(type, entity);
         nameInput.value = '';
         if (notesInput) notesInput.value = '';
+        if (projectSelect && type === 'teams') projectSelect.value = '';
+        if (emailInput && type === 'profiles') emailInput.value = '';
         this.renderSettings();
     },
 
@@ -2540,9 +2605,21 @@ updateTimeline(shouldScroll = false) {
         if (!entity) return;
         const name = prompt('Edit name:', entity.name);
         if (!name) return;
-        const notes = prompt('Edit notes:', entity.notes || '') || '';
+        let notes = entity.notes || '';
+        let projectId = entity.projectId || '';
+        let email = entity.email || '';
+        if (type === 'teams') {
+            const listText = this.projects.map(project => `${project.name} (${project.id})`).join(', ');
+            projectId = prompt(`Project ID (available: ${listText || 'none'})`, projectId) || projectId;
+        }
+        if (type === 'profiles') {
+            email = prompt('Profile email:', email) || email;
+        }
+        notes = prompt('Edit notes:', notes) || notes;
         entity.name = name.trim();
         entity.notes = notes.trim();
+        if (type === 'teams') entity.projectId = projectId.trim();
+        if (type === 'profiles') entity.email = email.trim();
         entity.updatedAt = new Date().toISOString();
         await this.saveEntity(type, entity);
         this.renderSettings();
@@ -2555,6 +2632,12 @@ updateTimeline(shouldScroll = false) {
         const [removed] = list.splice(idx, 1);
         await this.deleteEntity(type, removed.id);
         this.renderSettings();
+    },
+
+    getProjectNameById(projectId) {
+        if (!projectId) return '';
+        const project = this.projects.find(item => item.id === projectId);
+        return project ? project.name : '';
     },
 
 commence() {
@@ -2633,6 +2716,9 @@ window.addEventListener('mouseup', () => {
                     <input id="settings-teams-name" placeholder="Team name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                     <input id="settings-teams-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
+                <div style="margin-bottom: 12px;">
+                    <select id="settings-teams-project" class="subtle-select"></select>
+                </div>
                 <div id="settings-team-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
@@ -2643,7 +2729,10 @@ window.addEventListener('mouseup', () => {
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-profiles-name" placeholder="Profile name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                    <input id="settings-profiles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-profiles-email" placeholder="Email" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <input id="settings-profiles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none; width: 100%;">
                 </div>
                 <div id="settings-profile-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
@@ -2658,6 +2747,18 @@ window.addEventListener('mouseup', () => {
                     <input id="settings-institutions-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
                 <div id="settings-institution-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PROJECTS</div>
+                    <button onclick="ENGINE.addEntity('projects')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROJECT</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-projects-name" placeholder="Project name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-projects-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-project-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
         </div>
     </div>
