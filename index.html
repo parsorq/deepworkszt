@@ -2158,10 +2158,12 @@ applyMoveToTime(clientY) {
         end = 24;
         start = Math.max(0, end - duration);
     }
-    const overlap = events.some((ev, i) => {
-        if (i === idx || ev.type === 'REMINDER') return false;
-        return start < ev.end && end > ev.start;
-    });
+    const overlap = this.moveType === 'reminder'
+        ? false
+        : events.some((ev, i) => {
+            if (i === idx || ev.type === 'REMINDER') return false;
+            return start < ev.end && end > ev.start;
+        });
     if (overlap) {
         this.clearMoveState();
         return;
