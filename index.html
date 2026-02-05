@@ -2492,13 +2492,13 @@ async ensureUserStorage() {
             try {
                 const copyRes = await gapi.client.drive.files.copy({
                     fileId: USER_TEMPLATE_SHEET_ID,
-                    resource: { name: fileName },
+                    resource: { name: fileName, parents: ['root'] },
                     fields: 'id'
                 });
                 this.userSheetId = copyRes.result.id;
             } catch (err) {
                 const createRes = await gapi.client.drive.files.create({
-                    resource: { name: fileName, mimeType: 'application/vnd.google-apps.spreadsheet' },
+                    resource: { name: fileName, mimeType: 'application/vnd.google-apps.spreadsheet', parents: ['root'] },
                     fields: 'id'
                 });
                 this.userSheetId = createRes.result.id;
