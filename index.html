@@ -234,11 +234,13 @@ body {
 .ledger-events-col {
     position: relative;
     border-right: 1px solid rgba(255, 255, 255, 0.05);
+    z-index: 2;
 }
 
 .ledger-transactions-col {
     position: relative;
     padding-left: 12px;
+    z-index: 1;
 }
 
 .transaction-marker {
@@ -1779,8 +1781,8 @@ showBlockMenu(x, y, idx) {
         document.body.appendChild(menu);
     }
     menu.innerHTML = `
-        <button onclick="ENGINE.hideBlockMenu(); ENGINE.openMeeting(${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
-        <button onclick="ENGINE.hideBlockMenu(); ENGINE.deleteEvent(${idx});" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideBlockMenu(); ENGINE.openMeeting(${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
+        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideBlockMenu(); ENGINE.deleteEvent(${idx});" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
     `;
     const menuRect = menu.getBoundingClientRect();
     const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
@@ -2916,7 +2918,7 @@ renderDay() {
                 <div class="events-hit-layer"
                     onmousedown="ENGINE.startDragFromEvent(event)"
                     oncontextmenu="ENGINE.handleContextMenu(event)"
-                    style="position:absolute; inset:0; z-index:200; pointer-events:auto;"></div>`;
+                    style="position:absolute; inset:0; z-index:500; pointer-events:auto; cursor: crosshair;"></div>`;
 
     // Hour grid lines
     for (let h = 0; h <= 23; h++) {
