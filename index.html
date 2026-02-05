@@ -810,7 +810,7 @@ body {
                         <option value="BOTH">BOTH</option>
                     </select>
                 </div>
-                <button class="config-button" onclick="ENGINE.openSettings()" aria-label="Settings">⚙︎</button>
+                <button class="config-button" onclick="ENGINE.openSettings()" aria-label="Settings" style="background: transparent; border: none; font-size: 18px; width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">⚙︎</button>
             </div>
         </div>
 
@@ -826,11 +826,11 @@ body {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 id="day-title" style="margin: 0;">Daily Ledger</h1>
             <div class="date-nav">
-                <div style="display:flex; flex-direction:column; align-items:center; gap: 6px;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
                     <span id="current-date-display" class="date-display-main">2026-01-30</span>
-                    <div style="display:flex; align-items:center; gap: 8px;">
+                    <div style="display:flex; align-items:center; gap: 12px; margin-top: 2px;">
                         <button class="date-nav-btn" onclick="ENGINE.navigateDate(-1)">‹</button>
-                        <button class="date-nav-btn" onclick="ENGINE.goToToday()">Today</button>
+                        <button class="date-nav-btn" onclick="ENGINE.goToToday()" style="background: transparent; border: none; color: rgba(255,255,255,0.6); padding: 0 4px;">Today</button>
                         <button class="date-nav-btn" onclick="ENGINE.navigateDate(1)">›</button>
                     </div>
                 </div>
@@ -1299,7 +1299,7 @@ renderTransactions() {
 
     const recentTx = this.transactions.slice(0, 5);
     container.innerHTML = recentTx.map(tx => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+        <div onclick="ENGINE.openTransactionModalWithData('${tx.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer;">
             <div>
                 <div style="font-size: 11px; color: white; font-weight: 500;">${tx.desc}</div>
                 <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}</div>
@@ -2506,7 +2506,7 @@ renderDay() {
         const isIncome = tx.amount >= 0;
 
         html += `
-            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px;">
+            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px; cursor: pointer;" onclick="ENGINE.openTransactionModalWithData('${tx.id}')">
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${tx.desc}</span>
                     <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); margin-left: 8px;">
@@ -2827,26 +2827,57 @@ updateTimeline(shouldScroll = false) {
         const descInput = document.getElementById('transaction-desc');
         const dateInput = document.getElementById('transaction-date');
         const timeInput = document.getElementById('transaction-time');
+        const categoryInput = document.getElementById('transaction-category');
 
         overlay.dataset.sign = String(sign);
+        delete overlay.dataset.txId;
         if (title) title.textContent = sign > 0 ? 'Add Income' : 'Add Expense';
         if (amountInput) amountInput.value = '';
         if (descInput) descInput.value = '';
         const now = new Date();
         if (dateInput) dateInput.value = this.formatDate(now.toISOString().split('T')[0]);
         if (timeInput) timeInput.value = now.toTimeString().slice(0, 5);
+        if (categoryInput) categoryInput.value = '';
+        overlay.style.display = 'flex';
+    },
+
+    openTransactionModalWithData(id) {
+        const tx = this.transactions.find(item => item.id === id);
+        if (!tx) return;
+        const overlay = document.getElementById('transaction-overlay');
+        if (!overlay) return;
+        const sign = tx.amount >= 0 ? 1 : -1;
+        const title = document.getElementById('transaction-title');
+        const amountInput = document.getElementById('transaction-amount');
+        const descInput = document.getElementById('transaction-desc');
+        const dateInput = document.getElementById('transaction-date');
+        const timeInput = document.getElementById('transaction-time');
+        const categoryInput = document.getElementById('transaction-category');
+
+        overlay.dataset.sign = String(sign);
+        overlay.dataset.txId = tx.id;
+        if (title) title.textContent = sign > 0 ? 'Edit Income' : 'Edit Expense';
+        if (amountInput) amountInput.value = Math.abs(tx.amount);
+        if (descInput) descInput.value = tx.desc || '';
+        if (dateInput) dateInput.value = this.formatDate(tx.date);
+        if (timeInput) timeInput.value = tx.time || '00:00';
+        if (categoryInput) categoryInput.value = tx.category || '';
         overlay.style.display = 'flex';
     },
 
     closeTransactionModal() {
         const overlay = document.getElementById('transaction-overlay');
-        if (overlay) overlay.style.display = 'none';
+        if (overlay) {
+            delete overlay.dataset.txId;
+            overlay.style.display = 'none';
+        }
     },
 
     saveTransactionModal() {
         const overlay = document.getElementById('transaction-overlay');
         if (!overlay) return;
         const sign = parseInt(overlay.dataset.sign || '1', 10);
+        const txId = overlay.dataset.txId || '';
         const amountInput = document.getElementById('transaction-amount');
         const descInput = document.getElementById('transaction-desc');
         const dateInput = document.getElementById('transaction-date');
@@ -2860,7 +2891,21 @@ updateTimeline(shouldScroll = false) {
         const time = timeInput ? timeInput.value : new Date().toTimeString().slice(0, 5);
         const category = categoryInput && categoryInput.value.trim() ? categoryInput.value.trim() : 'General';
 
-        this.addTransaction(desc, sign * Math.abs(amountVal), category, date, time);
+        if (txId) {
+            const tx = this.transactions.find(item => item.id === txId);
+            if (tx) {
+                tx.desc = desc;
+                tx.amount = sign * Math.abs(amountVal);
+                tx.date = date;
+                tx.time = time;
+                tx.category = category;
+                void this.saveTransaction(tx);
+                this.renderTransactions();
+                this.renderDay();
+            }
+        } else {
+            this.addTransaction(desc, sign * Math.abs(amountVal), category, date, time);
+        }
         this.closeTransactionModal();
     },
 
