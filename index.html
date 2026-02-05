@@ -1249,6 +1249,17 @@ async init() {
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     window.addEventListener('mouseup', () => this.handleMouseUp());
 
+    // Global capture handlers for ledger interactions
+    document.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        if (!e.target.closest('.ledger-events-col')) return;
+        this.handleMouseDown(e);
+    }, true);
+    document.addEventListener('contextmenu', (e) => {
+        if (!e.target.closest('.ledger-events-col')) return;
+        this.handleContextMenu(e);
+    }, true);
+
     // Modal close on Esc key
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -1556,6 +1567,8 @@ setBurnGear(val) {
 },
 
 handleMouseDown(e) {
+    if (e.engineHandled) return;
+    e.engineHandled = true;
     // Ignore if clicking delete button
     this.hideBlockMenu();
     if (e.target.closest('.transaction-marker')) return;
@@ -1716,6 +1729,8 @@ updateGhost() {
 },
 
 handleContextMenu(e) {
+    if (e.engineHandled) return;
+    e.engineHandled = true;
     e.preventDefault();
     e.stopPropagation();
     if (e.target.closest('.reminder-marker')) return;
@@ -2985,7 +3000,7 @@ renderDay() {
         html += `
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
-                oncontextmenu="event.preventDefault(); ENGINE.handleContextMenu(event)"
+                oncontextmenu="event.preventDefault(); event.stopPropagation(); ENGINE.handleContextMenu(event)"
                 style="
                     top: ${topPos}px;
                     height: ${height}px;
@@ -4070,6 +4085,10 @@ document.addEventListener('mousedown', (e) => {
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <input id="transaction-date" type="text" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                 <input id="transaction-time" type="text" placeholder="HH:MM" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45);">Category</div>
+                <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45);">Subcategory</div>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <select id="transaction-category" class="subtle-select" style="font-size: 11px;"></select>
