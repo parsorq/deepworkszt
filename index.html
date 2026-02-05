@@ -848,6 +848,7 @@ body {
             <div id="ledger-wrapper" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
                 <div id="ledger-container" 
                      onmousedown="ENGINE.handleMouseDown(event)" 
+                     oncontextmenu="ENGINE.handleContextMenu(event)"
                      style="overflow-y: auto; flex: 1; padding: 20px 20px 20px 60px; position: relative; cursor: crosshair;">
                 </div>
             </div>
@@ -1143,9 +1144,8 @@ const ENGINE = {
     rates: { INDIVIDUAL: 150, TEAM: 1200, INSTITUTION: 8500 },
     selectedDate: new Date().toISOString().split('T')[0],
     currentEventIdx: null, // Track which event is being edited
-    pendingDrag: false,
-    dragStartClient: null,
     quickCreateStartH: null,
+    dragHasMoved: false,
 
     db: {},
     transactions: [],
@@ -1331,7 +1331,7 @@ renderTransactions() {
     container.innerHTML = recentTx.map(tx => `
         <div onclick="ENGINE.openTransactionModalWithData('${tx.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer;">
             <div>
-                <div style="font-size: 11px; color: white; font-weight: 500;">${tx.desc}</div>
+                <div style="font-size: 11px; color: white; font-weight: 500;">${tx.item || tx.desc}</div>
                 <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
             </div>
             <div style="font-family: 'SF Mono'; font-size: 12px; font-weight: 600; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
@@ -1342,7 +1342,7 @@ renderTransactions() {
 },
 
 // Add a new transaction
-addTransaction(desc, amount, category = 'General', subcategory = '', date = null, time = null, eventId = '') {
+addTransaction(desc, amount, category = 'General', subcategory = '', date = null, time = null, eventId = '', item = '', description = '') {
     const now = new Date();
     const txDate = date || this.formatDate(now.toISOString().split('T')[0]);
     const txTime = time || now.toTimeString().slice(0, 5);
@@ -1351,6 +1351,8 @@ addTransaction(desc, amount, category = 'General', subcategory = '', date = null
         date: txDate,
         time: txTime,
         desc,
+        item: item || '',
+        description: description || '',
         amount: parseFloat(amount),
         category,
         subcategory: subcategory || '',
@@ -1519,18 +1521,17 @@ handleMouseDown(e) {
     // Calculate hour position
     const rawH = offsetY / this.HOUR_HEIGHT;
 
-    this.pendingDrag = true;
-    this.isDragging = false;
+    this.isDragging = true;
     this.dragStartH = Math.max(0, Math.min(24, rawH));
     this.dragEndH = this.dragStartH;
-    this.dragStartClient = { x: e.clientX, y: e.clientY };
+    this.dragHasMoved = false;
 
     // Immediately show ghost for responsiveness
     requestAnimationFrame(() => this.updateGhost());
 },
 
 handleMouseMove(e) {
-    if (!this.pendingDrag && !this.isDragging) return;
+    if (!this.isDragging) return;
 
     const container = document.getElementById('ledger-container');
     if (!container) return;
@@ -1539,16 +1540,7 @@ handleMouseMove(e) {
     const scrollTop = container.scrollTop;
     const relativeY = e.clientY - rect.top + scrollTop;
 
-    if (!this.isDragging && this.pendingDrag && this.dragStartClient) {
-        const dx = e.clientX - this.dragStartClient.x;
-        const dy = e.clientY - this.dragStartClient.y;
-        if (Math.hypot(dx, dy) > 5) {
-            this.isDragging = true;
-        } else {
-            return;
-        }
-    }
-
+    this.dragHasMoved = true;
     // Constrain to 0-24 hour range
     const rawH = relativeY / this.HOUR_HEIGHT;
     this.dragEndH = Math.max(0, Math.min(24, rawH));
@@ -1566,20 +1558,15 @@ handleMouseMove(e) {
     },
 
 handleMouseUp() {
-    if (this.pendingDrag && !this.isDragging) {
-        const start = this.dragStartH;
-        const client = this.dragStartClient;
-        this.pendingDrag = false;
+    if (!this.isDragging) return;
+    if (!this.dragHasMoved) {
+        this.isDragging = false;
         this.dragStartH = null;
         this.dragEndH = null;
         const ghost = document.getElementById('ghost-selection');
         if (ghost) ghost.style.display = 'none';
-        if (client && typeof start === 'number') {
-            this.showQuickCreateMenu(client.x, client.y, start);
-        }
         return;
     }
-    if (!this.isDragging) return;
 
     const step = 0.25; // 15 min increments
     let start = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
@@ -1613,10 +1600,9 @@ handleMouseUp() {
 
     // Clean up drag state
     this.isDragging = false;
-    this.pendingDrag = false;
     this.dragStartH = null;
     this.dragEndH = null;
-    this.dragStartClient = null;
+    this.dragHasMoved = false;
 
     // Hide the ghost
     const ghost = document.getElementById('ghost-selection');
@@ -1659,6 +1645,24 @@ updateGhost() {
     g.style.background = 'rgba(255,255,255,0.02)';
     g.style.borderLeft = '2px solid rgba(0,122,255,0.6)';
     g.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.04) inset';
+},
+
+handleContextMenu(e) {
+    if (e.target.closest('.block-space')) return;
+    if (e.target.closest('.reminder-marker')) return;
+    if (e.target.closest('.transaction-marker')) return;
+    const eventsCol = e.target.closest('.ledger-events-col');
+    if (!eventsCol) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const container = document.getElementById('ledger-container');
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const scrollTop = container.scrollTop;
+    const offsetY = e.clientY - rect.top + scrollTop;
+    const rawH = offsetY / this.HOUR_HEIGHT;
+    const startH = Math.max(0, Math.min(24, rawH));
+    this.showQuickCreateMenu(e.clientX, e.clientY, startH);
 },
 
 showQuickCreateMenu(x, y, startH) {
@@ -1872,7 +1876,7 @@ renderAuditGraph() {
         list.innerHTML = this.transactions.map(tx => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                 <div>
-                    <div style="font-size: 12px; color: white; font-weight: 600;">${tx.desc}</div>
+                    <div style="font-size: 12px; color: white; font-weight: 600;">${tx.item || tx.desc}</div>
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                 </div>
                 <div style="font-family:'SF Mono'; font-size: 12px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
@@ -1947,13 +1951,6 @@ updatePanelContext() {
                 <label style="color: ${activeColor}; font-weight: 800; font-size: 10px; letter-spacing: 2px; text-transform:uppercase;">Timeblock</label>
                 <input id="strategic-objective-input" type="text" value="${activeEvent?.label || 'New Session'}" 
                        style="background:transparent; border:none; color:white; font-size:28px; font-weight:700; width:100%; outline:none; letter-spacing: -1px;">
-                <div style="display:flex; gap: 6px; margin-top: 10px;">
-                    ${['MEETING','REMINDER','TASK'].map(t => `
-                        <button onclick="ENGINE.setType('${t}')" style="background: ${this.activeType === t ? activeColor : 'rgba(255,255,255,0.05)'}; border: 1px solid rgba(255,255,255,0.12); color: ${this.activeType === t ? '#ffffff' : 'rgba(255,255,255,0.6)'}; padding: 6px 10px; border-radius: 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; cursor: pointer;">
-                            ${t}
-                        </button>
-                    `).join('')}
-                </div>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                 <div style="display: flex; gap: 8px; align-items:center;">
@@ -2059,8 +2056,9 @@ updatePanelContext() {
                         <input id="timeblock-budget" type="text" value="${eventBudget}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
                     </div>
                 </div>
-                <div style="display:grid; grid-template-columns: 1.5fr 0.6fr auto; gap: 8px;">
-                    <input id="timeblock-expense-desc" placeholder="Expense description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr auto; gap: 8px;">
+                    <input id="timeblock-expense-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                    <input id="timeblock-expense-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                     <input id="timeblock-expense-amount" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                     <button onclick="ENGINE.addTimeblockExpense()" style="background:${activeColor}; border:none; color:white; font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
                 </div>
@@ -2073,7 +2071,7 @@ updatePanelContext() {
                     ${expenseItems.length ? expenseItems.map(tx => `
                         <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                             <div>
-                                <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                                <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                                 <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                             </div>
                             <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
@@ -2096,7 +2094,7 @@ updatePanelContext() {
                     ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => `
                         <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                             <div>
-                                <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                                <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                                 <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                             </div>
                             <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
@@ -2115,6 +2113,7 @@ updatePanelContext() {
     const endInput = document.getElementById('timeblock-end');
     const allDayInput = document.getElementById('timeblock-all-day');
     const durationLabel = document.getElementById('timeblock-duration');
+    const expenseItemInput = document.getElementById('timeblock-expense-item');
     const expenseAmountInput = document.getElementById('timeblock-expense-amount');
     const expenseCategorySelect = document.getElementById('timeblock-expense-category');
     const expenseSubcategorySelect = document.getElementById('timeblock-expense-subcategory');
@@ -2301,7 +2300,7 @@ async ensureSheetStructure() {
 
     await Promise.all([
         this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget', 'allDay']),
-        this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category', 'subcategory', 'eventId']),
+        this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'item', 'description', 'amount', 'category', 'subcategory', 'eventId']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'notes', 'createdAt', 'updatedAt']),
@@ -2331,7 +2330,7 @@ async loadData() {
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A:H`
+            range: `${this.sheetNames.transactions}!A:I`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -2395,12 +2394,29 @@ async loadData() {
     });
 
     this.transactions = txRows.slice(1).map((row) => {
+        if (row.length >= 9) {
+            const [id, date, time, item, description, amount, category, subcategory, eventId] = row;
+            return {
+                id,
+                date,
+                time,
+                desc: item || description || '',
+                item: item || '',
+                description: description || '',
+                amount: parseFloat(String(amount || '0').replace(/,/g, '')),
+                category,
+                subcategory: subcategory || '',
+                eventId: eventId || ''
+            };
+        }
         const [id, date, time, desc, amount, category, subcategory, eventId] = row;
         return {
             id,
             date,
             time,
-            desc,
+            desc: desc || '',
+            item: '',
+            description: '',
             amount: parseFloat(String(amount || '0').replace(/,/g, '')),
             category,
             subcategory: subcategory || '',
@@ -2615,7 +2631,8 @@ async saveTransaction(tx) {
         tx.id,
         this.formatDate(tx.date),
         tx.time,
-        tx.desc,
+        tx.item || '',
+        tx.description || '',
         this.formatAmount(tx.amount),
         tx.category,
         tx.subcategory || '',
@@ -2625,14 +2642,14 @@ async saveTransaction(tx) {
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A${rowIndex}:H${rowIndex}`,
+            range: `${this.sheetNames.transactions}!A${rowIndex}:I${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A:H`,
+            range: `${this.sheetNames.transactions}!A:I`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -2899,7 +2916,7 @@ renderDay() {
         html += `
             <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px; cursor: pointer;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openTransactionModalWithData('${tx.id}')">
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${tx.desc}</span>
+                    <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${tx.item || tx.desc}</span>
                     <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); margin-left: 8px;">
                         ${isIncome ? '+' : ''}${this.formatAmount(tx.amount, 0)}
                     </span>
@@ -3441,21 +3458,24 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const events = this.db[this.selectedDate] || [];
         const event = events[this.currentEventIdx];
         if (!event) return;
+        const itemInput = document.getElementById('timeblock-expense-item');
         const descInput = document.getElementById('timeblock-expense-desc');
         const amountInput = document.getElementById('timeblock-expense-amount');
         const budgetInput = document.getElementById('timeblock-budget');
         const categorySelect = document.getElementById('timeblock-expense-category');
         const subcategorySelect = document.getElementById('timeblock-expense-subcategory');
+        const item = itemInput ? itemInput.value.trim() : '';
         const desc = descInput ? descInput.value.trim() : '';
         const amountVal = amountInput ? parseFloat(String(amountInput.value).replace(/,/g, '')) : NaN;
-        if (!desc || Number.isNaN(amountVal)) return;
+        if ((!item && !desc) || Number.isNaN(amountVal)) return;
         if (budgetInput) event.budget = budgetInput.value.trim();
         const category = categorySelect && categorySelect.value ? categorySelect.value : 'Timeblock';
         const subcategory = subcategorySelect && subcategorySelect.value ? subcategorySelect.value : '';
         const date = this.formatDate(document.getElementById('timeblock-date')?.value || this.selectedDate);
         const time = document.getElementById('timeblock-start')?.value || new Date().toTimeString().slice(0, 5);
-        this.addTransaction(desc, -Math.abs(amountVal), category, subcategory, date, time, event.id);
+        this.addTransaction(item || desc, -Math.abs(amountVal), category, subcategory, date, time, event.id, item, desc);
         if (descInput) descInput.value = '';
+        if (itemInput) itemInput.value = '';
         if (amountInput) amountInput.value = this.formatAmount(0);
         this.renderPanelExpenses();
     },
@@ -3469,7 +3489,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         list.innerHTML = expenseItems.length ? expenseItems.map(tx => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                 <div>
-                    <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                    <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                     <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                 </div>
                 <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
@@ -3484,6 +3504,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         if (!overlay) return;
         const title = document.getElementById('transaction-title');
         const amountInput = document.getElementById('transaction-amount');
+        const itemInput = document.getElementById('transaction-item');
         const descInput = document.getElementById('transaction-desc');
         const dateInput = document.getElementById('transaction-date');
         const timeInput = document.getElementById('transaction-time');
@@ -3494,6 +3515,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         delete overlay.dataset.txId;
         if (title) title.textContent = sign > 0 ? 'Add Income' : 'Add Expense';
         if (amountInput) amountInput.value = this.formatAmount(0);
+        if (itemInput) itemInput.value = '';
         if (descInput) descInput.value = '';
         const now = new Date();
         if (dateInput) dateInput.value = this.formatDate(now.toISOString().split('T')[0]);
@@ -3512,6 +3534,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const sign = tx.amount >= 0 ? 1 : -1;
         const title = document.getElementById('transaction-title');
         const amountInput = document.getElementById('transaction-amount');
+        const itemInput = document.getElementById('transaction-item');
         const descInput = document.getElementById('transaction-desc');
         const dateInput = document.getElementById('transaction-date');
         const timeInput = document.getElementById('transaction-time');
@@ -3522,7 +3545,8 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         overlay.dataset.txId = tx.id;
         if (title) title.textContent = sign > 0 ? 'Edit Income' : 'Edit Expense';
         if (amountInput) amountInput.value = this.formatAmount(Math.abs(tx.amount));
-        if (descInput) descInput.value = tx.desc || '';
+        if (itemInput) itemInput.value = tx.item || '';
+        if (descInput) descInput.value = tx.description || tx.desc || '';
         if (dateInput) dateInput.value = this.formatDate(tx.date);
         if (timeInput) timeInput.value = tx.time || '00:00';
         if (categoryInput && subcategoryInput) {
@@ -3550,7 +3574,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         amountInput.addEventListener('input', () => {
             amountInput.value = amountInput.value.replace(/[^\d.,]/g, '');
         });
-        const inputIds = ['transaction-amount', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category', 'transaction-subcategory'];
+        const inputIds = ['transaction-amount', 'transaction-item', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category', 'transaction-subcategory'];
         inputIds.forEach((id) => {
             const input = document.getElementById(id);
             if (!input) return;
@@ -3568,6 +3592,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const sign = parseInt(overlay.dataset.sign || '1', 10);
         const txId = overlay.dataset.txId || '';
         const amountInput = document.getElementById('transaction-amount');
+        const itemInput = document.getElementById('transaction-item');
         const descInput = document.getElementById('transaction-desc');
         const dateInput = document.getElementById('transaction-date');
         const timeInput = document.getElementById('transaction-time');
@@ -3576,7 +3601,9 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
 
         const amountVal = amountInput ? parseFloat(String(amountInput.value).replace(/,/g, '')) : NaN;
         if (!amountInput || Number.isNaN(amountVal)) return;
-        const desc = descInput && descInput.value.trim() ? descInput.value.trim() : (sign > 0 ? 'Income' : 'Expense');
+        const item = itemInput && itemInput.value.trim() ? itemInput.value.trim() : '';
+        const description = descInput && descInput.value.trim() ? descInput.value.trim() : '';
+        const desc = item || description || (sign > 0 ? 'Income' : 'Expense');
         const date = dateInput ? this.formatDate(dateInput.value) : this.formatDate(new Date().toISOString().split('T')[0]);
         const time = timeInput ? timeInput.value : new Date().toTimeString().slice(0, 5);
         const category = categoryInput && categoryInput.value.trim() ? categoryInput.value.trim() : 'General';
@@ -3586,6 +3613,8 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
             const tx = this.transactions.find(item => item.id === txId);
             if (tx) {
                 tx.desc = desc;
+                tx.item = item;
+                tx.description = description;
                 tx.amount = sign * Math.abs(amountVal);
                 tx.date = date;
                 tx.time = time;
@@ -3596,7 +3625,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 this.renderDay();
             }
         } else {
-            this.addTransaction(desc, sign * Math.abs(amountVal), category, subcategory, date, time);
+            this.addTransaction(desc, sign * Math.abs(amountVal), category, subcategory, date, time, '', item, description);
         }
         this.closeTransactionModal();
     },
@@ -3783,6 +3812,7 @@ window.addEventListener('mouseup', () => {
             <button onclick="ENGINE.closeTransactionModal()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <div style="display:flex; flex-direction:column; gap: 12px;">
+            <input id="transaction-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <input id="transaction-amount" type="text" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
