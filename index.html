@@ -228,16 +228,16 @@ body {
     cursor: inherit;
 }
 
+#block-context-menu button,
+#quick-create-menu button {
+    transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
 #block-context-menu button:hover,
 #quick-create-menu button:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.18);
     color: rgba(255, 255, 255, 0.9);
-}
-
-#block-context-menu button,
-#quick-create-menu button {
-    transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
 
 #block-context-menu button:active,
@@ -251,9 +251,20 @@ body {
     cursor: crosshair;
 }
 
+body.block-hover:not(.dragging) .ledger-events-col,
+body.block-hover:not(.dragging) .events-hit-layer {
+    cursor: grab;
+}
+
 body.dragging .ledger-events-col,
 body.dragging .events-hit-layer {
     cursor: ns-resize;
+}
+
+.block-space.block-hover {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+    transform: translateY(-1px);
 }
 
 
@@ -1343,6 +1354,7 @@ const ENGINE = {
     dragHasMoved: false,
     dragStartClient: null,
     dragPointerId: null,
+    hoverBlockEl: null,
 
     db: {},
     transactions: [],
@@ -1418,6 +1430,9 @@ async init() {
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
         this.handleContextMenu(e);
+    }, true);
+    document.addEventListener('mousemove', (e) => {
+        this.updateBlockHover(e.clientX, e.clientY);
     }, true);
     document.addEventListener('dblclick', (e) => {
         if (e.button !== 0) return;
@@ -1963,6 +1978,34 @@ getEventAtPoint(clientX, clientY) {
         }
     }
     return null;
+},
+
+updateBlockHover(clientX, clientY) {
+    if (this.isDragging) return;
+    const bounds = this.getEventsBounds();
+    if (!bounds) return;
+    if (clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom) {
+        this.clearBlockHover();
+        return;
+    }
+    const elements = document.elementsFromPoint(clientX, clientY);
+    const blockEl = elements.find((el) => el && el.closest && el.closest('[data-block-idx]'));
+    const container = blockEl && blockEl.closest ? blockEl.closest('[data-block-idx]') : null;
+    if (container === this.hoverBlockEl) return;
+    this.clearBlockHover();
+    if (container) {
+        this.hoverBlockEl = container;
+        this.hoverBlockEl.classList.add('block-hover');
+        document.body.classList.add('block-hover');
+    }
+},
+
+clearBlockHover() {
+    if (this.hoverBlockEl) {
+        this.hoverBlockEl.classList.remove('block-hover');
+        this.hoverBlockEl = null;
+    }
+    document.body.classList.remove('block-hover');
 },
 
 handlePointerMove(e) {
