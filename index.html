@@ -1591,9 +1591,6 @@ handleMouseDown(e) {
     if (e.button !== 0) return;
     const eventsCol = e.target.closest('.ledger-events-col');
     if (!eventsCol) return;
-    // Require double click to start drag-create on empty grid
-    if (e.detail < 2) return;
-
     this.hideQuickCreateMenu();
 
     const container = document.getElementById('ledger-container');
