@@ -4,20 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
     /* --- 1. SYSTEM CORE: Variables & Global Resets --- */
     :root {
-        --bg-canvas: #121212; 
-        --panel-bg: rgba(255, 255, 255, 0.04); 
-        --border: rgba(107, 114, 128, 0.5); 
-        --text-main: #ffffff; 
-        --text-dim: #8a8f98; 
-        --accent-blue: #C5A059; 
+        --bg-canvas: #0B0E14; 
+        --card-bg: #161B22;
+        --panel-bg: #161B22; 
+        --border: rgba(27, 34, 44, 0.9); 
+        --text-main: #F0F9FF; 
+        --text-dim: #8a95a6; 
+        --accent-cyan: #00F2FE;
+        --accent-blue: #4FACFE;
+        --accent-emerald: #00FF87;
+        --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        --font-serif: "Playfair Display", "SF Pro Display", serif;
+        --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
     * {
-        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-family: var(--font-sans) !important;
         -webkit-font-smoothing: antialiased;
         box-sizing: border-box;
     }
@@ -25,7 +31,7 @@
 body { 
     margin: 0; 
     background: var(--bg-canvas); 
-    background-image: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #121212 100%);
+    background-image: radial-gradient(circle at 50% 10%, #121622 0%, #0B0E14 100%);
     /* Removed flex centering to prevent layout jitter */
     height: 100vh; 
     overflow: hidden; 
@@ -54,9 +60,9 @@ body {
     grid-template-rows: 100%;
     width: 98vw; 
     height: 95vh; 
-    background: #121212; 
+    background: var(--bg-canvas); 
     border-radius: 36px; 
-    border: 0.5px solid var(--border); 
+    border: 0.5px solid #1B222C; 
     overflow: hidden;
     position: fixed;
     top: 50%; left: 50%;
@@ -70,19 +76,22 @@ body {
     flex-direction: column; 
     padding: 40px; 
     overflow: hidden; 
-    border-right: 0.5px solid var(--border);
+    border-right: 0.5px solid #1B222C;
     position: relative; /* Anchor for ledger items */
 }
 
 #engine-sidebar {
     height: 100%;
-    background: rgba(255, 255, 255, 0.01);
+    background: rgba(22, 27, 34, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: 40px 24px;
     display: flex;
     flex-direction: column;
     gap: 24px;
     overflow-y: auto;
-    border-left: 0.5px solid var(--border); /* Visual separation */
+    border-left: 1px solid rgba(0, 242, 254, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(0, 242, 254, 0.06);
 }
 
     /* --- 3. NAVIGATION & IDENTITY: Brand and Controls --- */
@@ -94,7 +103,9 @@ body {
     }
 
     .brand, h1, #day-title {
-        color: #ffffff !important;
+        color: #B1BDD3 !important;
+        font-family: var(--font-serif) !important;
+        letter-spacing: 0.01em;
     }
 
     .brand {
@@ -415,10 +426,10 @@ body {
 }
 
 .meeting-panel {
-    background: rgba(30, 30, 32, 0.85) !important;
+    background: var(--card-bg) !important;
     backdrop-filter: blur(40px) saturate(180%);
     -webkit-backdrop-filter: blur(40px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 0.5px solid #1B222C;
     border-radius: 28px;
     padding: 32px;
     width: 100%;
@@ -475,8 +486,8 @@ body {
 }
 
     .panel-section {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--card-bg) !important;
+        border: 0.5px solid #1B222C !important;
         border-radius: 20px;
         padding: 20px;
         margin-bottom: 20px;
@@ -484,22 +495,66 @@ body {
 
     .meeting-panel textarea {
         width: 100%; height: 120px;
-        background: rgba(255, 255, 255, 0.02) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: #161B22 !important;
+        border: 0.5px solid #1B222C !important;
         border-radius: 14px; padding: 18px; color: #ffffff;
         outline: none; resize: none; transition: all 0.3s ease;
         box-sizing: border-box;
     }
 
     .meeting-panel textarea:focus {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border-color: var(--accent-blue) !important;
+        background: rgba(22, 27, 34, 0.9) !important;
+        border-color: var(--accent-cyan) !important;
+    }
+
+    input:focus, textarea:focus, select:focus {
+        outline: none;
+        border-color: var(--accent-cyan) !important;
+        box-shadow: 0 0 0 1px rgba(0, 242, 254, 0.5), 0 0 14px rgba(0, 255, 135, 0.2);
+    }
+
+    .active-input-row {
+        box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.45), 0 0 18px rgba(0, 255, 135, 0.25);
+    }
+
+    .data-row {
+        background: transparent !important;
+        border: 0.5px solid #1B222C !important;
+    }
+
+    .reminder-marker { cursor: pointer !important; }
+
+    @keyframes spark {
+        0% { transform: scale(0.6); opacity: 0.9; }
+        100% { transform: scale(2.2); opacity: 0; }
+    }
+    .input-spark {
+        position: fixed;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent-emerald);
+        box-shadow: 0 0 10px rgba(0, 255, 135, 0.8);
+        pointer-events: none;
+        animation: spark 500ms ease-out forwards;
+        z-index: 5000;
+    }
+
+    @keyframes savePulse {
+        0% { box-shadow: 0 0 0 0 rgba(0, 255, 135, 0.6); border-color: var(--accent-emerald); }
+        100% { box-shadow: none; border-color: var(--accent-cyan); }
+    }
+    .save-pulse {
+        animation: savePulse 700ms ease-out 1;
     }
 
     /* --- 7. UTILITIES & TYPOGRAPHY: Global Overrides --- */
     h1, .brand, .tab, .session-label, .p-label, .timer-val, h2 {
         font-weight: 700 !important;
         letter-spacing: -0.02em;
+    }
+    *[style*="SF Mono"] {
+        font-family: var(--font-mono) !important;
     }
 
     .p-label, label {
@@ -796,7 +851,10 @@ body {
 <div id="tablet-shell">
     <div id="content-area">
         <div class="header-top">
-            <div class="brand">logszt</div>
+            <div class="brand" style="display:flex; align-items:center; gap:8px;">
+                <img src="assets/logo-v5.png" alt="logszt" style="height: 16px; opacity: 0.45; mix-blend-mode: screen;">
+                <span>logszt</span>
+            </div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <div style="display:flex; flex-direction:column; gap:6px;">
                     <div style="font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 700;">Level</div>
@@ -888,7 +946,7 @@ body {
         
     </div>
 
-<aside id="engine-sidebar" style="background: rgba(10,10,10,0.8); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 30px 20px; position: relative;">
+<aside id="engine-sidebar" style="background: rgba(22,27,34,0.6); backdrop-filter: blur(10px); border-left: 1px solid rgba(0,242,254,0.2); display: flex; flex-direction: column; padding: 30px 20px; position: relative;">
 
     <div style="margin-bottom: 22px; text-align: center;">
         <div id="clock-display" style="font-size: 42px; font-weight: 200; color: white; letter-spacing: -1px; opacity: 0.9;">16:07:22</div>
@@ -905,36 +963,46 @@ body {
     <div style="margin-bottom: 30px;">
         <label class="p-label" style="font-size: 9px; opacity: 0.4; margin-bottom: 8px; display: block;">STRATEGIC CONTEXT</label>
         <textarea id="sidebar-notes" 
-            style="width: 100%; height: 100px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: white; padding: 12px; font-size: 13px; outline: none; resize: none;" 
+            style="width: 100%; height: 100px; background: #161B22; border: 0.5px solid #1B222C; border-radius: 8px; color: var(--text-main); padding: 12px; font-size: 13px; outline: none; resize: none;" 
             placeholder="Capture thoughts..."></textarea>
     </div>
 
     <div style="margin-bottom: 40px;">
-        <button id="commence-btn" class="btn-focus" style="width: 100%; height: 50px; background: white; color: black; font-weight: 700; border-radius: 10px; margin-bottom: 15px; border: none; cursor: pointer;" onclick="ENGINE.commence()">START</button>
+        <button id="commence-btn" class="btn-focus" style="width: 100%; height: 50px; background: linear-gradient(90deg, #00F2FE, #4FACFE); color: #0B0E14; font-weight: 700; border-radius: 10px; margin-bottom: 15px; border: none; cursor: pointer;" onclick="ENGINE.commence()">START</button>
         
         <div class="search-container" style="position: relative;">
             <input type="text" id="project-search" 
-                style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); height: 40px; border-radius: 8px; padding: 0 15px; color: white; font-size: 12px;" 
+                style="width: 100%; background: #161B22; border: 0.5px solid #1B222C; height: 40px; border-radius: 8px; padding: 0 15px; color: var(--text-main); font-size: 12px;" 
                 placeholder="Search Projects..."
                 onkeyup="ENGINE.filterProjects(this.value)">
             </div>
 
-        <div id="active-intent-panel" style="margin-top: 15px; padding: 15px; background: rgba(0,122,255,0.05); border-left: 2px solid #007AFF; border-radius: 4px;">
-            <div style="font-size: 10px; color: #007AFF; font-weight: 800; margin-bottom: 4px;">ACTIVE_INTENT</div>
+        <div id="active-intent-panel" style="margin-top: 15px; padding: 15px; background: rgba(0,242,254,0.05); border-left: 2px solid #00F2FE; border-radius: 4px;">
+            <div style="font-size: 10px; color: #00F2FE; font-weight: 800; margin-bottom: 4px;">ACTIVE_INTENT</div>
             <div id="active-intent-label" style="font-size: 13px; color: white; font-weight: 500;">Infrastructure Refactoring</div>
         </div>
     </div>
 
-    <div style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+    <div style="margin-top: auto; border-top: 0.5px solid #1B222C; padding-top: 25px;">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.05); border: 1px solid rgba(255,69,58,0.25); color: rgba(255,69,58,0.7); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">-</button>
-            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(50,215,75,0.05); border: 1px solid rgba(50,215,75,0.25); color: rgba(50,215,75,0.75); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">+</button>
+            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.05); border: 0.5px solid #1B222C; color: rgba(255,69,58,0.7); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">-</button>
+            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(0,255,135,0.06); border: 0.5px solid #1B222C; color: rgba(0,255,135,0.75); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">+</button>
         </div>
 
         <div id="recent-transactions" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
         </div>
 
-        <button onclick="ENGINE.openAudit()" style="width: 100%; margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px;">AUDIT LEDGER</button>
+        <button onclick="ENGINE.openAudit()" style="width: 100%; margin-top: 20px; background: transparent; border: 0.5px solid #1B222C; color: rgba(255,255,255,0.6); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px;">AUDIT LEDGER</button>
+
+        <div id="system-health" style="margin-top: 18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; letter-spacing:1px; color: rgba(177,189,211,0.8);">
+                <span>DATA INTEGRITY</span>
+                <span id="system-health-value">92%</span>
+            </div>
+            <div style="height: 6px; margin-top: 8px; background: rgba(255,255,255,0.05); border-radius: 999px; overflow: hidden; border: 0.5px solid #1B222C;">
+                <div id="system-health-bar" style="height: 100%; width: 92%; background: linear-gradient(90deg, #00F2FE, #4FACFE, #00FF87); box-shadow: 0 0 10px rgba(0,242,254,0.4);"></div>
+            </div>
+        </div>
     </div>
 </aside>
 </div>
@@ -1193,6 +1261,7 @@ async init() {
     this.injectStyles();
     this.syncConfigControls();
     this.bindTransactionInputs();
+    this.bindInputEffects();
     this.updateDateDisplay();
     this.render();
     this.renderTransactions();
@@ -1332,7 +1401,7 @@ renderTransactions() {
 
     const recentTx = this.transactions.slice(0, 3);
     container.innerHTML = recentTx.map(tx => `
-        <div onclick="ENGINE.openTransactionModalWithData('${tx.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer;">
+        <div onclick="ENGINE.openTransactionModalWithData('${tx.id}')" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: pointer;">
             <div>
                 <div style="font-size: 11px; color: white; font-weight: 500;">${tx.item || tx.desc}</div>
                 <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
@@ -1412,14 +1481,21 @@ initFinancialPulse() {
         style.id = 'engine-pulse-styles';
         style.innerHTML = `
             @keyframes pulse-red {
-                0%, 100% { color: #32D74B; opacity: 1; }
+                0%, 100% { color: #00FF87; opacity: 1; }
                 50% { color: #ff453a; opacity: 0.7; }
+            }
+            @keyframes liquidFlow {
+                0% { background-position: 0% 50%; }
+                100% { background-position: 200% 50%; }
             }
             .burning { animation: pulse-red 1.5s ease-in-out infinite; }
             .progress-line { 
                 position: absolute; bottom: 0; left: 0; height: 4px; 
-                background: #007AFF; transition: width 1s linear; 
-                box-shadow: 0 0 10px rgba(0,122,255,0.5);
+                background: linear-gradient(90deg, #00F2FE, #4FACFE, #00FF87);
+                background-size: 200% 100%;
+                transition: width 1s linear; 
+                animation: liquidFlow 3s linear infinite;
+                box-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
             }
         `;
         document.head.appendChild(style);
@@ -1877,7 +1953,7 @@ renderAuditGraph() {
             return;
         }
         list.innerHTML = this.transactions.map(tx => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+            <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 10px 12px; border-radius: 8px;">
                 <div>
                     <div style="font-size: 12px; color: white; font-weight: 600;">${tx.item || tx.desc}</div>
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
@@ -2072,7 +2148,7 @@ updatePanelContext() {
                 </div>
                 <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
                     ${expenseItems.length ? expenseItems.map(tx => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px;">
                             <div>
                                 <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                                 <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
@@ -2095,7 +2171,7 @@ updatePanelContext() {
                 </div>
                 <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
                     ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px;">
                             <div>
                                 <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                                 <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
@@ -2151,7 +2227,7 @@ updatePanelContext() {
     modalInputs.forEach((input) => {
         input.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter') return;
-            if (input.id === 'timeblock-expense-desc' || input.id === 'timeblock-expense-amount') {
+            if (input.id === 'timeblock-expense-item' || input.id === 'timeblock-expense-desc' || input.id === 'timeblock-expense-amount') {
                 e.preventDefault();
                 this.addTimeblockExpense();
                 return;
@@ -2542,6 +2618,7 @@ async saveEntity(type, entity) {
             resource: { values: [row] }
         });
     }
+    this.pulseActiveInput();
 },
 
 async deleteEntity(type, id) {
@@ -2602,6 +2679,7 @@ async saveEvent(event) {
             resource: { values: [row] }
         });
     }
+    this.pulseActiveInput();
 },
 
 async deleteEventById(eventId) {
@@ -2658,6 +2736,7 @@ async saveTransaction(tx) {
             resource: { values: [row] }
         });
     }
+    this.pulseActiveInput();
 },
 
 async saveMeta() {
@@ -2804,7 +2883,7 @@ renderDay() {
             } else {
                 const topPos = session.start * this.HOUR_HEIGHT;
                 reminderMarkers.push(`
-                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; left: 80px; right: 12px; height: 0; cursor: pointer; z-index: 80; pointer-events: auto;"
+                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; left: 80px; right: 12px; height: 0; cursor: pointer; z-index: 120; pointer-events: auto;"
                         onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
                         <div style="display:flex; align-items:center; gap:8px; pointer-events:none;">
                             <div style="width:6px; height:6px; border-radius:50%; background:${color}; opacity:0.85; box-shadow: 0 0 0 2px rgba(255,255,255,0.04);"></div>
@@ -2846,14 +2925,14 @@ renderDay() {
         if (isCompact) {
             // Ultra-compact: label + duration
             blockContent = `
-                <div style="padding: 4px 8px; pointer-events: none; display: flex; align-items: center; justify-content: space-between; height: 100%;">
+                <div style="padding: 4px 8px; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; height: 100%;">
                     <span style="color: white; font-weight: 600; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${session.label}</span>
                     <span style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-left: 8px;">${durationStr}</span>
                 </div>`;
         } else if (isMedium) {
             // Medium: type + label + time + duration
             blockContent = `
-                <div style="padding: 6px 10px; pointer-events: none; height: 100%;">
+                <div style="padding: 6px 10px; pointer-events: auto; height: 100%;">
                     <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
                     <div style="color: white; font-weight: 600; font-size: 12px; margin-top: 2px;">${session.label}</div>
                     <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">${formatTime(session.start)} – ${formatTime(session.end)} · ${durationStr}</div>
@@ -2862,7 +2941,7 @@ renderDay() {
         } else {
             // Full: all info
             blockContent = `
-                <div style="padding: 10px 12px; pointer-events: none; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="padding: 10px 12px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
                         <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px; margin-bottom: 2px;">${session.type}</div>
                         <div style="color: white; font-weight: 600; font-size: 13px;">${session.label}</div>
@@ -2934,7 +3013,20 @@ renderDay() {
 
     container.innerHTML = html;
     this.renderAllDayReminders(allDayReminders);
+    this.updateIntegrityMeter();
     this.updateTimeline(false);
+},
+
+updateIntegrityMeter() {
+    const totalLogs = Object.values(this.db).reduce((acc, list) => acc + list.length, 0) + this.transactions.length;
+    const percent = Math.min(99, 70 + Math.floor(totalLogs / 3));
+    const value = document.getElementById('system-health-value');
+    const bar = document.getElementById('system-health-bar');
+    if (value) value.textContent = `${percent}%`;
+    if (bar) {
+        bar.style.width = `${percent}%`;
+        bar.style.boxShadow = '0 0 12px rgba(0,255,135,0.35)';
+    }
 },
 
 renderAllDayReminders(items) {
@@ -2945,7 +3037,7 @@ renderAllDayReminders(items) {
         return;
     }
     container.innerHTML = items.map(item => `
-        <div onclick="ENGINE.openMeeting(${item.idx})" style="display:flex; align-items:center; gap:8px; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 8px; cursor: pointer;">
+        <div onclick="ENGINE.openMeeting(${item.idx})" class="data-row" style="display:flex; align-items:center; gap:8px; padding: 6px 8px; border-radius: 8px; cursor: pointer;">
             <div style="width:6px; height:6px; border-radius:50%; background:${item.color}; opacity:0.85;"></div>
             <div style="font-size:11px; color: rgba(255,255,255,0.8); font-weight:600;">${item.label}</div>
         </div>
@@ -3038,7 +3130,7 @@ updateTimeline(shouldScroll = false) {
 
     renderSettings() {
         const renderList = (items, type) => items.map((item) => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px; gap: 10px;">
+            <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px; gap: 10px;">
                 <div style="display:flex; flex-direction:column; gap:4px;">
                     <div style="font-size: 12px; color: #ffffff; font-weight: 600;">${item.name}</div>
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family:'SF Mono';">${item.id}</div>
@@ -3492,7 +3584,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const event = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
         const expenseItems = event ? this.getEventExpenses(event.id) : [];
         list.innerHTML = expenseItems.length ? expenseItems.map(tx => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+            <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px;">
                 <div>
                     <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                     <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
@@ -3589,6 +3681,46 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 this.saveTransactionModal();
             });
         });
+    },
+
+    bindInputEffects() {
+        document.addEventListener('focusin', (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) return;
+            const row = target.closest('.panel-section, .data-row, .meeting-panel');
+            if (row) row.classList.add('active-input-row');
+        });
+        document.addEventListener('focusout', (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) return;
+            const row = target.closest('.panel-section, .data-row, .meeting-panel');
+            if (row) row.classList.remove('active-input-row');
+        });
+        document.addEventListener('input', (e) => {
+            this.triggerInputSpark(e);
+        });
+    },
+
+    triggerInputSpark(e) {
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        const x = e.clientX || target.getBoundingClientRect().right - 12;
+        const y = e.clientY || target.getBoundingClientRect().top + 12;
+        const spark = document.createElement('div');
+        spark.className = 'input-spark';
+        spark.style.left = `${x}px`;
+        spark.style.top = `${y}px`;
+        document.body.appendChild(spark);
+        setTimeout(() => spark.remove(), 600);
+    },
+
+    pulseActiveInput() {
+        const active = document.activeElement;
+        if (!(active instanceof HTMLElement)) return;
+        active.classList.remove('save-pulse');
+        void active.offsetWidth;
+        active.classList.add('save-pulse');
+        setTimeout(() => active.classList.remove('save-pulse'), 800);
     },
 
     saveTransactionModal() {
