@@ -1930,7 +1930,7 @@ updateGhost() {
         eventsCol.appendChild(g);
     }
 
-    if (!this.isDragging) {
+    if (!this.isDragging && !this.isMoving) {
         g.style.display = 'none';
         return;
     }
