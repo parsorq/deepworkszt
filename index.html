@@ -4,19 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
     /* --- 1. SYSTEM CORE: Variables & Global Resets --- */
     :root {
-        --bg-canvas: #000000; 
-        --panel-bg: rgba(255, 255, 255, 0.05); 
-        --border: rgba(255, 255, 255, 0.1); 
+        --bg-canvas: #121212; 
+        --panel-bg: rgba(255, 255, 255, 0.04); 
+        --border: rgba(107, 114, 128, 0.5); 
         --text-main: #ffffff; 
-        --text-dim: #86868b; 
-        --accent-blue: #007AFF; 
+        --text-dim: #8a8f98; 
+        --accent-blue: #C5A059; 
     }
 
     * {
-        font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif !important;
         -webkit-font-smoothing: antialiased;
         box-sizing: border-box;
     }
@@ -24,10 +25,12 @@
 body { 
     margin: 0; 
     background: var(--bg-canvas); 
-    background-image: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #000000 100%);
+    background-image: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #121212 100%);
     /* Removed flex centering to prevent layout jitter */
     height: 100vh; 
     overflow: hidden; 
+    font-size: 13px;
+    line-height: 1.6;
 }
 
     #ledger-container::-webkit-scrollbar {
@@ -51,9 +54,9 @@ body {
     grid-template-rows: 100%;
     width: 98vw; 
     height: 95vh; 
-    background: rgba(10, 10, 12, 0.98); 
+    background: #121212; 
     border-radius: 36px; 
-    border: 1px solid rgba(255, 255, 255, 0.08); 
+    border: 0.5px solid var(--border); 
     overflow: hidden;
     position: fixed;
     top: 50%; left: 50%;
@@ -67,7 +70,7 @@ body {
     flex-direction: column; 
     padding: 40px; 
     overflow: hidden; 
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    border-right: 0.5px solid var(--border);
     position: relative; /* Anchor for ledger items */
 }
 
@@ -79,7 +82,7 @@ body {
     flex-direction: column;
     gap: 24px;
     overflow-y: auto;
-    border-left: 1px solid rgba(255, 255, 255, 0.08); /* Visual separation */
+    border-left: 0.5px solid var(--border); /* Visual separation */
 }
 
     /* --- 3. NAVIGATION & IDENTITY: Brand and Controls --- */
@@ -109,7 +112,7 @@ body {
         margin-bottom: 30px; 
         align-self: flex-start; 
         padding: 2px; 
-        border: 0.5px solid rgba(255, 255, 255, 0.1);
+        border: 0.5px solid var(--border);
     }
 
     .tab { 
