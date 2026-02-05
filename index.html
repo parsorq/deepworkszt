@@ -2902,6 +2902,7 @@ updatePanelContext() {
     if (showTimeblockDetails) {
         // --- 6. TIMEBLOCK EXPENSES (Advanced) ---
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
+        const expenseDisplayItems = [...expenseItems].reverse();
         html += `
             <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
                 <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
@@ -2928,8 +2929,8 @@ updatePanelContext() {
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
                     <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
-                <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
-                    ${expenseItems.length ? expenseItems.map(tx => {
+                <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; height: 132px; overflow-y: auto;">
+                    ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
                             : '';
@@ -2944,39 +2945,7 @@ updatePanelContext() {
                             </div>
                         </div>
                     `;
-                    }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>'}
-                </div>
-            </details>
-        `;
-
-        // --- 7. SESSION AUDIT LEDGER ---
-        const sessionLedgerItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
-        html += `
-            <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
-                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
-                    <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
-                        Session Audit Ledger
-                    </span>
-                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
-                </summary>
-                <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto; margin-top: 8px;">
-                    ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => {
-                        const categoryLabel = (tx.category || tx.subcategory)
-                            ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
-                            : '';
-                        return `
-                        <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px;">
-                            <div>
-                                <div style="font-size: 11px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
-                                <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
-                            </div>
-                            <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
-                                ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
-                            </div>
-                        </div>
-                    `;
-                    }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No transactions yet.</div>'}
+                    }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses.</div>'}
                 </div>
             </details>
         `;
