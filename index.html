@@ -1385,6 +1385,25 @@ async init() {
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
         this.handleContextMenu(e);
     }, true);
+    document.addEventListener('dblclick', (e) => {
+        if (e.button !== 0) return;
+        if (e.target.closest('#quick-create-menu')) return;
+        if (e.target.closest('#block-context-menu')) return;
+        const bounds = this.getEventsBounds();
+        if (!bounds) return;
+        if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideQuickCreateMenu();
+        this.hideBlockMenu();
+        const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
+        if (eventIdx !== null) {
+            this.showBlockMenu(e.clientX, e.clientY, eventIdx);
+            return;
+        }
+        const startH = this.getHourAtClientY(e.clientY);
+        if (startH !== null) this.showQuickCreateMenu(e.clientX, e.clientY, startH);
+    }, true);
 
     // Modal close on Esc key
     window.addEventListener('keydown', (e) => {
