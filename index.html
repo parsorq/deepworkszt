@@ -1392,6 +1392,8 @@ const ENGINE = {
     moveTxEl: null,
     moveTxPointerId: null,
     moveTxTempH: null,
+    undoStack: [],
+    undoLimit: 30,
 
     db: {},
     transactions: [],
@@ -1487,6 +1489,16 @@ async init() {
     }, true);
     window.addEventListener('resize', () => {
         this.hideAllMenus();
+    });
+    document.addEventListener('keydown', (e) => {
+        const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z';
+        if (!isUndo) return;
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+            return;
+        }
+        e.preventDefault();
+        this.undoLastAction();
     });
     document.addEventListener('mousemove', (e) => {
         this.updateBlockHover(e.clientX, e.clientY);
@@ -1617,6 +1629,9 @@ async deleteCurrentEvent() {
     if (!events || !events[this.currentEventIdx]) return;
 
     const [removed] = events.splice(this.currentEventIdx, 1);
+    if (removed) {
+        this.recordUndo({ type: 'deleteEvent', event: { ...removed } });
+    }
     if (events.length === 0) delete this.db[this.selectedDate];
 
     if (removed && removed.id) {
@@ -1677,6 +1692,7 @@ addTransaction(desc, amount, category = 'General', subcategory = '', date = null
         eventId: eventId || ''
     };
     this.transactions.unshift(tx);
+    this.recordUndo({ type: 'addTransaction', txId: tx.id });
     this.sortTransactions();
     this.currentNet += tx.amount;
     void this.saveTransaction(tx);
@@ -1950,6 +1966,7 @@ handleMouseUp() {
             allDay: false
         };
         this.db[this.selectedDate].push(newEvent);
+        this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
         void this.saveEvent(newEvent);
     }
 
@@ -2167,6 +2184,78 @@ clearMoveState() {
     this.moveType = null;
 },
 
+recordUndo(action) {
+    if (!action) return;
+    this.undoStack.push(action);
+    if (this.undoStack.length > this.undoLimit) this.undoStack.shift();
+},
+
+undoLastAction() {
+    const action = this.undoStack.pop();
+    if (!action) return;
+    if (action.type === 'addEvent' && action.event) {
+        const events = this.db[action.event.date] || [];
+        const idx = events.findIndex((ev) => ev.id === action.event.id);
+        if (idx >= 0) {
+            events.splice(idx, 1);
+            if (events.length === 0) delete this.db[action.event.date];
+        }
+        if (action.event.id) {
+            void this.deleteEventById(action.event.id);
+        }
+        this.renderDay();
+        return;
+    }
+    if (action.type === 'deleteEvent' && action.event) {
+        if (!this.db[action.event.date]) this.db[action.event.date] = [];
+        this.db[action.event.date].push(action.event);
+        void this.saveEvent(action.event);
+        this.renderDay();
+        return;
+    }
+    if (action.type === 'moveEvent') {
+        const events = this.db[action.date] || [];
+        const ev = events.find((item) => item.id === action.id);
+        if (ev) {
+            ev.start = action.fromStart;
+            ev.end = action.fromEnd;
+            void this.saveEvent(ev);
+            this.renderDay();
+        }
+        return;
+    }
+    if (action.type === 'addTransaction' && action.txId) {
+        const idx = this.transactions.findIndex((tx) => tx.id === action.txId);
+        if (idx >= 0) {
+            const [removed] = this.transactions.splice(idx, 1);
+            if (removed && removed.id) {
+                void this.deleteTransactionById(removed.id);
+            }
+        }
+        this.renderTransactions();
+        this.renderDay();
+        return;
+    }
+    if (action.type === 'deleteTransaction' && action.tx) {
+        this.transactions.push(action.tx);
+        void this.saveTransaction(action.tx);
+        this.sortTransactions();
+        this.renderTransactions();
+        this.renderDay();
+        return;
+    }
+    if (action.type === 'moveTransaction') {
+        const tx = this.transactions.find((item) => item.id === action.id);
+        if (tx) {
+            tx.time = action.fromTime;
+            void this.saveTransaction(tx);
+            this.sortTransactions();
+            this.renderTransactions();
+            this.renderDay();
+        }
+    }
+},
+
 startMoveTransaction(idx, el, e) {
     if (this.moveTxIdx !== null) return;
     const tx = this.transactions[idx];
@@ -2203,7 +2292,9 @@ finishMoveTransaction() {
     const hours = Math.floor(targetH);
     const minutes = Math.round((targetH - hours) * 60);
     const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const prevTime = this.transactions[idx].time;
     this.transactions[idx].time = time;
+    this.recordUndo({ type: 'moveTransaction', id: this.transactions[idx].id, fromTime: prevTime });
     void this.saveTransaction(this.transactions[idx]);
     this.sortTransactions();
     this.renderTransactions();
@@ -2311,8 +2402,11 @@ finishMoveEvent() {
         this.renderDay();
         return;
     }
+    const prevStart = events[idx].start;
+    const prevEnd = events[idx].end;
     events[idx].start = start;
     events[idx].end = end;
+    this.recordUndo({ type: 'moveEvent', id: events[idx].id, date: events[idx].date, fromStart: prevStart, fromEnd: prevEnd });
     void this.saveEvent(events[idx]);
     const ghost = document.getElementById('ghost-selection');
     if (ghost) ghost.style.display = 'none';
@@ -2449,6 +2543,7 @@ createQuickEvent(type) {
         allDay: false
     };
     this.db[this.selectedDate].push(event);
+    this.recordUndo({ type: 'addEvent', event: { ...event } });
     void this.saveEvent(event);
     this.activeType = type;
     this.renderDay();
@@ -3754,6 +3849,9 @@ async deleteEvent(idx) {
     if (!events || !events[idx]) return;
 
     const [removed] = events.splice(idx, 1);
+    if (removed) {
+        this.recordUndo({ type: 'deleteEvent', event: { ...removed } });
+    }
     if (events.length === 0) delete this.db[this.selectedDate];
 
     if (removed && removed.id) {
@@ -3765,6 +3863,7 @@ async deleteEvent(idx) {
 async deleteTransaction(idx) {
     const tx = this.transactions[idx];
     if (!tx) return;
+    this.recordUndo({ type: 'deleteTransaction', tx: { ...tx } });
     this.transactions.splice(idx, 1);
     if (tx.id) {
         await this.deleteTransactionById(tx.id);
