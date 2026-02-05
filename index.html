@@ -1363,6 +1363,9 @@ const ENGINE = {
     moveEventIdx: null,
     moveDurationH: null,
     moveBlockEl: null,
+    moveOffsetH: 0,
+    moveStartH: null,
+    isMoving: false,
 
     db: {},
     transactions: [],
@@ -1433,10 +1436,6 @@ async init() {
         const bounds = this.getEventsBounds();
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
-        if (this.moveEventIdx !== null) {
-            this.applyMoveToTime(e.clientY);
-            return;
-        }
         this.startDragFromEvent(e);
     }, true);
     document.addEventListener('contextmenu', (e) => {
@@ -1471,7 +1470,7 @@ async init() {
         this.hideBlockMenu();
         const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
         if (eventIdx !== null) {
-            this.showBlockMenu(e.clientX, e.clientY, eventIdx);
+            this.openMeeting(eventIdx);
             return;
         }
         const startH = this.getHourAtClientY(e.clientY);
@@ -1800,6 +1799,23 @@ handleMouseDown(e) {
 },
 
 handleMouseMove(e) {
+    if (this.isMoving) {
+        if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
+        const eventsCol = document.querySelector('.ledger-events-col');
+        if (!eventsCol) return;
+        const rect = eventsCol.getBoundingClientRect();
+        const relativeY = e.clientY - rect.top;
+        const rawH = relativeY / this.HOUR_HEIGHT;
+        const duration = this.moveDurationH || 0.25;
+        let start = rawH - (this.moveOffsetH || 0);
+        start = Math.max(0, Math.min(24 - duration, start));
+        this.moveStartH = start;
+        this.dragStartH = start;
+        this.dragEndH = start + duration;
+        requestAnimationFrame(() => this.updateGhost());
+        return;
+    }
+
     if (!this.isDragging) return;
     if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
 
@@ -1835,6 +1851,10 @@ handleMouseMove(e) {
     },
 
 handleMouseUp() {
+    if (this.isMoving) {
+        this.finishMoveEvent();
+        return;
+    }
     if (!this.isDragging) return;
     const step = 0.25; // 15 min increments
     let start = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
@@ -2043,6 +2063,8 @@ clearMoveState() {
     this.moveEventIdx = null;
     this.moveDurationH = null;
     this.moveBlockEl = null;
+    this.moveOffsetH = 0;
+    this.moveStartH = null;
 },
 
 applyMoveToTime(clientY) {
@@ -2081,12 +2103,72 @@ applyMoveToTime(clientY) {
     this.renderDay();
 },
 
+startMoveDrag(idx, blockEl, e) {
+    const events = this.db[this.selectedDate] || [];
+    const ev = events[idx];
+    if (!ev || ev.type === 'REMINDER') return;
+    this.clearMoveState();
+    this.isMoving = true;
+    document.body.classList.add('dragging');
+    this.moveEventIdx = idx;
+    this.moveDurationH = Math.max(0.25, (ev.end - ev.start));
+    this.moveBlockEl = blockEl || null;
+    if (this.moveBlockEl) this.moveBlockEl.classList.add('block-moving');
+    const startH = this.getHourAtClientY(e.clientY);
+    this.moveOffsetH = startH !== null ? (startH - ev.start) : 0;
+    this.moveStartH = ev.start;
+    this.dragPointerId = e.pointerId !== undefined ? e.pointerId : null;
+    if (e.pointerId !== undefined && e.target && e.target.setPointerCapture) {
+        try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    e.preventDefault();
+},
+
+finishMoveEvent() {
+    const events = this.db[this.selectedDate] || [];
+    const idx = this.moveEventIdx;
+    const duration = this.moveDurationH || 0.25;
+    if (idx === null || !events[idx]) {
+        this.clearMoveState();
+        this.isMoving = false;
+        document.body.classList.remove('dragging');
+        return;
+    }
+    const step = 0.25;
+    let start = this.moveStartH !== null ? this.moveStartH : events[idx].start;
+    start = Math.round(start / step) * step;
+    let end = Math.min(24, start + duration);
+    if (end - start < 0.25) end = Math.min(24, start + 0.25);
+    if (end > 24) {
+        end = 24;
+        start = Math.max(0, end - duration);
+    }
+    const overlap = events.some((ev, i) => {
+        if (i === idx || ev.type === 'REMINDER') return false;
+        return start < ev.end && end > ev.start;
+    });
+    this.isMoving = false;
+    document.body.classList.remove('dragging');
+    this.clearMoveState();
+    if (overlap) {
+        const ghost = document.getElementById('ghost-selection');
+        if (ghost) ghost.style.display = 'none';
+        this.renderDay();
+        return;
+    }
+    events[idx].start = start;
+    events[idx].end = end;
+    void this.saveEvent(events[idx]);
+    const ghost = document.getElementById('ghost-selection');
+    if (ghost) ghost.style.display = 'none';
+    this.renderDay();
+},
+
 handlePointerMove(e) {
     this.handleMouseMove(e);
 },
 
 handlePointerUp(e) {
-    if (!this.isDragging) return;
     if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
     this.handleMouseUp();
     this.dragPointerId = null;
@@ -3385,7 +3467,7 @@ renderDay() {
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
                 onmousedown="event.stopPropagation()"
-                onclick="event.stopPropagation(); ENGINE.startMoveEvent(${idx}, this)"
+                onpointerdown="event.stopPropagation(); ENGINE.startMoveDrag(${idx}, this, event)"
                 oncontextmenu="event.preventDefault(); event.stopPropagation(); ENGINE.handleContextMenu(event)"
                 style="
                     top: ${topPos}px;
