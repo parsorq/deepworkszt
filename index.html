@@ -1580,23 +1580,6 @@ handleMouseDown(e) {
     this.hideBlockMenu();
     if (e.target.closest('#quick-create-menu')) return;
     if (e.target.closest('#block-context-menu')) return;
-
-    const stack = document.elementsFromPoint(e.clientX, e.clientY);
-    const block = stack.find(el => el.classList && el.classList.contains('block-space'));
-    const reminder = stack.find(el => el.classList && el.classList.contains('reminder-marker'));
-    const transaction = stack.find(el => el.classList && el.classList.contains('transaction-marker'));
-
-    if (transaction) return;
-    if (reminder) return;
-    if (block) {
-        if (e.button !== 0) return;
-        e.preventDefault();
-        e.stopPropagation();
-        const idx = parseInt(block.dataset.blockIdx, 10);
-        this.openMeeting(idx);
-        return;
-    }
-
     this.startDragFromEvent(e);
 },
 
@@ -1723,17 +1706,10 @@ handleContextMenu(e) {
     this.hideQuickCreateMenu();
     this.hideBlockMenu();
 
-    const stack = document.elementsFromPoint(e.clientX, e.clientY);
-    const reminder = stack.find(el => el.classList && el.classList.contains('reminder-marker'));
-    const transaction = stack.find(el => el.classList && el.classList.contains('transaction-marker'));
-    if (reminder || transaction) return;
-    const block = stack.find(el => el.classList && el.classList.contains('block-space'));
-    if (block) {
-        const idx = parseInt(block.dataset.blockIdx, 10);
-        if (Number.isFinite(idx)) {
-            this.showBlockMenu(e.clientX, e.clientY, idx);
-            return;
-        }
+    const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
+    if (eventIdx !== null) {
+        this.showBlockMenu(e.clientX, e.clientY, eventIdx);
+        return;
     }
     const startH = this.getHourAtClientY(e.clientY);
     if (startH !== null) this.showQuickCreateMenu(e.clientX, e.clientY, startH);
@@ -1762,8 +1738,11 @@ startDragFromEvent(e) {
     const bounds = this.getEventsBounds();
     if (!bounds) return;
     if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (el && (el.closest('.block-space') || el.closest('.reminder-marker') || el.closest('.transaction-marker'))) return;
+    const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
+    if (eventIdx !== null) {
+        this.openMeeting(eventIdx);
+        return;
+    }
 
     this.hideQuickCreateMenu();
     const startH = this.getHourAtClientY(e.clientY);
@@ -1781,6 +1760,23 @@ startDragFromEvent(e) {
     }
     e.preventDefault();
     requestAnimationFrame(() => this.updateGhost());
+},
+
+getEventAtPoint(clientX, clientY) {
+    const bounds = this.getEventsBounds();
+    if (!bounds) return null;
+    const columnLeft = bounds.left + 80;
+    const columnRight = bounds.right - 12;
+    if (clientX < columnLeft || clientX > columnRight) return null;
+    const hour = this.getHourAtClientY(clientY);
+    if (hour === null) return null;
+    const events = this.db[this.selectedDate] || [];
+    for (let i = 0; i < events.length; i++) {
+        const ev = events[i];
+        if (!ev || ev.type === 'REMINDER') continue;
+        if (hour >= ev.start && hour < ev.end) return i;
+    }
+    return null;
 },
 
 handlePointerMove(e) {
