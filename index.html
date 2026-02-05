@@ -897,6 +897,174 @@ body {
 </div>
 
 <script>
+const GOOGLE_CLIENT_ID = '199336032000-71cs5iokgfg8ondge7orb4e1brjv7lpi.apps.googleusercontent.com';
+const MASTER_REGISTRY_SHEET_ID = '1SM8gIhluzuNX6HNRgZ149EBUypBq7v9ve8m5gTw8vg8';
+const ENGINE_USER_FILE_NAME = 'ENGINE_USER_DATA_V1';
+const GOOGLE_SCOPES = [
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/spreadsheets',
+    'openid',
+    'email',
+    'profile'
+].join(' ');
+const GOOGLE_DISCOVERY_DOCS = [
+    'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+    'https://sheets.googleapis.com/$discovery/rest?version=v4'
+];
+
+let googleTokenClient = null;
+let googleAccessToken = null;
+let googleReadyPromise = null;
+let loginOverlay = null;
+
+function loadGoogleScript(src) {
+    return new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+            const isApi = src.includes('apis.google.com');
+            const isGis = src.includes('accounts.google.com');
+            if ((isApi && window.gapi) || (isGis && window.google)) {
+                resolve();
+                return;
+            }
+            existing.addEventListener('load', resolve, { once: true });
+            existing.addEventListener('error', reject, { once: true });
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+            script.dataset.loaded = 'true';
+            resolve();
+        };
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+function ensureGoogleReady() {
+    if (googleReadyPromise) return googleReadyPromise;
+    googleReadyPromise = Promise.all([
+        loadGoogleScript('https://apis.google.com/js/api.js').then(() => {
+            return new Promise((resolve) => {
+                gapi.load('client', async () => {
+                    await gapi.client.init({ discoveryDocs: GOOGLE_DISCOVERY_DOCS });
+                    resolve();
+                });
+            });
+        }),
+        loadGoogleScript('https://accounts.google.com/gsi/client').then(() => {
+            googleTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: GOOGLE_SCOPES,
+                callback: () => {}
+            });
+        })
+    ]);
+    return googleReadyPromise;
+}
+
+function setLoginStatus(message, isError = false) {
+    const status = document.getElementById('engine-login-status');
+    if (!status) return;
+    status.textContent = message;
+    status.style.color = isError ? '#ff453a' : 'rgba(255,255,255,0.7)';
+}
+
+async function fetchUserProfile() {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${googleAccessToken}` }
+    });
+    if (!res.ok) {
+        throw new Error('Unable to load user profile.');
+    }
+    return res.json();
+}
+
+async function validateMasterRegistry(email) {
+    const range = 'A:Z';
+    const res = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: MASTER_REGISTRY_SHEET_ID,
+        range
+    });
+    const rows = res.result.values || [];
+    const target = email.trim().toLowerCase();
+    return rows.some((row) =>
+        row.some((cell) => String(cell || '').trim().toLowerCase() === target)
+    );
+}
+
+async function handleLogin() {
+    await ensureGoogleReady();
+    return new Promise((resolve, reject) => {
+        googleTokenClient.callback = async (response) => {
+            if (response.error) {
+                reject(new Error('Google sign-in failed.'));
+                return;
+            }
+            googleAccessToken = response.access_token;
+            gapi.client.setToken({ access_token: googleAccessToken });
+            try {
+                const profile = await fetchUserProfile();
+                const allowed = await validateMasterRegistry(profile.email);
+                if (!allowed) {
+                    reject(new Error('Access denied by Master Registry.'));
+                    return;
+                }
+                ENGINE.userEmail = profile.email;
+                await ENGINE.init();
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        };
+        googleTokenClient.requestAccessToken({ prompt: 'consent' });
+    });
+}
+
+function showLoginUI() {
+    if (document.getElementById('engine-login-overlay')) return;
+    loginOverlay = document.createElement('div');
+    loginOverlay.id = 'engine-login-overlay';
+    loginOverlay.style.cssText = `
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.65);
+        z-index: 2000;
+        backdrop-filter: blur(12px);
+    `;
+    loginOverlay.innerHTML = `
+        <div style="width: 100%; max-width: 420px; background: rgba(20,20,24,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 28px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.6);">
+            <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
+            <div style="font-size: 22px; color: #ffffff; font-weight: 700; margin-bottom: 10px;">Authenticate with Google</div>
+            <div id="engine-login-status" style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</div>
+            <button id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: #007AFF; border: none; border-radius: 10px; color: #fff; font-weight: 700; cursor: pointer;">Sign in</button>
+        </div>
+    `;
+    document.body.appendChild(loginOverlay);
+
+    const btn = document.getElementById('engine-login-btn');
+    btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        setLoginStatus('Connecting to Google...');
+        try {
+            await handleLogin();
+            loginOverlay.remove();
+        } catch (err) {
+            setLoginStatus(err.message || 'Login failed.', true);
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    });
+}
+
 const ENGINE = {
     role: 'ARCHITECT',
     lens: 'BOTH',
@@ -907,27 +1075,17 @@ const ENGINE = {
     selectedDate: new Date().toISOString().split('T')[0],
     currentEventIdx: null, // Track which event is being edited
 
-    // Hardcoded database - events persist here
-    db: {
-        "2026-02-04": [
-            { id: 'evt-001', start: 9, end: 10.5, label: 'Morning Standup', type: 'MEETING' },
-            { id: 'evt-002', start: 14, end: 15.5, label: 'Architecture Review', type: 'MEETING' },
-            { id: 'evt-003', start: 16, end: 17, label: 'Code Review Session', type: 'TASK' }
-        ],
-        "2026-02-05": [
-            { id: 'evt-004', start: 10, end: 11, label: 'Sprint Planning', type: 'MEETING' },
-            { id: 'evt-005', start: 13, end: 14.5, label: 'Client Call', type: 'EVENT' }
-        ]
+    db: {},
+    transactions: [],
+    userEmail: null,
+    userSheetId: null,
+    sheetInfo: null,
+    metaSaveTimer: null,
+    sheetNames: {
+        events: 'Events',
+        transactions: 'Transactions',
+        meta: 'Meta'
     },
-
-    // Sample transactions for reference
-    transactions: [
-        { id: 'tx-001', date: '2026-02-04', time: '09:30', desc: 'Vercel Pro Subscription', amount: -20.00, category: 'Infrastructure' },
-        { id: 'tx-002', date: '2026-02-04', time: '11:00', desc: 'Client Retainer Deposit', amount: 2500.00, category: 'Income' },
-        { id: 'tx-003', date: '2026-02-03', time: '14:22', desc: 'AWS S3 Storage', amount: -45.00, category: 'Infrastructure' },
-        { id: 'tx-004', date: '2026-02-03', time: '16:00', desc: 'Figma Team License', amount: -15.00, category: 'Tools' },
-        { id: 'tx-005', date: '2026-02-02', time: '10:15', desc: 'Consulting Payment', amount: 1800.00, category: 'Income' }
-    ],
 
     isDragging: false,
     dragStartH: null,
@@ -943,8 +1101,8 @@ const ENGINE = {
     nextEventId: 100, // For generating unique IDs
 
 
-init() {
-    this.loadState();
+async init() {
+    await this.loadData();
     this.injectStyles();
     this.updateDateDisplay();
     this.render();
@@ -1011,21 +1169,19 @@ startTimelineUpdater() {
 },
 
 // Delete event functionality
-deleteCurrentEvent() {
+async deleteCurrentEvent() {
     if (this.currentEventIdx === null) return;
 
     const events = this.db[this.selectedDate];
     if (!events || !events[this.currentEventIdx]) return;
 
-    // Remove the event
-    events.splice(this.currentEventIdx, 1);
+    const [removed] = events.splice(this.currentEventIdx, 1);
+    if (events.length === 0) delete this.db[this.selectedDate];
 
-    // Clean up empty date entries
-    if (events.length === 0) {
-        delete this.db[this.selectedDate];
+    if (removed && removed.id) {
+        await this.deleteEventById(removed.id);
     }
 
-    this.saveState();
     this.closeModal();
     this.renderDay();
 },
@@ -1067,7 +1223,7 @@ addTransaction(desc, amount, category = 'General') {
     };
     this.transactions.unshift(tx);
     this.currentNet += tx.amount;
-    this.saveState();
+    void this.saveTransaction(tx);
     this.renderTransactions();
     return tx;
 },
@@ -1188,9 +1344,9 @@ initFinancialPulse() {
             if (sideNet) sideNet.innerText = `$${Math.floor(this.currentNet).toLocaleString()}`;
         }
 
-        // 4. Auto-save every 10 seconds to prevent data loss on refresh
+        // 4. Auto-save meta periodically without spamming the API
         if (Math.floor(Date.now() / 1000) % 10 === 0) {
-            this.saveState();
+            this.queueMetaSave();
         }
 
     }, 1000);
@@ -1285,7 +1441,7 @@ handleMouseUp() {
             isNew: true
         };
         this.db[this.selectedDate].push(newEvent);
-        this.saveState();
+        void this.saveEvent(newEvent);
     }
 
     // Clean up drag state
@@ -1702,27 +1858,240 @@ saveSession() {
     if (sessions.length > 0) {
         sessions[sessions.length - 1].label = title;
         sessions[sessions.length - 1].type = this.activeType;
+        void this.saveEvent(sessions[sessions.length - 1]);
     }
 
     document.getElementById('modal-overlay').style.display = 'none';
     this.renderDay(); // Refresh the ledger view
 },
 
-// State persistence
-saveState() {
-    localStorage.setItem('ENGINE_DB', JSON.stringify(this.db));
-    localStorage.setItem('ENGINE_TX', JSON.stringify(this.transactions));
-    localStorage.setItem('ENGINE_NET', this.currentNet.toString());
+async ensureUserStorage() {
+    if (this.userSheetId) return;
+
+    const listRes = await gapi.client.drive.files.list({
+        q: `name = '${ENGINE_USER_FILE_NAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+        fields: 'files(id, name)',
+        spaces: 'drive'
+    });
+    const existing = listRes.result.files && listRes.result.files[0];
+    if (existing) {
+        this.userSheetId = existing.id;
+    } else {
+        const createRes = await gapi.client.drive.files.create({
+            resource: { name: ENGINE_USER_FILE_NAME, mimeType: 'application/vnd.google-apps.spreadsheet' },
+            fields: 'id'
+        });
+        this.userSheetId = createRes.result.id;
+    }
+
+    await this.ensureSheetStructure();
 },
 
-loadState() {
-    const savedDb = localStorage.getItem('ENGINE_DB');
-    const savedTx = localStorage.getItem('ENGINE_TX');
-    const savedNet = localStorage.getItem('ENGINE_NET');
+async ensureSheetStructure() {
+    if (!this.userSheetId) return;
+    const sheetRes = await gapi.client.sheets.spreadsheets.get({
+        spreadsheetId: this.userSheetId
+    });
+    const sheets = sheetRes.result.sheets || [];
+    const existingNames = new Set(sheets.map(s => s.properties.title));
+    const requests = [];
 
-    if (savedDb) this.db = JSON.parse(savedDb);
-    if (savedTx) this.transactions = JSON.parse(savedTx);
-    if (savedNet) this.currentNet = parseFloat(savedNet);
+    Object.values(this.sheetNames).forEach((title) => {
+        if (!existingNames.has(title)) {
+            requests.push({ addSheet: { properties: { title } } });
+        }
+    });
+
+    if (requests.length) {
+        await gapi.client.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.userSheetId,
+            resource: { requests }
+        });
+    }
+
+    const refreshed = await gapi.client.sheets.spreadsheets.get({
+        spreadsheetId: this.userSheetId
+    });
+    const sheetInfo = {};
+    (refreshed.result.sheets || []).forEach((sheet) => {
+        sheetInfo[sheet.properties.title] = sheet.properties.sheetId;
+    });
+    this.sheetInfo = sheetInfo;
+
+    await Promise.all([
+        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type']),
+        this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category']),
+        this.writeHeaders(this.sheetNames.meta, ['key', 'value'])
+    ]);
+},
+
+async writeHeaders(sheetName, headers) {
+    if (!this.userSheetId) return;
+    await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: this.userSheetId,
+        range: `${sheetName}!A1:${String.fromCharCode(64 + headers.length)}1`,
+        valueInputOption: 'RAW',
+        resource: { values: [headers] }
+    });
+},
+
+async loadData() {
+    await this.ensureUserStorage();
+    const [eventsRes, txRes, metaRes] = await Promise.all([
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.events}!A:F`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.transactions}!A:F`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.meta}!A:B`
+        })
+    ]);
+
+    const eventsRows = eventsRes.result.values || [];
+    const txRows = txRes.result.values || [];
+    const metaRows = metaRes.result.values || [];
+
+    this.db = {};
+    eventsRows.slice(1).forEach((row) => {
+        if (row.length < 6) return;
+        const [id, date, start, end, label, type] = row;
+        if (!date) return;
+        if (!this.db[date]) this.db[date] = [];
+        this.db[date].push({
+            id,
+            start: parseFloat(start),
+            end: parseFloat(end),
+            label,
+            type
+        });
+    });
+
+    this.transactions = txRows.slice(1).map((row) => {
+        const [id, date, time, desc, amount, category] = row;
+        return {
+            id,
+            date,
+            time,
+            desc,
+            amount: parseFloat(amount),
+            category
+        };
+    }).filter(tx => tx.date);
+
+    this.transactions.sort((a, b) => {
+        const aStamp = `${a.date} ${a.time || '00:00'}`;
+        const bStamp = `${b.date} ${b.time || '00:00'}`;
+        return bStamp.localeCompare(aStamp);
+    });
+
+    const meta = {};
+    metaRows.slice(1).forEach(([key, value]) => {
+        if (key) meta[key] = value;
+    });
+    if (meta.currentNet) this.currentNet = parseFloat(meta.currentNet);
+},
+
+async saveEvent(event) {
+    if (!event || !event.id) return;
+    await this.ensureUserStorage();
+    const date = event.date || this.selectedDate;
+    const row = [event.id, date, event.start, event.end, event.label, event.type];
+    const rowIndex = await this.findRowById(this.sheetNames.events, event.id);
+    if (rowIndex) {
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.events}!A${rowIndex}:F${rowIndex}`,
+            valueInputOption: 'RAW',
+            resource: { values: [row] }
+        });
+    } else {
+        await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.events}!A:F`,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: { values: [row] }
+        });
+    }
+},
+
+async deleteEventById(eventId) {
+    if (!eventId) return;
+    await this.ensureUserStorage();
+    const rowIndex = await this.findRowById(this.sheetNames.events, eventId);
+    if (!rowIndex || !this.sheetInfo || !this.sheetInfo[this.sheetNames.events]) return;
+
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.userSheetId,
+        resource: {
+            requests: [{
+                deleteDimension: {
+                    range: {
+                        sheetId: this.sheetInfo[this.sheetNames.events],
+                        dimension: 'ROWS',
+                        startIndex: rowIndex - 1,
+                        endIndex: rowIndex
+                    }
+                }
+            }]
+        }
+    });
+},
+
+async saveTransaction(tx) {
+    if (!tx || !tx.id) return;
+    await this.ensureUserStorage();
+    const row = [tx.id, tx.date, tx.time, tx.desc, tx.amount, tx.category];
+    const rowIndex = await this.findRowById(this.sheetNames.transactions, tx.id);
+    if (rowIndex) {
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.transactions}!A${rowIndex}:F${rowIndex}`,
+            valueInputOption: 'RAW',
+            resource: { values: [row] }
+        });
+    } else {
+        await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.transactions}!A:F`,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: { values: [row] }
+        });
+    }
+},
+
+async saveMeta() {
+    if (!this.userSheetId) return;
+    await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: this.userSheetId,
+        range: `${this.sheetNames.meta}!A2:B2`,
+        valueInputOption: 'RAW',
+        resource: { values: [['currentNet', this.currentNet.toString()]] }
+    });
+},
+
+queueMetaSave() {
+    if (this.metaSaveTimer) return;
+    this.metaSaveTimer = setTimeout(async () => {
+        this.metaSaveTimer = null;
+        await this.saveMeta();
+    }, 10000);
+},
+
+async findRowById(sheetName, id) {
+    const res = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: this.userSheetId,
+        range: `${sheetName}!A:A`
+    });
+    const values = res.result.values || [];
+    const rowIndex = values.findIndex((row) => row[0] === id);
+    return rowIndex >= 0 ? rowIndex + 1 : null;
 },
     
 openMeeting(idx) {
@@ -1924,14 +2293,16 @@ renderDay() {
 },
 
 // Delete event directly from block
-deleteEvent(idx) {
+async deleteEvent(idx) {
     const events = this.db[this.selectedDate];
     if (!events || !events[idx]) return;
 
-    events.splice(idx, 1);
+    const [removed] = events.splice(idx, 1);
     if (events.length === 0) delete this.db[this.selectedDate];
 
-    this.saveState();
+    if (removed && removed.id) {
+        await this.deleteEventById(removed.id);
+    }
     this.renderDay();
 },
     
@@ -2024,7 +2395,7 @@ setInterval(() => {
 }, 1000);
 
 // Initialize the Engine on window load
-window.onload = () => ENGINE.init();
+window.onload = () => showLoginUI();
 
 // Add this to your script to catch the end of a drag anywhere on the screen
 window.addEventListener('mouseup', () => {
