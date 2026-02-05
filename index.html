@@ -1948,7 +1948,7 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type']),
         this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
-        this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt'])
@@ -1982,7 +1982,7 @@ async loadData() {
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.teams}!A:F`
+            range: `${this.sheetNames.teams}!A:G`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -2061,9 +2061,9 @@ parseEntities(rows) {
 
 parseTeams(rows) {
     return rows.slice(1).map((row) => {
-        const [id, name, projectId, notes, createdAt, updatedAt] = row;
+    const [id, name, projectId, profileIds, notes, createdAt, updatedAt] = row;
         if (!id) return null;
-        return { id, name, projectId, notes, createdAt, updatedAt };
+    return { id, name, projectId, profileIds, notes, createdAt, updatedAt };
     }).filter(Boolean);
 },
 
@@ -2101,7 +2101,7 @@ async saveEntity(type, entity) {
     await this.ensureUserStorage();
     let row = [];
     if (type === 'teams') {
-        row = [entity.id, entity.name, entity.projectId || '', entity.notes || '', entity.createdAt, entity.updatedAt];
+        row = [entity.id, entity.name, entity.projectId || '', entity.profileIds || '', entity.notes || '', entity.createdAt, entity.updatedAt];
     } else if (type === 'profiles') {
         row = [entity.id, entity.name, entity.email || '', entity.notes || '', entity.createdAt, entity.updatedAt];
     } else if (type === 'projects') {
@@ -2542,10 +2542,11 @@ updateTimeline(shouldScroll = false) {
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family:'SF Mono';">${item.id}</div>
                     ${type === 'profiles' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Email: ${item.email || ''}</div>` : ''}
                     ${type === 'teams' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Project: ${this.getProjectNameById(item.projectId) || 'Unassigned'}</div>` : ''}
+                    ${type === 'teams' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Profiles: ${this.getProfileNamesByIds(item.profileIds).join(', ') || 'None'}</div>` : ''}
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4);">${item.notes || ''}</div>
                 </div>
                 <div style="display:flex; gap:6px;">
-                    <button onclick="ENGINE.editEntity('${type}', '${item.id}')" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">EDIT</button>
+                    <button onclick="ENGINE.openEditEntity('${type}', '${item.id}')" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">EDIT</button>
                     <button onclick="ENGINE.removeEntity('${type}', '${item.id}')" style="background: rgba(255,59,48,0.15); border: 1px solid rgba(255,59,48,0.3); color: #FF453A; padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">REMOVE</button>
                 </div>
             </div>
@@ -2556,6 +2557,7 @@ updateTimeline(shouldScroll = false) {
         const institutionList = document.getElementById('settings-institution-list');
         const projectList = document.getElementById('settings-project-list');
         const projectSelect = document.getElementById('settings-teams-project');
+        const teamProfiles = document.getElementById('settings-teams-profiles');
 
         if (teamList) teamList.innerHTML = this.teams.length ? renderList(this.teams, 'teams') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No teams yet.</div>';
         if (profileList) profileList.innerHTML = this.profiles.length ? renderList(this.profiles, 'profiles') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No profiles yet.</div>';
@@ -2566,12 +2568,21 @@ updateTimeline(shouldScroll = false) {
                 .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
             projectSelect.innerHTML = options.join('');
         }
+        if (teamProfiles) {
+            teamProfiles.innerHTML = this.profiles.map(profile => `
+                <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
+                    <input type="checkbox" value="${profile.id}">
+                    ${profile.name} (${profile.email || 'no email'})
+                </label>
+            `).join('');
+        }
     },
 
     async addEntity(type) {
         const nameInput = document.getElementById(`settings-${type}-name`);
         const notesInput = document.getElementById(`settings-${type}-notes`);
         const projectSelect = document.getElementById('settings-teams-project');
+        const teamProfiles = document.getElementById('settings-teams-profiles');
         const emailInput = document.getElementById('settings-profiles-email');
         if (!nameInput) return;
         const name = nameInput.value.trim();
@@ -2587,6 +2598,11 @@ updateTimeline(shouldScroll = false) {
         if (type === 'teams' && projectSelect) {
             entity.projectId = projectSelect.value || '';
         }
+        if (type === 'teams' && teamProfiles) {
+            entity.profileIds = Array.from(teamProfiles.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(input => input.value)
+                .join(',');
+        }
         if (type === 'profiles' && emailInput) {
             entity.email = emailInput.value.trim();
         }
@@ -2595,33 +2611,94 @@ updateTimeline(shouldScroll = false) {
         nameInput.value = '';
         if (notesInput) notesInput.value = '';
         if (projectSelect && type === 'teams') projectSelect.value = '';
+        if (teamProfiles && type === 'teams') {
+            teamProfiles.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = false; });
+        }
         if (emailInput && type === 'profiles') emailInput.value = '';
         this.renderSettings();
     },
 
-    async editEntity(type, id) {
+    openEditEntity(type, id) {
         const list = this[type];
         const entity = list.find(item => item.id === id);
         if (!entity) return;
-        const name = prompt('Edit name:', entity.name);
-        if (!name) return;
-        let notes = entity.notes || '';
-        let projectId = entity.projectId || '';
-        let email = entity.email || '';
-        if (type === 'teams') {
-            const listText = this.projects.map(project => `${project.name} (${project.id})`).join(', ');
-            projectId = prompt(`Project ID (available: ${listText || 'none'})`, projectId) || projectId;
+        const overlay = document.getElementById('edit-entity-overlay');
+        if (!overlay) return;
+        const title = document.getElementById('edit-entity-title');
+        const nameInput = document.getElementById('edit-entity-name');
+        const emailInput = document.getElementById('edit-entity-email');
+        const notesInput = document.getElementById('edit-entity-notes');
+        const projectSelect = document.getElementById('edit-entity-project');
+        const profileList = document.getElementById('edit-entity-profiles');
+
+        overlay.dataset.type = type;
+        overlay.dataset.id = id;
+        if (title) title.textContent = `Edit ${type.slice(0, -1).toUpperCase()}`;
+        if (nameInput) nameInput.value = entity.name || '';
+        if (notesInput) notesInput.value = entity.notes || '';
+
+        if (emailInput) {
+            emailInput.style.display = type === 'profiles' ? 'block' : 'none';
+            emailInput.value = entity.email || '';
         }
-        if (type === 'profiles') {
-            email = prompt('Profile email:', email) || email;
+        if (projectSelect) {
+            projectSelect.style.display = type === 'teams' ? 'block' : 'none';
+            const options = ['<option value="">Link to Project</option>']
+                .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
+            projectSelect.innerHTML = options.join('');
+            projectSelect.value = entity.projectId || '';
         }
-        notes = prompt('Edit notes:', notes) || notes;
-        entity.name = name.trim();
-        entity.notes = notes.trim();
-        if (type === 'teams') entity.projectId = projectId.trim();
-        if (type === 'profiles') entity.email = email.trim();
+        if (profileList) {
+            profileList.style.display = type === 'teams' ? 'flex' : 'none';
+            const selected = (entity.profileIds || '').split(',').filter(Boolean);
+            profileList.innerHTML = this.profiles.map(profile => `
+                <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
+                    <input type="checkbox" value="${profile.id}" ${selected.includes(profile.id) ? 'checked' : ''}>
+                    ${profile.name} (${profile.email || 'no email'})
+                </label>
+            `).join('');
+        }
+
+        overlay.style.display = 'flex';
+    },
+
+    closeEditEntity() {
+        const overlay = document.getElementById('edit-entity-overlay');
+        if (overlay) overlay.style.display = 'none';
+    },
+
+    async saveEditEntity() {
+        const overlay = document.getElementById('edit-entity-overlay');
+        if (!overlay) return;
+        const type = overlay.dataset.type;
+        const id = overlay.dataset.id;
+        const list = this[type];
+        const entity = list.find(item => item.id === id);
+        if (!entity) return;
+
+        const nameInput = document.getElementById('edit-entity-name');
+        const emailInput = document.getElementById('edit-entity-email');
+        const notesInput = document.getElementById('edit-entity-notes');
+        const projectSelect = document.getElementById('edit-entity-project');
+        const profileList = document.getElementById('edit-entity-profiles');
+
+        entity.name = nameInput ? nameInput.value.trim() : entity.name;
+        entity.notes = notesInput ? notesInput.value.trim() : entity.notes;
+        if (type === 'profiles' && emailInput) {
+            entity.email = emailInput.value.trim();
+        }
+        if (type === 'teams' && projectSelect) {
+            entity.projectId = projectSelect.value || '';
+        }
+        if (type === 'teams' && profileList) {
+            entity.profileIds = Array.from(profileList.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(input => input.value)
+                .join(',');
+        }
+
         entity.updatedAt = new Date().toISOString();
         await this.saveEntity(type, entity);
+        this.closeEditEntity();
         this.renderSettings();
     },
 
@@ -2638,6 +2715,15 @@ updateTimeline(shouldScroll = false) {
         if (!projectId) return '';
         const project = this.projects.find(item => item.id === projectId);
         return project ? project.name : '';
+    },
+
+    getProfileNamesByIds(profileIds) {
+        if (!profileIds) return [];
+        const ids = profileIds.split(',').filter(Boolean);
+        return ids.map(id => {
+            const profile = this.profiles.find(item => item.id === id);
+            return profile ? profile.name : id;
+        });
     },
 
 commence() {
@@ -2719,6 +2805,7 @@ window.addEventListener('mouseup', () => {
                 <div style="margin-bottom: 12px;">
                     <select id="settings-teams-project" class="subtle-select"></select>
                 </div>
+                <div id="settings-teams-profiles" style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; max-height: 140px; overflow-y: auto;"></div>
                 <div id="settings-team-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
@@ -2760,6 +2847,27 @@ window.addEventListener('mouseup', () => {
                 </div>
                 <div id="settings-project-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Entity Overlay -->
+<div id="edit-entity-overlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 1300; justify-content:center; align-items:center; padding: 40px;">
+    <div class="meeting-panel" style="max-width: 520px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2 id="edit-entity-title" style="margin:0; color:white; font-size: 18px; font-weight: 600;">Edit</h2>
+            <button onclick="ENGINE.closeEditEntity()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap: 12px;">
+            <input id="edit-entity-name" placeholder="Name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <input id="edit-entity-email" placeholder="Email" style="display:none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <select id="edit-entity-project" class="subtle-select" style="display:none;"></select>
+            <div id="edit-entity-profiles" style="display:none; flex-direction:column; gap:6px; max-height: 160px; overflow-y: auto;"></div>
+            <textarea id="edit-entity-notes" placeholder="Notes" style="width: 100%; height: 100px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; outline: none; resize: none;"></textarea>
+        </div>
+        <div style="display:flex; gap: 12px; margin-top: 20px;">
+            <button onclick="ENGINE.closeEditEntity()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button onclick="ENGINE.saveEditEntity()" style="flex: 1; padding: 12px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
