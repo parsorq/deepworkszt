@@ -1008,6 +1008,7 @@ const GOOGLE_DISCOVERY_DOCS = [
 let googleTokenClient = null;
 let googleAccessToken = null;
 let googleReadyPromise = null;
+let googleReady = false;
 let loginOverlay = null;
 
 function loadGoogleScript(src) {
@@ -1076,7 +1077,9 @@ function ensureGoogleReady() {
                 waitForGsi();
             });
         })
-    ]);
+    ]).then(() => {
+        googleReady = true;
+    });
     return googleReadyPromise;
 }
 
@@ -1115,6 +1118,43 @@ async function handleLogin(promptMode = 'consent') {
     return new Promise((resolve, reject) => {
         if (!googleTokenClient) {
             reject(new Error('Google sign-in is not ready. Refresh and try again.'));
+            return;
+        }
+        const timeoutId = setTimeout(() => {
+            reject(new Error('Google sign-in timed out. Check popup blockers or privacy settings.'));
+        }, 15000);
+        googleTokenClient.callback = async (response) => {
+            clearTimeout(timeoutId);
+            if (response.error) {
+                const details = response.error_description || response.error;
+                reject(new Error(`Google sign-in failed: ${details}`));
+                return;
+            }
+            googleAccessToken = response.access_token;
+            gapi.client.setToken({ access_token: googleAccessToken });
+            try {
+                const profile = await fetchUserProfile();
+                const allowed = await validateMasterRegistry(profile.email);
+                if (!allowed) {
+                    reject(new Error('Access denied by Master Registry. Add your email to the registry sheet.'));
+                    return;
+                }
+                ENGINE.userEmail = profile.email;
+                localStorage.setItem('ENGINE_LAST_USER', profile.email);
+                await ENGINE.init();
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        };
+        googleTokenClient.requestAccessToken({ prompt: promptMode });
+    });
+}
+
+function handleLoginInteractive(promptMode = 'select_account') {
+    return new Promise((resolve, reject) => {
+        if (!googleReady || !googleTokenClient) {
+            reject(new Error('Google services are still loading. Please click Log in again.'));
             return;
         }
         const timeoutId = setTimeout(() => {
@@ -1228,7 +1268,16 @@ function showLoginUI() {
         btn.style.opacity = '0.6';
         setLoginStatus('Connecting to Google...');
         try {
-            await handleLogin('consent');
+            if (!googleReady || !googleTokenClient) {
+                setLoginStatus('Loading Google services... click Log in again.', false);
+                ensureGoogleReady().catch((err) => {
+                    setLoginStatus(err?.message || 'Unable to load Google services. Check blockers or network.', true);
+                });
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                return;
+            }
+            await handleLoginInteractive('select_account');
             loginOverlay.remove();
         } catch (err) {
             console.error('Login failed:', err);
