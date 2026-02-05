@@ -1330,7 +1330,7 @@ renderTransactions() {
 },
 
 // Add a new transaction
-addTransaction(desc, amount, category = 'General', date = null, time = null, eventId = '') {
+addTransaction(desc, amount, category = 'General', subcategory = '', date = null, time = null, eventId = '') {
     const now = new Date();
     const txDate = date || this.formatDate(now.toISOString().split('T')[0]);
     const txTime = time || now.toTimeString().slice(0, 5);
@@ -1341,6 +1341,7 @@ addTransaction(desc, amount, category = 'General', date = null, time = null, eve
         desc,
         amount: parseFloat(amount),
         category,
+        subcategory: subcategory || '',
         eventId: eventId || ''
     };
     this.transactions.unshift(tx);
@@ -2158,7 +2159,7 @@ async ensureSheetStructure() {
 
     await Promise.all([
         this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget']),
-        this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category', 'eventId']),
+        this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category', 'subcategory', 'eventId']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'notes', 'createdAt', 'updatedAt']),
@@ -2186,7 +2187,7 @@ async loadData() {
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A:G`
+            range: `${this.sheetNames.transactions}!A:H`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -2238,7 +2239,7 @@ async loadData() {
     });
 
     this.transactions = txRows.slice(1).map((row) => {
-        const [id, date, time, desc, amount, category, eventId] = row;
+        const [id, date, time, desc, amount, category, subcategory, eventId] = row;
         return {
             id,
             date,
@@ -2246,6 +2247,7 @@ async loadData() {
             desc,
             amount: parseFloat(String(amount || '0').replace(/,/g, '')),
             category,
+            subcategory: subcategory || '',
             eventId: eventId || ''
         };
     }).filter(tx => tx.date);
@@ -2439,20 +2441,21 @@ async saveTransaction(tx) {
         tx.desc,
         this.formatAmount(tx.amount),
         tx.category,
+        tx.subcategory || '',
         tx.eventId || ''
     ];
     const rowIndex = await this.findRowById(this.sheetNames.transactions, tx.id);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A${rowIndex}:G${rowIndex}`,
+            range: `${this.sheetNames.transactions}!A${rowIndex}:H${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A:G`,
+            range: `${this.sheetNames.transactions}!A:H`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -3028,7 +3031,7 @@ updateTimeline(shouldScroll = false) {
         if (budgetInput) event.budget = budgetInput.value.trim();
         const date = this.formatDate(document.getElementById('timeblock-date')?.value || this.selectedDate);
         const time = document.getElementById('timeblock-start')?.value || new Date().toTimeString().slice(0, 5);
-        this.addTransaction(desc, -Math.abs(amountVal), 'Timeblock', date, time, event.id);
+        this.addTransaction(desc, -Math.abs(amountVal), 'Timeblock', '', date, time, event.id);
         if (descInput) descInput.value = '';
         if (amountInput) amountInput.value = this.formatAmount(0);
         this.renderPanelExpenses();
@@ -3062,6 +3065,7 @@ updateTimeline(shouldScroll = false) {
         const dateInput = document.getElementById('transaction-date');
         const timeInput = document.getElementById('transaction-time');
         const categoryInput = document.getElementById('transaction-category');
+        const subcategoryInput = document.getElementById('transaction-subcategory');
 
         overlay.dataset.sign = String(sign);
         delete overlay.dataset.txId;
@@ -3072,6 +3076,7 @@ updateTimeline(shouldScroll = false) {
         if (dateInput) dateInput.value = this.formatDate(now.toISOString().split('T')[0]);
         if (timeInput) timeInput.value = now.toTimeString().slice(0, 5);
         if (categoryInput) categoryInput.value = '';
+        if (subcategoryInput) subcategoryInput.value = '';
         overlay.style.display = 'flex';
     },
 
@@ -3087,6 +3092,7 @@ updateTimeline(shouldScroll = false) {
         const dateInput = document.getElementById('transaction-date');
         const timeInput = document.getElementById('transaction-time');
         const categoryInput = document.getElementById('transaction-category');
+        const subcategoryInput = document.getElementById('transaction-subcategory');
 
         overlay.dataset.sign = String(sign);
         overlay.dataset.txId = tx.id;
@@ -3096,6 +3102,7 @@ updateTimeline(shouldScroll = false) {
         if (dateInput) dateInput.value = this.formatDate(tx.date);
         if (timeInput) timeInput.value = tx.time || '00:00';
         if (categoryInput) categoryInput.value = tx.category || '';
+        if (subcategoryInput) subcategoryInput.value = tx.subcategory || '';
         overlay.style.display = 'flex';
     },
 
@@ -3118,7 +3125,7 @@ updateTimeline(shouldScroll = false) {
         amountInput.addEventListener('input', () => {
             amountInput.value = amountInput.value.replace(/[^\d.,]/g, '');
         });
-        const inputIds = ['transaction-amount', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category'];
+        const inputIds = ['transaction-amount', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category', 'transaction-subcategory'];
         inputIds.forEach((id) => {
             const input = document.getElementById(id);
             if (!input) return;
@@ -3140,6 +3147,7 @@ updateTimeline(shouldScroll = false) {
         const dateInput = document.getElementById('transaction-date');
         const timeInput = document.getElementById('transaction-time');
         const categoryInput = document.getElementById('transaction-category');
+        const subcategoryInput = document.getElementById('transaction-subcategory');
 
         const amountVal = amountInput ? parseFloat(String(amountInput.value).replace(/,/g, '')) : NaN;
         if (!amountInput || Number.isNaN(amountVal)) return;
@@ -3147,6 +3155,7 @@ updateTimeline(shouldScroll = false) {
         const date = dateInput ? this.formatDate(dateInput.value) : this.formatDate(new Date().toISOString().split('T')[0]);
         const time = timeInput ? timeInput.value : new Date().toTimeString().slice(0, 5);
         const category = categoryInput && categoryInput.value.trim() ? categoryInput.value.trim() : 'General';
+        const subcategory = subcategoryInput && subcategoryInput.value.trim() ? subcategoryInput.value.trim() : '';
 
         if (txId) {
             const tx = this.transactions.find(item => item.id === txId);
@@ -3156,12 +3165,13 @@ updateTimeline(shouldScroll = false) {
                 tx.date = date;
                 tx.time = time;
                 tx.category = category;
+                tx.subcategory = subcategory;
                 void this.saveTransaction(tx);
                 this.renderTransactions();
                 this.renderDay();
             }
         } else {
-            this.addTransaction(desc, sign * Math.abs(amountVal), category, date, time);
+            this.addTransaction(desc, sign * Math.abs(amountVal), category, subcategory, date, time);
         }
         this.closeTransactionModal();
     },
@@ -3327,6 +3337,10 @@ window.addEventListener('mouseup', () => {
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input id="transaction-time" type="time" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 <input id="transaction-category" placeholder="Category" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input id="transaction-subcategory" placeholder="Subcategory" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                <div></div>
             </div>
         </div>
         <div style="display:flex; gap: 12px; margin-top: 20px;">
