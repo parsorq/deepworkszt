@@ -1372,6 +1372,8 @@ async init() {
     // Global capture handlers for ledger interactions
     document.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
+        if (e.target.closest('#quick-create-menu')) return;
+        if (e.target.closest('#block-context-menu')) return;
         const bounds = this.getEventsBounds();
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
@@ -1746,8 +1748,18 @@ handleMouseUp() {
     let start = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
     let end = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
 
-    // Default to a 15-minute block on click
-    if (!this.dragHasMoved || start === end) end = Math.min(24, start + 0.25);
+    // Only create a block if the user actually dragged
+    if (!this.dragHasMoved || start === end) {
+        this.isDragging = false;
+        this.dragStartH = null;
+        this.dragEndH = null;
+        this.dragHasMoved = false;
+        this.dragStartClient = null;
+        const ghost = document.getElementById('ghost-selection');
+        if (ghost) ghost.style.display = 'none';
+        this.renderDay();
+        return;
+    }
 
     if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
 
