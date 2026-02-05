@@ -790,6 +790,7 @@ body {
                 <button class="config-button" id="cfg-level" onclick="ENGINE.cycle('scope')">LEVEL: INDIVIDUAL</button>
                 <button class="config-button" id="cfg-role" onclick="ENGINE.cycle('role')">ROLE: ARCHITECT</button>
                 <button class="config-button" id="cfg-lens" onclick="ENGINE.cycle('lens')">LENS: BOTH</button>
+                <button class="config-button" onclick="ENGINE.openSettings()">SETTINGS</button>
             </div>
         </div>
 
@@ -1094,6 +1095,9 @@ const ENGINE = {
 
     db: {},
     transactions: [],
+    teams: [],
+    profiles: [],
+    institutions: [],
     userEmail: null,
     userSheetId: null,
     sheetInfo: null,
@@ -1101,7 +1105,10 @@ const ENGINE = {
     sheetNames: {
         events: 'Events',
         transactions: 'Transactions',
-        meta: 'Meta'
+        meta: 'Meta',
+        teams: 'Teams',
+        profiles: 'Profiles',
+        institutions: 'Institutions'
     },
 
     isDragging: false,
@@ -1938,7 +1945,10 @@ async ensureSheetStructure() {
     await Promise.all([
         this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type']),
         this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category']),
-        this.writeHeaders(this.sheetNames.meta, ['key', 'value'])
+        this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
+        this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt'])
     ]);
 },
 
@@ -1954,7 +1964,7 @@ async writeHeaders(sheetName, headers) {
 
 async loadData() {
     await this.ensureUserStorage();
-    const [eventsRes, txRes, metaRes] = await Promise.all([
+    const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.events}!A:F`
@@ -1966,12 +1976,27 @@ async loadData() {
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.meta}!A:B`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.teams}!A:E`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.profiles}!A:E`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.institutions}!A:E`
         })
     ]);
 
     const eventsRows = eventsRes.result.values || [];
     const txRows = txRes.result.values || [];
     const metaRows = metaRes.result.values || [];
+    const teamRows = teamsRes.result.values || [];
+    const profileRows = profilesRes.result.values || [];
+    const institutionRows = institutionsRes.result.values || [];
 
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
@@ -2011,6 +2036,77 @@ async loadData() {
         if (key) meta[key] = value;
     });
     if (meta.currentNet) this.currentNet = parseFloat(meta.currentNet);
+
+    this.teams = this.parseEntities(teamRows);
+    this.profiles = this.parseEntities(profileRows);
+    this.institutions = this.parseEntities(institutionRows);
+},
+
+parseEntities(rows) {
+    return rows.slice(1).map((row) => {
+        const [id, name, notes, createdAt, updatedAt] = row;
+        if (!id) return null;
+        return { id, name, notes, createdAt, updatedAt };
+    }).filter(Boolean);
+},
+
+generateEntityId(prefix) {
+    return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+},
+
+getSheetNameForEntity(type) {
+    if (type === 'teams') return this.sheetNames.teams;
+    if (type === 'profiles') return this.sheetNames.profiles;
+    if (type === 'institutions') return this.sheetNames.institutions;
+    return null;
+},
+
+async saveEntity(type, entity) {
+    const sheetName = this.getSheetNameForEntity(type);
+    if (!sheetName || !entity || !entity.id) return;
+    await this.ensureUserStorage();
+    const row = [entity.id, entity.name, entity.notes || '', entity.createdAt, entity.updatedAt];
+    const rowIndex = await this.findRowById(sheetName, entity.id);
+    if (rowIndex) {
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: this.userSheetId,
+            range: `${sheetName}!A${rowIndex}:E${rowIndex}`,
+            valueInputOption: 'RAW',
+            resource: { values: [row] }
+        });
+    } else {
+        await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: this.userSheetId,
+            range: `${sheetName}!A:E`,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: { values: [row] }
+        });
+    }
+},
+
+async deleteEntity(type, id) {
+    const sheetName = this.getSheetNameForEntity(type);
+    if (!sheetName || !id) return;
+    await this.ensureUserStorage();
+    const rowIndex = await this.findRowById(sheetName, id);
+    if (!rowIndex || !this.sheetInfo || !this.sheetInfo[sheetName]) return;
+
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.userSheetId,
+        resource: {
+            requests: [{
+                deleteDimension: {
+                    range: {
+                        sheetId: this.sheetInfo[sheetName],
+                        dimension: 'ROWS',
+                        startIndex: rowIndex - 1,
+                        endIndex: rowIndex
+                    }
+                }
+            }]
+        }
+    });
 },
 
 async saveEvent(event) {
@@ -2381,6 +2477,86 @@ updateTimeline(shouldScroll = false) {
         container.innerHTML = months.map(m => `<div><div class="p-label">${m}</div><div class="cal-grid">${Array.from({length:31}, () => `<div class="dot"></div>`).join('')}</div></div>`).join('');
     },
 
+    openSettings() {
+        const overlay = document.getElementById('settings-overlay');
+        if (!overlay) return;
+        this.renderSettings();
+        overlay.style.display = 'flex';
+    },
+
+    closeSettings() {
+        const overlay = document.getElementById('settings-overlay');
+        if (overlay) overlay.style.display = 'none';
+    },
+
+    renderSettings() {
+        const renderList = (items, type) => items.map((item) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px; gap: 10px;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <div style="font-size: 12px; color: #ffffff; font-weight: 600;">${item.name}</div>
+                    <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family:'SF Mono';">${item.id}</div>
+                    <div style="font-size: 10px; color: rgba(255,255,255,0.4);">${item.notes || ''}</div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button onclick="ENGINE.editEntity('${type}', '${item.id}')" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">EDIT</button>
+                    <button onclick="ENGINE.removeEntity('${type}', '${item.id}')" style="background: rgba(255,59,48,0.15); border: 1px solid rgba(255,59,48,0.3); color: #FF453A; padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">REMOVE</button>
+                </div>
+            </div>
+        `).join('');
+
+        const teamList = document.getElementById('settings-team-list');
+        const profileList = document.getElementById('settings-profile-list');
+        const institutionList = document.getElementById('settings-institution-list');
+
+        if (teamList) teamList.innerHTML = this.teams.length ? renderList(this.teams, 'teams') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No teams yet.</div>';
+        if (profileList) profileList.innerHTML = this.profiles.length ? renderList(this.profiles, 'profiles') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No profiles yet.</div>';
+        if (institutionList) institutionList.innerHTML = this.institutions.length ? renderList(this.institutions, 'institutions') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No institutions yet.</div>';
+    },
+
+    async addEntity(type) {
+        const nameInput = document.getElementById(`settings-${type}-name`);
+        const notesInput = document.getElementById(`settings-${type}-notes`);
+        if (!nameInput) return;
+        const name = nameInput.value.trim();
+        if (!name) return;
+        const now = new Date().toISOString();
+        const entity = {
+            id: this.generateEntityId(type.slice(0, -1)),
+            name,
+            notes: notesInput ? notesInput.value.trim() : '',
+            createdAt: now,
+            updatedAt: now
+        };
+        this[type].unshift(entity);
+        await this.saveEntity(type, entity);
+        nameInput.value = '';
+        if (notesInput) notesInput.value = '';
+        this.renderSettings();
+    },
+
+    async editEntity(type, id) {
+        const list = this[type];
+        const entity = list.find(item => item.id === id);
+        if (!entity) return;
+        const name = prompt('Edit name:', entity.name);
+        if (!name) return;
+        const notes = prompt('Edit notes:', entity.notes || '') || '';
+        entity.name = name.trim();
+        entity.notes = notes.trim();
+        entity.updatedAt = new Date().toISOString();
+        await this.saveEntity(type, entity);
+        this.renderSettings();
+    },
+
+    async removeEntity(type, id) {
+        const list = this[type];
+        const idx = list.findIndex(item => item.id === id);
+        if (idx === -1) return;
+        const [removed] = list.splice(idx, 1);
+        await this.deleteEntity(type, removed.id);
+        this.renderSettings();
+    },
+
 commence() {
     this.isMeetingActive = !this.isMeetingActive;
     const btn = document.getElementById('commence-btn');
@@ -2435,6 +2611,54 @@ window.addEventListener('mouseup', () => {
         <div style="display: flex; gap: 12px; margin-top: 24px;">
             <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
             <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE SESSION</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Overlay -->
+<div id="settings-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 1200; justify-content:center; align-items:center; padding: 40px;">
+    <div class="meeting-panel" style="max-width: 820px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2 style="margin:0; color:white; font-size: 20px; font-weight: 600;">Settings Registry</h2>
+            <button onclick="ENGINE.closeSettings()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr; gap: 20px;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">TEAMS</div>
+                    <button onclick="ENGINE.addEntity('teams')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD TEAM</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-teams-name" placeholder="Team name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-teams-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-team-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PROFILES</div>
+                    <button onclick="ENGINE.addEntity('profiles')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROFILE</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-profiles-name" placeholder="Profile name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-profiles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-profile-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">INSTITUTIONS</div>
+                    <button onclick="ENGINE.addEntity('institutions')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD INSTITUTION</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-institutions-name" placeholder="Institution name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-institutions-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-institution-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
         </div>
     </div>
 </div>
