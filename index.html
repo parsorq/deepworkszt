@@ -1000,7 +1000,11 @@ async function validateMasterRegistry(email) {
 async function handleLogin() {
     await ensureGoogleReady();
     return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            reject(new Error('Google sign-in timed out. Check popup blockers or privacy settings.'));
+        }, 15000);
         googleTokenClient.callback = async (response) => {
+            clearTimeout(timeoutId);
             if (response.error) {
                 reject(new Error('Google sign-in failed.'));
                 return;
@@ -1050,6 +1054,16 @@ function showLoginUI() {
     document.body.appendChild(loginOverlay);
 
     const btn = document.getElementById('engine-login-btn');
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    setLoginStatus('Loading Google services...');
+    ensureGoogleReady().then(() => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        setLoginStatus('Sign in to sync with your Sheets ledger.');
+    }).catch(() => {
+        setLoginStatus('Unable to load Google services. Check blockers or network.', true);
+    });
     btn.addEventListener('click', async () => {
         btn.disabled = true;
         btn.style.opacity = '0.6';
