@@ -1194,6 +1194,7 @@ const ENGINE = {
     quickCreateStartH: null,
     dragHasMoved: false,
     dragStartClient: null,
+    dragPointerId: null,
 
     db: {},
     transactions: [],
@@ -1250,6 +1251,9 @@ async init() {
     // Global listeners for smooth drag
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     window.addEventListener('mouseup', () => this.handleMouseUp());
+    document.addEventListener('pointermove', (e) => this.handlePointerMove(e), true);
+    document.addEventListener('pointerup', (e) => this.handlePointerUp(e), true);
+    document.addEventListener('pointercancel', (e) => this.handlePointerUp(e), true);
 
     // Global capture handlers for ledger interactions
     document.addEventListener('mousedown', (e) => {
@@ -1769,7 +1773,27 @@ startDragFromEvent(e) {
     this.dragEndH = startH;
     this.dragHasMoved = false;
     this.dragStartClient = { x: e.clientX, y: e.clientY };
+    if (e.pointerId !== undefined) {
+        this.dragPointerId = e.pointerId;
+        if (e.target && e.target.setPointerCapture) {
+            try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+    }
+    e.preventDefault();
     requestAnimationFrame(() => this.updateGhost());
+},
+
+handlePointerMove(e) {
+    if (!this.isDragging) return;
+    if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
+    this.handleMouseMove(e);
+},
+
+handlePointerUp(e) {
+    if (!this.isDragging) return;
+    if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
+    this.handleMouseUp();
+    this.dragPointerId = null;
 },
 
 showBlockMenu(x, y, idx) {
@@ -2916,6 +2940,7 @@ renderDay() {
             <div class="ledger-events-col" style="position: relative;" onmousedown="ENGINE.handleMouseDown(event)" oncontextmenu="ENGINE.handleContextMenu(event)">
                 <div id="time-now-line"></div>
                 <div class="events-hit-layer"
+                    onpointerdown="ENGINE.startDragFromEvent(event)"
                     onmousedown="ENGINE.startDragFromEvent(event)"
                     oncontextmenu="ENGINE.handleContextMenu(event)"
                     style="position:absolute; inset:0; z-index:500; pointer-events:auto; cursor: crosshair;"></div>`;
