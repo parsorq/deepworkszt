@@ -1587,14 +1587,16 @@ handleMouseDown(e) {
     }
     if (e.target.closest('.reminder-marker')) return;
 
-    // Only start drag on left mouse button in events column
+    // Only start drag on left mouse button inside events column bounds
     if (e.button !== 0) return;
-    const eventsCol = e.target.closest('.ledger-events-col');
+    const eventsCol = document.querySelector('.ledger-events-col');
     if (!eventsCol) return;
+    const bounds = eventsCol.getBoundingClientRect();
+    if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
     this.hideQuickCreateMenu();
 
     const container = document.getElementById('ledger-container');
-    const rect = eventsCol.getBoundingClientRect();
+    const rect = bounds;
     const scrollTop = container.scrollTop;
     const offsetY = e.clientY - rect.top + scrollTop;
 
@@ -1735,8 +1737,10 @@ handleContextMenu(e) {
     e.stopPropagation();
     if (e.target.closest('.reminder-marker')) return;
     if (e.target.closest('.transaction-marker')) return;
-    const eventsCol = e.target.closest('.ledger-events-col');
+    const eventsCol = document.querySelector('.ledger-events-col');
     if (!eventsCol) return;
+    const bounds = eventsCol.getBoundingClientRect();
+    if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
     this.hideQuickCreateMenu();
     this.hideBlockMenu();
 
@@ -1750,7 +1754,7 @@ handleContextMenu(e) {
     }
     const container = document.getElementById('ledger-container');
     if (!container) return;
-    const rect = eventsCol.getBoundingClientRect();
+    const rect = bounds;
     const scrollTop = container.scrollTop;
     const offsetY = e.clientY - rect.top + scrollTop;
     const rawH = offsetY / this.HOUR_HEIGHT;
