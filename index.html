@@ -568,6 +568,12 @@ body.dragging .reminder-marker {
         box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.45), 0 0 18px rgba(0, 255, 135, 0.25);
     }
 
+    .panel-section--expandable[open],
+    .panel-section--expandable.active-input-row {
+        border-color: rgba(0, 255, 135, 0.25) !important;
+        box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.18), 0 0 12px rgba(0, 255, 135, 0.12);
+    }
+
     .data-row {
         background: transparent !important;
         border: 0.5px solid #1B222C !important;
@@ -2866,7 +2872,7 @@ updatePanelContext() {
     // --- 4. STAKEHOLDERS ---
     if (showTimeblockDetails) {
         html += `
-            <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); margin-bottom: 12px;">
+            <details class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); margin-bottom: 12px;">
                 <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
@@ -2893,7 +2899,7 @@ updatePanelContext() {
     // --- 5. SESSION AGENDA (Advanced) ---
     if (showTimeblockDetails) {
         html += `
-            <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
+            <details class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
                 <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
@@ -2923,7 +2929,7 @@ updatePanelContext() {
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         const expenseDisplayItems = [...expenseItems].reverse();
         html += `
-            <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
+            <details class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
                 <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
