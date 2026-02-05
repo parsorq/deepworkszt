@@ -1916,6 +1916,15 @@ startDragFromEvent(e) {
 },
 
 getEventAtPoint(clientX, clientY) {
+    const elements = document.elementsFromPoint(clientX, clientY);
+    const block = elements.find((el) => el && el.closest && el.closest('[data-block-idx]'));
+    if (block && block.closest) {
+        const container = block.closest('[data-block-idx]');
+        if (container && container.dataset && container.dataset.blockIdx !== undefined) {
+            const idx = parseInt(container.dataset.blockIdx, 10);
+            if (!Number.isNaN(idx)) return idx;
+        }
+    }
     const bounds = this.getEventsBounds();
     if (!bounds) return null;
     const columnLeft = bounds.left + 80;
