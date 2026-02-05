@@ -1193,6 +1193,7 @@ const ENGINE = {
     currentEventIdx: null, // Track which event is being edited
     quickCreateStartH: null,
     dragHasMoved: false,
+    dragStartClient: null,
 
     db: {},
     transactions: [],
@@ -1592,6 +1593,7 @@ handleMouseDown(e) {
     this.dragStartH = Math.max(0, Math.min(24, rawH));
     this.dragEndH = this.dragStartH;
     this.dragHasMoved = false;
+    this.dragStartClient = { x: e.clientX, y: e.clientY };
 
     // Immediately show ghost for responsiveness
     requestAnimationFrame(() => this.updateGhost());
@@ -1609,7 +1611,13 @@ handleMouseMove(e) {
     const scrollTop = container.scrollTop;
     const relativeY = e.clientY - rect.top + scrollTop;
 
-    this.dragHasMoved = true;
+    if (this.dragStartClient) {
+        const dx = Math.abs(e.clientX - this.dragStartClient.x);
+        const dy = Math.abs(e.clientY - this.dragStartClient.y);
+        this.dragHasMoved = dx > 3 || dy > 3;
+    } else {
+        this.dragHasMoved = true;
+    }
     // Constrain to 0-24 hour range
     const rawH = relativeY / this.HOUR_HEIGHT;
     this.dragEndH = Math.max(0, Math.min(24, rawH));
@@ -1628,21 +1636,12 @@ handleMouseMove(e) {
 
 handleMouseUp() {
     if (!this.isDragging) return;
-    if (!this.dragHasMoved) {
-        this.isDragging = false;
-        this.dragStartH = null;
-        this.dragEndH = null;
-        const ghost = document.getElementById('ghost-selection');
-        if (ghost) ghost.style.display = 'none';
-        return;
-    }
-
     const step = 0.25; // 15 min increments
     let start = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
     let end = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
 
-    // Minimum duration of 15 mins if user just clicked
-    if (start === end) end += 0.25;
+    // Default to a 30-minute block on click (Google Calendar-style)
+    if (!this.dragHasMoved || start === end) end = Math.min(24, start + 0.5);
 
     if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
 
@@ -1672,6 +1671,7 @@ handleMouseUp() {
     this.dragStartH = null;
     this.dragEndH = null;
     this.dragHasMoved = false;
+    this.dragStartClient = null;
 
     // Hide the ghost
     const ghost = document.getElementById('ghost-selection');
@@ -1703,7 +1703,7 @@ updateGhost() {
     const step = 0.25;
     const topH = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
     let bottomH = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
-    if (topH === bottomH) bottomH += 0.25;
+    if (topH === bottomH) bottomH += 0.5;
     const duration = bottomH - topH;
 
     g.style.display = 'block';
