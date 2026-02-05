@@ -551,7 +551,13 @@ body.dragging .events-hit-layer {
         border: 0.5px solid #1B222C !important;
     }
 
-    .reminder-marker { cursor: pointer !important; }
+    .reminder-marker {
+        cursor: pointer !important;
+        transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+    .reminder-marker:hover {
+        transform: translateY(-1px);
+    }
 
     @keyframes spark {
         0% { transform: scale(0.6); opacity: 0.9; }
@@ -3390,7 +3396,7 @@ renderDay() {
             } else {
                 const topPos = session.start * this.HOUR_HEIGHT;
                 reminderMarkers.push(`
-                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; left: 80px; right: 12px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 120; pointer-events: auto;"
+                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; right: 22px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 900; pointer-events: auto; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);"
                         onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
                         <div style="display:flex; align-items:center; gap:8px; pointer-events:none; text-align:right;">
                             <div style="width:6px; height:6px; border-radius:50%; background:${color}; opacity:0.85; box-shadow: 0 0 0 2px rgba(255,255,255,0.04);"></div>
@@ -3409,21 +3415,6 @@ renderDay() {
         const duration = session.end - session.start;
         const durationStr = duration >= 1 ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : `${Math.round(duration * 60)}m`;
         const deleteStyle = height <= 40 ? 'top: 50%; transform: translateY(-50%);' : '';
-        const overlapReminders = events
-            .map((r, rIdx) => ({ r, rIdx }))
-            .filter(({ r }) => r.type === 'REMINDER' && !r.allDay && r.start >= session.start && r.start <= session.end);
-        const reminderStrip = overlapReminders.length ? `
-            <div style="margin-top: 6px; display:flex; gap:6px; flex-wrap:wrap;">
-                ${overlapReminders.slice(0, 2).map(({ r, rIdx }) => `
-                    <span onclick="event.stopPropagation(); ENGINE.openMeeting(${rIdx})" style="display:flex; align-items:center; gap:6px; background: rgba(255,255,255,0.04); border-radius: 6px; padding: 2px 6px; font-size: 9px; color: rgba(255,255,255,0.75); cursor: pointer;">
-                        <span style="width:5px; height:5px; border-radius:50%; background:${colors.REMINDER};"></span>
-                        ${r.label || 'Reminder'}
-                    </span>
-                `).join('')}
-                ${overlapReminders.length > 2 ? `<span style="font-size:9px; color: rgba(255,255,255,0.5);">+${overlapReminders.length - 2}</span>` : ''}
-            </div>
-        ` : '';
-
         // Responsive content based on block height
         const isCompact = height <= 35;  // 15min or less
         const isMedium = height > 35 && height <= 150;  // ~1.5h
@@ -3443,7 +3434,6 @@ renderDay() {
                     <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
                     <div style="color: white; font-weight: 600; font-size: 12px; margin-top: 2px;">${session.label}</div>
                     <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">${formatTime(session.start)} – ${formatTime(session.end)} · ${durationStr}</div>
-                    ${reminderStrip}
                 </div>`;
         } else {
             // Full: all info
@@ -3458,7 +3448,6 @@ renderDay() {
                             <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">${formatTime(session.start)} – ${formatTime(session.end)}</span>
                             <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3);">${durationStr}</span>
                         </div>
-                        ${reminderStrip}
                     </div>
                 </div>`;
         }
