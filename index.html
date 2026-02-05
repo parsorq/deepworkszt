@@ -2783,21 +2783,21 @@ updatePanelContext() {
     
     // --- 1. HEADER (Strategic Objective) ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1fr auto; gap: 16px; margin-bottom: 16px; padding: 0 4px;">
+        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1fr auto; gap: 20px; margin-bottom: 18px; padding: 0 4px;">
             <div style="flex: 1;">
                 <label style="color: ${activeColor}; font-weight: 800; font-size: 10px; letter-spacing: 2px; text-transform:uppercase;">Timeblock</label>
-                <input id="strategic-objective-input" type="text" value="${activeEvent?.label || 'New Session'}" 
-                       style="background:transparent; border:none; color:white; font-size:28px; font-weight:700; width:100%; outline:none; letter-spacing: -1px;">
+                <input id="strategic-objective-input" type="text" value="${activeEvent?.label || 'New Session'}" placeholder="Add a clear session title" 
+                       style="background:transparent; border:none; color:white; font-size:30px; font-weight:700; width:100%; outline:none; letter-spacing: -1px;">
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                 <div style="display: flex; gap: 8px; align-items:center;">
-                    <input id="timeblock-date" type="text" value="${this.formatDate(eventDate)}" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 120px;">
+                    <input id="timeblock-date" type="text" value="${this.formatDate(eventDate)}" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 120px;">
                     ${this.activeType === 'REMINDER' ? `<label style="display:flex; align-items:center; gap:6px; font-size:10px; color: rgba(255,255,255,0.6);">
                         <input id="timeblock-all-day" type="checkbox" ${activeEvent?.allDay ? 'checked' : ''} />
                         All day
                     </label>` : ''}
-                    <input id="timeblock-start" type="text" value="${eventStart}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
-                    <input id="timeblock-end" type="text" value="${eventEnd}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
+                    <input id="timeblock-start" type="text" value="${eventStart}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
+                    <input id="timeblock-end" type="text" value="${eventEnd}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
                 </div>
                 <div id="timeblock-duration" style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); ${this.activeType === 'REMINDER' ? 'display:none;' : ''}">
                     ${this.getDurationLabel(eventStart, eventEnd)}
@@ -2808,7 +2808,7 @@ updatePanelContext() {
 
     // --- 2. LOCATION / URL TOGGLE ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.015); padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03);">
+        <div style="grid-column: span 2; pointer-events: all; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.015); padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03);">
             <div style="display: flex; background: rgba(0,0,0,0.15); padding: 4px; border-radius: 8px;">
                 <button onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
                         style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 13px; color: rgba(255,255,255,0.65); transition: all 0.15s;">
@@ -2824,55 +2824,63 @@ updatePanelContext() {
     `;
 
     const showTimeblockDetails = this.activeType !== 'REMINDER';
-    // --- 3. SESSION AGENDA ---
+    // --- 3. SESSION AGENDA (Advanced) ---
     if (showTimeblockDetails) {
         html += `
-            <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 14px 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
-                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Agenda</label>
+            <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
+                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    Session Agenda
+                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
+                </summary>
+                <div style="display:flex; justify-content:space-between; margin: 10px 0 8px;">
+                    <div></div>
                     <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
                 </div>
                 <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
                         <div style="display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
                             <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
-                            <input type="text" value="${item}" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
+                            <input type="text" value="${item}" placeholder="Decision, objective, or question..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;">
                             <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
                         </div>
                     `).join('')}
                 </div>
-            </div>
+            </details>
         `;
     }
 
     // --- 4. STAKEHOLDERS & NOTES ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showTimeblockDetails ? '1fr 1.5fr' : '1fr'}; gap: 12px; margin-bottom: 12px;">
+        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showTimeblockDetails ? '1fr 1.5fr' : '1fr'}; gap: 14px; margin-bottom: 14px;">
             ${showTimeblockDetails ? `
-            <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03);">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Stakeholders</label>
-                    <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.75); font-size:8px; font-weight:800; cursor:pointer;">+ INVITE</span>
+            <details class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03);">
+                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    Stakeholders
+                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
+                </summary>
+                <div style="display:flex; justify-content:space-between; margin: 10px 0 8px;">
+                    <div></div>
+                    <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" style="max-height: 105px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                <div id="stakeholder-list" style="max-height: 110px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="color:${activeColor};">●</span>
-                            <input type="text" value="${name}" placeholder="Stakeholder..." style="flex:1; background:transparent; border:none; color:white; font-size:11px; outline:none;">
+                            <input type="text" value="${name}" placeholder="Name or org..." style="flex:1; background:transparent; border:none; color:white; font-size:12px; outline:none;">
                         </div>
                     `).join('')}
                 </div>
-            </div>` : ''}
+            </details>` : ''}
 
-            <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
-                <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; margin-bottom:8px; opacity: 0.8;">Notes</label>
-                <div style="display:flex; gap:8px; margin-bottom:10px;">
-                    <input id="timeblock-notes-input" placeholder="Add note..." style="flex:1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 10px; color: white; font-size: 11px; outline:none;">
-                    <button onclick="ENGINE.saveSession()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:9px; font-weight:800; padding:0 10px; border-radius:8px; cursor:pointer;">ADD</button>
+            <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
+                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; margin-bottom:10px; opacity: 0.85;">Quick Notes</label>
+                <div style="display:flex; gap:10px; margin-bottom:12px;">
+                    <input id="timeblock-notes-input" placeholder="Capture a quick note or decision..." style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px 12px; color: white; font-size: 12px; outline:none;">
+                    <button onclick="ENGINE.saveSession()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
                 </div>
-                <div id="timeblock-notes-history" style="display:flex; flex-direction:column; gap:8px; max-height: 90px; overflow-y:auto;">
+                <div id="timeblock-notes-history" style="display:flex; flex-direction:column; gap:8px; max-height: 110px; overflow-y:auto;">
                     ${noteDisplayItems.length ? noteDisplayItems.map(note => `
-                        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 10px; color: rgba(255,255,255,0.8); font-size: 11px;">
+                        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 9px 12px; color: rgba(255,255,255,0.85); font-size: 12px;">
                             ${note}
                         </div>
                     `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No notes yet.</div>'}
@@ -2882,12 +2890,16 @@ updatePanelContext() {
     `;
 
     if (showTimeblockDetails) {
-        // --- 5. TIMEBLOCK EXPENSES ---
+        // --- 5. TIMEBLOCK EXPENSES (Advanced) ---
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         html += `
-            <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Timeblock Expenses</label>
+            <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
+                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    Timeblock Expenses
+                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
+                </summary>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 8px;">
+                    <div></div>
                     <div style="display:flex; gap: 8px; align-items:center;">
                         <span style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">Budget</span>
                         <input id="timeblock-budget" type="text" value="${this.escapeAttribute(eventBudget)}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
@@ -2921,17 +2933,18 @@ updatePanelContext() {
                     `;
                     }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>'}
                 </div>
-            </div>
+            </details>
         `;
 
         // --- 6. SESSION AUDIT LEDGER ---
         const sessionLedgerItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         html += `
-            <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Audit Ledger</label>
-                </div>
-                <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
+            <details class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
+                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    Session Audit Ledger
+                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
+                </summary>
+                <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto; margin-top: 8px;">
                     ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
@@ -2949,7 +2962,7 @@ updatePanelContext() {
                     `;
                     }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No transactions yet.</div>'}
                 </div>
-            </div>
+            </details>
         `;
     }
     
