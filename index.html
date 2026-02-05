@@ -1970,13 +1970,30 @@ updateGhost() {
     const duration = bottomH - topH;
 
     g.style.display = 'block';
-    g.style.top = `${topH * this.HOUR_HEIGHT}px`;
-    g.style.height = `${duration * this.HOUR_HEIGHT}px`;
-
     g.innerHTML = '';
-    g.style.background = 'rgba(255,255,255,0.02)';
-    g.style.borderLeft = '2px solid rgba(0,122,255,0.6)';
-    g.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.04) inset';
+
+    if (this.isMoving && this.moveType === 'reminder') {
+        g.style.top = `${(topH * this.HOUR_HEIGHT) - 6}px`;
+        g.style.height = `16px`;
+        g.style.left = 'auto';
+        g.style.right = '22px';
+        g.style.padding = '2px 6px';
+        g.style.borderRadius = '6px';
+        g.style.background = 'rgba(255,255,255,0.03)';
+        g.style.border = '1px solid rgba(255,255,255,0.08)';
+        g.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+    } else {
+        g.style.left = '80px';
+        g.style.right = '12px';
+        g.style.padding = '0';
+        g.style.borderRadius = '0';
+        g.style.top = `${topH * this.HOUR_HEIGHT}px`;
+        g.style.height = `${duration * this.HOUR_HEIGHT}px`;
+        g.style.background = 'rgba(255,255,255,0.02)';
+        g.style.border = 'none';
+        g.style.borderLeft = '2px solid rgba(0,122,255,0.6)';
+        g.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.04) inset';
+    }
 },
 
 handleContextMenu(e) {
@@ -2020,6 +2037,7 @@ startDragFromEvent(e) {
     const bounds = this.getEventsBounds();
     if (!bounds) return;
     if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
+    if (this.getReminderAtPoint(e.clientX, e.clientY) !== null) return;
     this.hideQuickCreateMenu();
     const startH = this.getHourAtClientY(e.clientY);
     if (startH === null) return;
