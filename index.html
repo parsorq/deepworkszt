@@ -2969,6 +2969,7 @@ renderDay() {
         html += `
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
+                oncontextmenu="ENGINE.handleContextMenu(event)"
                 style="
                     top: ${topPos}px;
                     height: ${height}px;
@@ -3819,6 +3820,12 @@ window.onload = () => showLoginUI();
 // Add this to your script to catch the end of a drag anywhere on the screen
 window.addEventListener('mouseup', () => {
     if (ENGINE.isDragging) ENGINE.handleMouseUp();
+});
+
+// Auto-dismiss context menus on any click
+document.addEventListener('click', () => {
+    if (ENGINE.hideQuickCreateMenu) ENGINE.hideQuickCreateMenu();
+    if (ENGINE.hideBlockMenu) ENGINE.hideBlockMenu();
 });
     
 </script>
