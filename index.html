@@ -557,6 +557,8 @@ body.dragging .events-hit-layer {
     }
     .reminder-marker:hover {
         transform: translateY(-1px);
+        background: rgba(255,255,255,0.03);
+        border-color: rgba(255,255,255,0.08);
     }
 
     @keyframes spark {
@@ -3396,7 +3398,7 @@ renderDay() {
             } else {
                 const topPos = session.start * this.HOUR_HEIGHT;
                 reminderMarkers.push(`
-                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; right: 22px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 900; pointer-events: auto; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);"
+                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; right: 22px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 900; pointer-events: auto; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent;"
                         onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
                         <div style="display:flex; align-items:center; gap:8px; pointer-events:none; text-align:right;">
                             <div style="width:6px; height:6px; border-radius:50%; background:${color}; opacity:0.85; box-shadow: 0 0 0 2px rgba(255,255,255,0.04);"></div>
