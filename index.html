@@ -1006,7 +1006,8 @@ async function handleLogin() {
         googleTokenClient.callback = async (response) => {
             clearTimeout(timeoutId);
             if (response.error) {
-                reject(new Error('Google sign-in failed.'));
+                const details = response.error_description || response.error;
+                reject(new Error(`Google sign-in failed: ${details}`));
                 return;
             }
             googleAccessToken = response.access_token;
@@ -1015,7 +1016,7 @@ async function handleLogin() {
                 const profile = await fetchUserProfile();
                 const allowed = await validateMasterRegistry(profile.email);
                 if (!allowed) {
-                    reject(new Error('Access denied by Master Registry.'));
+                    reject(new Error('Access denied by Master Registry. Add your email to the registry sheet.'));
                     return;
                 }
                 ENGINE.userEmail = profile.email;
@@ -1072,7 +1073,9 @@ function showLoginUI() {
             await handleLogin();
             loginOverlay.remove();
         } catch (err) {
-            setLoginStatus(err.message || 'Login failed.', true);
+            console.error('Login failed:', err);
+            const message = err && err.message ? err.message : 'Unknown error. Check console.';
+            setLoginStatus(`Login failed: ${message}`, true);
             btn.disabled = false;
             btn.style.opacity = '1';
         }
