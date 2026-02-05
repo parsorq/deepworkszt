@@ -267,6 +267,11 @@ body.dragging .events-hit-layer {
     transform: translateY(-1px);
 }
 
+.block-space.block-moving {
+    border-color: rgba(0, 122, 255, 0.6) !important;
+    box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset;
+}
+
 
 /* Two-column ledger layout */
 .ledger-grid {
@@ -1355,6 +1360,9 @@ const ENGINE = {
     dragStartClient: null,
     dragPointerId: null,
     hoverBlockEl: null,
+    moveEventIdx: null,
+    moveDurationH: null,
+    moveBlockEl: null,
 
     db: {},
     transactions: [],
@@ -1425,6 +1433,10 @@ async init() {
         const bounds = this.getEventsBounds();
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
+        if (this.moveEventIdx !== null) {
+            this.applyMoveToTime(e.clientY);
+            return;
+        }
         this.startDragFromEvent(e);
     }, true);
     document.addEventListener('contextmenu', (e) => {
@@ -1432,6 +1444,16 @@ async init() {
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
         this.handleContextMenu(e);
+    }, true);
+    document.addEventListener('mousedown', (e) => {
+        const menu = document.getElementById('block-context-menu');
+        if (menu && menu.style.display === 'flex' && !e.target.closest('#block-context-menu')) {
+            this.hideBlockMenu();
+        }
+        const quick = document.getElementById('quick-create-menu');
+        if (quick && quick.style.display === 'flex' && !e.target.closest('#quick-create-menu')) {
+            this.hideQuickCreateMenu();
+        }
     }, true);
     document.addEventListener('mousemove', (e) => {
         this.updateBlockHover(e.clientX, e.clientY);
@@ -2003,6 +2025,60 @@ clearBlockHover() {
         this.hoverBlockEl = null;
     }
     document.body.classList.remove('block-hover');
+},
+
+startMoveEvent(idx, blockEl) {
+    this.clearMoveState();
+    const events = this.db[this.selectedDate] || [];
+    const ev = events[idx];
+    if (!ev || ev.type === 'REMINDER') return;
+    this.moveEventIdx = idx;
+    this.moveDurationH = Math.max(0.25, (ev.end - ev.start));
+    this.moveBlockEl = blockEl || null;
+    if (this.moveBlockEl) this.moveBlockEl.classList.add('block-moving');
+},
+
+clearMoveState() {
+    if (this.moveBlockEl) this.moveBlockEl.classList.remove('block-moving');
+    this.moveEventIdx = null;
+    this.moveDurationH = null;
+    this.moveBlockEl = null;
+},
+
+applyMoveToTime(clientY) {
+    const events = this.db[this.selectedDate] || [];
+    const idx = this.moveEventIdx;
+    if (idx === null || !events[idx]) {
+        this.clearMoveState();
+        return;
+    }
+    const startH = this.getHourAtClientY(clientY);
+    if (startH === null) {
+        this.clearMoveState();
+        return;
+    }
+    const step = 0.25;
+    const duration = this.moveDurationH || 0.25;
+    let start = Math.round(startH / step) * step;
+    let end = Math.min(24, start + duration);
+    if (end - start < 0.25) end = Math.min(24, start + 0.25);
+    if (end > 24) {
+        end = 24;
+        start = Math.max(0, end - duration);
+    }
+    const overlap = events.some((ev, i) => {
+        if (i === idx || ev.type === 'REMINDER') return false;
+        return start < ev.end && end > ev.start;
+    });
+    if (overlap) {
+        this.clearMoveState();
+        return;
+    }
+    events[idx].start = start;
+    events[idx].end = end;
+    this.clearMoveState();
+    void this.saveEvent(events[idx]);
+    this.renderDay();
 },
 
 handlePointerMove(e) {
@@ -3309,7 +3385,7 @@ renderDay() {
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
                 onmousedown="event.stopPropagation()"
-                onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})"
+                onclick="event.stopPropagation(); ENGINE.startMoveEvent(${idx}, this)"
                 oncontextmenu="event.preventDefault(); event.stopPropagation(); ENGINE.handleContextMenu(event)"
                 style="
                     top: ${topPos}px;
