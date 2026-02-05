@@ -1145,6 +1145,8 @@ const ENGINE = {
     profiles: [],
     institutions: [],
     projects: [],
+    categories: [],
+    subcategories: [],
     userEmail: null,
     userSheetId: null,
     sheetInfo: null,
@@ -1156,7 +1158,9 @@ const ENGINE = {
         teams: 'Teams',
         profiles: 'Profiles',
         institutions: 'Institutions',
-        projects: 'Projects'
+        projects: 'Projects',
+        categories: 'Categories',
+        subcategories: 'Subcategories'
     },
 
     isDragging: false,
@@ -1320,7 +1324,7 @@ renderTransactions() {
         <div onclick="ENGINE.openTransactionModalWithData('${tx.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer;">
             <div>
                 <div style="font-size: 11px; color: white; font-weight: 500;">${tx.desc}</div>
-                <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
             </div>
             <div style="font-family: 'SF Mono'; font-size: 12px; font-weight: 600; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
                 ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
@@ -1775,7 +1779,7 @@ renderAuditGraph() {
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                 <div>
                     <div style="font-size: 12px; color: white; font-weight: 600;">${tx.desc}</div>
-                    <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                    <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                 </div>
                 <div style="font-family:'SF Mono'; font-size: 12px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
                     ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
@@ -1957,12 +1961,17 @@ updatePanelContext() {
                 <input id="timeblock-expense-amount" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                 <button onclick="ENGINE.addTimeblockExpense()" style="background:${activeColor}; border:none; color:white; font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
             </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <select id="timeblock-expense-category" class="subtle-select"></select>
+                <select id="timeblock-expense-subcategory" class="subtle-select"></select>
+                <div></div>
+            </div>
             <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
                 ${expenseItems.length ? expenseItems.map(tx => `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                         <div>
                             <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
-                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                         </div>
                         <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
                             -${this.formatAmount(Math.abs(tx.amount))}
@@ -1985,7 +1994,7 @@ updatePanelContext() {
                     <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                         <div>
                             <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
-                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                         </div>
                         <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
                             ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
@@ -2002,7 +2011,13 @@ updatePanelContext() {
     const endInput = document.getElementById('timeblock-end');
     const durationLabel = document.getElementById('timeblock-duration');
     const expenseAmountInput = document.getElementById('timeblock-expense-amount');
+    const expenseCategorySelect = document.getElementById('timeblock-expense-category');
+    const expenseSubcategorySelect = document.getElementById('timeblock-expense-subcategory');
     if (expenseAmountInput && !expenseAmountInput.value) expenseAmountInput.value = this.formatAmount(0);
+    if (expenseCategorySelect && expenseSubcategorySelect) {
+        const defaultCategory = this.categories.find(item => item.name === 'Timeblock') ? 'Timeblock' : '';
+        this.initCategoryDropdowns(expenseCategorySelect, expenseSubcategorySelect, defaultCategory, '');
+    }
     const updateDuration = () => {
         if (durationLabel && startInput && endInput) {
             durationLabel.textContent = this.getDurationLabel(startInput.value, endInput.value);
@@ -2164,7 +2179,9 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt'])
+        this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.categories, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt'])
     ]);
 },
 
@@ -2180,7 +2197,7 @@ async writeHeaders(sheetName, headers) {
 
 async loadData() {
     await this.ensureUserStorage();
-    const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes] = await Promise.all([
+    const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes, categoriesRes, subcategoriesRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.events}!A:J`
@@ -2208,6 +2225,14 @@ async loadData() {
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.projects}!A:E`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.categories}!A:E`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.subcategories}!A:F`
         })
     ]);
 
@@ -2218,6 +2243,8 @@ async loadData() {
     const profileRows = profilesRes.result.values || [];
     const institutionRows = institutionsRes.result.values || [];
     const projectRows = projectsRes.result.values || [];
+    const categoryRows = categoriesRes.result.values || [];
+    const subcategoryRows = subcategoriesRes.result.values || [];
 
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
@@ -2268,6 +2295,8 @@ async loadData() {
     this.teams = this.parseTeams(teamRows);
     this.profiles = this.parseProfiles(profileRows);
     this.institutions = this.parseEntities(institutionRows);
+    this.categories = this.parseEntities(categoryRows);
+    this.subcategories = this.parseSubcategories(subcategoryRows);
 },
 
 parseEntities(rows) {
@@ -2302,8 +2331,22 @@ parseProjects(rows) {
     }).filter(Boolean);
 },
 
+parseSubcategories(rows) {
+    return rows.slice(1).map((row) => {
+        const [id, name, category, notes, createdAt, updatedAt] = row;
+        if (!id) return null;
+        return { id, name, category, notes, createdAt, updatedAt };
+    }).filter(Boolean);
+},
+
 generateEntityId(prefix) {
     return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+},
+
+getEntityPrefix(type) {
+    if (type === 'categories') return 'category';
+    if (type === 'subcategories') return 'subcategory';
+    return type.slice(0, -1);
 },
 
 getSheetNameForEntity(type) {
@@ -2311,6 +2354,8 @@ getSheetNameForEntity(type) {
     if (type === 'profiles') return this.sheetNames.profiles;
     if (type === 'institutions') return this.sheetNames.institutions;
     if (type === 'projects') return this.sheetNames.projects;
+    if (type === 'categories') return this.sheetNames.categories;
+    if (type === 'subcategories') return this.sheetNames.subcategories;
     return null;
 },
 
@@ -2325,6 +2370,8 @@ async saveEntity(type, entity) {
         row = [entity.id, entity.name, entity.email || '', entity.notes || '', entity.createdAt, entity.updatedAt];
     } else if (type === 'projects') {
         row = [entity.id, entity.name, entity.notes || '', entity.createdAt, entity.updatedAt];
+    } else if (type === 'subcategories') {
+        row = [entity.id, entity.name, entity.category || '', entity.notes || '', entity.createdAt, entity.updatedAt];
     } else {
         row = [entity.id, entity.name, entity.notes || '', entity.createdAt, entity.updatedAt];
     }
@@ -2684,7 +2731,7 @@ renderDay() {
                         ${isIncome ? '+' : ''}${this.formatAmount(tx.amount, 0)}
                     </span>
                 </div>
-                <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 2px;">${this.formatDate(tx.date)} ${tx.time}</div>
+                <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 2px;">${this.formatDate(tx.date)} ${tx.time}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
             </div>`;
     });
 
@@ -2787,6 +2834,7 @@ updateTimeline(shouldScroll = false) {
                     ${type === 'profiles' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Email: ${item.email || ''}</div>` : ''}
                     ${type === 'teams' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Project: ${this.getProjectNameById(item.projectId) || 'Unassigned'}</div>` : ''}
                     ${type === 'teams' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Profiles: ${this.getProfileNamesByIds(item.profileIds).join(', ') || 'None'}</div>` : ''}
+                    ${type === 'subcategories' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Category: ${item.category || 'Unassigned'}</div>` : ''}
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4);">${item.notes || ''}</div>
                 </div>
                 <div style="display:flex; gap:6px;">
@@ -2802,15 +2850,25 @@ updateTimeline(shouldScroll = false) {
         const projectList = document.getElementById('settings-project-list');
         const projectSelect = document.getElementById('settings-teams-project');
         const teamProfiles = document.getElementById('settings-teams-profiles');
+        const categoryList = document.getElementById('settings-category-list');
+        const subcategoryList = document.getElementById('settings-subcategory-list');
+        const subcategoryCategorySelect = document.getElementById('settings-subcategories-category');
 
         if (teamList) teamList.innerHTML = this.teams.length ? renderList(this.teams, 'teams') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No teams yet.</div>';
         if (profileList) profileList.innerHTML = this.profiles.length ? renderList(this.profiles, 'profiles') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No profiles yet.</div>';
         if (institutionList) institutionList.innerHTML = this.institutions.length ? renderList(this.institutions, 'institutions') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No institutions yet.</div>';
         if (projectList) projectList.innerHTML = this.projects.length ? renderList(this.projects, 'projects') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No projects yet.</div>';
+        if (categoryList) categoryList.innerHTML = this.categories.length ? renderList(this.categories, 'categories') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No categories yet.</div>';
+        if (subcategoryList) subcategoryList.innerHTML = this.subcategories.length ? renderList(this.subcategories, 'subcategories') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No subcategories yet.</div>';
         if (projectSelect) {
             const options = ['<option value="">Link to Project</option>']
                 .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
             projectSelect.innerHTML = options.join('');
+        }
+        if (subcategoryCategorySelect) {
+            const options = ['<option value="">Link to Category</option>']
+                .concat(this.categories.map(category => `<option value="${category.name}">${category.name}</option>`));
+            subcategoryCategorySelect.innerHTML = options.join('');
         }
         if (teamProfiles) {
             teamProfiles.innerHTML = this.profiles.map(profile => `
@@ -2828,12 +2886,13 @@ updateTimeline(shouldScroll = false) {
         const projectSelect = document.getElementById('settings-teams-project');
         const teamProfiles = document.getElementById('settings-teams-profiles');
         const emailInput = document.getElementById('settings-profiles-email');
+        const subcategoryCategorySelect = document.getElementById('settings-subcategories-category');
         if (!nameInput) return;
         const name = nameInput.value.trim();
         if (!name) return;
         const now = new Date().toISOString();
         const entity = {
-            id: this.generateEntityId(type.slice(0, -1)),
+            id: this.generateEntityId(this.getEntityPrefix(type)),
             name,
             notes: notesInput ? notesInput.value.trim() : '',
             createdAt: now,
@@ -2850,6 +2909,9 @@ updateTimeline(shouldScroll = false) {
         if (type === 'profiles' && emailInput) {
             entity.email = emailInput.value.trim();
         }
+        if (type === 'subcategories' && subcategoryCategorySelect) {
+            entity.category = subcategoryCategorySelect.value || '';
+        }
         this[type].unshift(entity);
         await this.saveEntity(type, entity);
         nameInput.value = '';
@@ -2859,6 +2921,7 @@ updateTimeline(shouldScroll = false) {
             teamProfiles.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = false; });
         }
         if (emailInput && type === 'profiles') emailInput.value = '';
+        if (subcategoryCategorySelect && type === 'subcategories') subcategoryCategorySelect.value = '';
         this.renderSettings();
     },
 
@@ -2874,9 +2937,11 @@ updateTimeline(shouldScroll = false) {
         const notesInput = document.getElementById('edit-entity-notes');
         const projectSelect = document.getElementById('edit-entity-project');
         const profileList = document.getElementById('edit-entity-profiles');
+        const categorySelect = document.getElementById('edit-entity-category');
 
         overlay.dataset.type = type;
         overlay.dataset.id = id;
+        overlay.dataset.mode = 'edit';
         if (title) title.textContent = `Edit ${type.slice(0, -1).toUpperCase()}`;
         if (nameInput) nameInput.value = entity.name || '';
         if (notesInput) notesInput.value = entity.notes || '';
@@ -2902,6 +2967,62 @@ updateTimeline(shouldScroll = false) {
                 </label>
             `).join('');
         }
+        if (categorySelect) {
+            categorySelect.style.display = type === 'subcategories' ? 'block' : 'none';
+            const options = ['<option value="">Link to Category</option>']
+                .concat(this.categories.map(category => `<option value="${category.name}">${category.name}</option>`));
+            categorySelect.innerHTML = options.join('');
+            categorySelect.value = entity.category || '';
+        }
+
+        overlay.style.display = 'flex';
+    },
+
+    openCreateEntity(type) {
+        const overlay = document.getElementById('edit-entity-overlay');
+        if (!overlay) return;
+        const title = document.getElementById('edit-entity-title');
+        const nameInput = document.getElementById('edit-entity-name');
+        const emailInput = document.getElementById('edit-entity-email');
+        const notesInput = document.getElementById('edit-entity-notes');
+        const projectSelect = document.getElementById('edit-entity-project');
+        const profileList = document.getElementById('edit-entity-profiles');
+        const categorySelect = document.getElementById('edit-entity-category');
+
+        overlay.dataset.type = type;
+        overlay.dataset.id = '';
+        overlay.dataset.mode = 'create';
+        if (title) title.textContent = `Create ${type.slice(0, -1).toUpperCase()}`;
+        if (nameInput) nameInput.value = '';
+        if (notesInput) notesInput.value = '';
+
+        if (emailInput) {
+            emailInput.style.display = type === 'profiles' ? 'block' : 'none';
+            emailInput.value = '';
+        }
+        if (projectSelect) {
+            projectSelect.style.display = type === 'teams' ? 'block' : 'none';
+            const options = ['<option value="">Link to Project</option>']
+                .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
+            projectSelect.innerHTML = options.join('');
+            projectSelect.value = '';
+        }
+        if (profileList) {
+            profileList.style.display = type === 'teams' ? 'flex' : 'none';
+            profileList.innerHTML = this.profiles.map(profile => `
+                <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
+                    <input type="checkbox" value="${profile.id}">
+                    ${profile.name} (${profile.email || 'no email'})
+                </label>
+            `).join('');
+        }
+        if (categorySelect) {
+            categorySelect.style.display = type === 'subcategories' ? 'block' : 'none';
+            const options = ['<option value="">Link to Category</option>']
+                .concat(this.categories.map(category => `<option value="${category.name}">${category.name}</option>`));
+            categorySelect.innerHTML = options.join('');
+            categorySelect.value = '';
+        }
 
         overlay.style.display = 'flex';
     },
@@ -2916,18 +3037,35 @@ updateTimeline(shouldScroll = false) {
         if (!overlay) return;
         const type = overlay.dataset.type;
         const id = overlay.dataset.id;
+        const mode = overlay.dataset.mode || 'edit';
         const list = this[type];
-        const entity = list.find(item => item.id === id);
-        if (!entity) return;
+        let entity = list.find(item => item.id === id);
+        if (!entity && mode !== 'create') return;
 
         const nameInput = document.getElementById('edit-entity-name');
         const emailInput = document.getElementById('edit-entity-email');
         const notesInput = document.getElementById('edit-entity-notes');
         const projectSelect = document.getElementById('edit-entity-project');
         const profileList = document.getElementById('edit-entity-profiles');
+        const categorySelect = document.getElementById('edit-entity-category');
 
-        entity.name = nameInput ? nameInput.value.trim() : entity.name;
-        entity.notes = notesInput ? notesInput.value.trim() : entity.notes;
+        const nameValue = nameInput ? nameInput.value.trim() : '';
+        const notesValue = notesInput ? notesInput.value.trim() : '';
+        if (mode === 'create') {
+            if (!nameValue) return;
+            const now = new Date().toISOString();
+            entity = {
+                id: this.generateEntityId(this.getEntityPrefix(type)),
+                name: nameValue,
+                notes: notesValue,
+                createdAt: now,
+                updatedAt: now
+            };
+            list.unshift(entity);
+        } else {
+            entity.name = nameValue || entity.name;
+            entity.notes = notesValue;
+        }
         if (type === 'profiles' && emailInput) {
             entity.email = emailInput.value.trim();
         }
@@ -2938,6 +3076,9 @@ updateTimeline(shouldScroll = false) {
             entity.profileIds = Array.from(profileList.querySelectorAll('input[type="checkbox"]:checked'))
                 .map(input => input.value)
                 .join(',');
+        }
+        if (type === 'subcategories' && categorySelect) {
+            entity.category = categorySelect.value || '';
         }
 
         entity.updatedAt = new Date().toISOString();
@@ -2969,6 +3110,95 @@ updateTimeline(shouldScroll = false) {
             return profile ? profile.name : id;
         });
     },
+
+getCategoryByName(name) {
+    if (!name) return null;
+    return this.categories.find(item => item.name === name) || null;
+},
+
+getSubcategoryByName(name) {
+    if (!name) return null;
+    return this.subcategories.find(item => item.name === name) || null;
+},
+
+getSubcategoriesForCategory(categoryName) {
+    if (!categoryName) return this.subcategories;
+    return this.subcategories.filter(item => item.category === categoryName);
+},
+
+populateSelectOptions(select, items, selectedValue, placeholder, includeManage = false) {
+    if (!select) return;
+    const options = [`<option value="">${placeholder}</option>`]
+        .concat(items.map(item => `<option value="${item}">${item}</option>`));
+    if (includeManage) {
+        options.push('<option value="__divider__" disabled>────────</option>');
+        options.push('<option value="__create__">+ Create</option>');
+        options.push('<option value="__edit__">✎ Edit selected</option>');
+        options.push('<option value="__delete__">🗑 Delete selected</option>');
+    }
+    select.innerHTML = options.join('');
+    select.value = selectedValue || '';
+    if (selectedValue) select.dataset.last = selectedValue;
+},
+
+handleManagedSelect(select, type, onAfter) {
+    if (!select) return;
+    select.addEventListener('change', () => {
+        const value = select.value;
+        if (value === '__divider__') {
+            select.value = select.dataset.last || '';
+            return;
+        }
+        if (value === '__create__') {
+            this.openCreateEntity(type);
+            select.value = select.dataset.last || '';
+            return;
+        }
+        if (value === '__edit__') {
+            const current = select.dataset.last || '';
+            const entity = type === 'categories' ? this.getCategoryByName(current) : this.getSubcategoryByName(current);
+            if (entity) this.openEditEntity(type, entity.id);
+            select.value = current;
+            return;
+        }
+        if (value === '__delete__') {
+            const current = select.dataset.last || '';
+            const entity = type === 'categories' ? this.getCategoryByName(current) : this.getSubcategoryByName(current);
+            if (entity) this.removeEntity(type, entity.id);
+            select.value = '';
+            select.dataset.last = '';
+            if (onAfter) onAfter('');
+            return;
+        }
+        select.dataset.last = value;
+        if (onAfter) onAfter(value);
+    });
+},
+
+initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selectedSubcategory) {
+    if (!categorySelect || !subcategorySelect) return;
+    const categoryNames = this.categories.map(item => item.name);
+    this.populateSelectOptions(categorySelect, categoryNames, selectedCategory, 'Category', true);
+    const subItems = this.getSubcategoriesForCategory(selectedCategory).map(item => item.name);
+    const subSelected = subItems.includes(selectedSubcategory) ? selectedSubcategory : '';
+    this.populateSelectOptions(subcategorySelect, subItems, subSelected, 'Subcategory', true);
+
+    if (!categorySelect.dataset.bound) {
+        this.handleManagedSelect(categorySelect, 'categories', (value) => {
+            const updatedSubItems = this.getSubcategoriesForCategory(value).map(item => item.name);
+            this.populateSelectOptions(subcategorySelect, updatedSubItems, '', 'Subcategory', true);
+            if (!subcategorySelect.dataset.bound) {
+                this.handleManagedSelect(subcategorySelect, 'subcategories');
+                subcategorySelect.dataset.bound = 'true';
+            }
+        });
+        categorySelect.dataset.bound = 'true';
+    }
+    if (!subcategorySelect.dataset.bound) {
+        this.handleManagedSelect(subcategorySelect, 'subcategories');
+        subcategorySelect.dataset.bound = 'true';
+    }
+},
 
     formatDate(value) {
         if (!value) return '';
@@ -3025,13 +3255,17 @@ updateTimeline(shouldScroll = false) {
         const descInput = document.getElementById('timeblock-expense-desc');
         const amountInput = document.getElementById('timeblock-expense-amount');
         const budgetInput = document.getElementById('timeblock-budget');
+        const categorySelect = document.getElementById('timeblock-expense-category');
+        const subcategorySelect = document.getElementById('timeblock-expense-subcategory');
         const desc = descInput ? descInput.value.trim() : '';
         const amountVal = amountInput ? parseFloat(String(amountInput.value).replace(/,/g, '')) : NaN;
         if (!desc || Number.isNaN(amountVal)) return;
         if (budgetInput) event.budget = budgetInput.value.trim();
+        const category = categorySelect && categorySelect.value ? categorySelect.value : 'Timeblock';
+        const subcategory = subcategorySelect && subcategorySelect.value ? subcategorySelect.value : '';
         const date = this.formatDate(document.getElementById('timeblock-date')?.value || this.selectedDate);
         const time = document.getElementById('timeblock-start')?.value || new Date().toTimeString().slice(0, 5);
-        this.addTransaction(desc, -Math.abs(amountVal), 'Timeblock', '', date, time, event.id);
+        this.addTransaction(desc, -Math.abs(amountVal), category, subcategory, date, time, event.id);
         if (descInput) descInput.value = '';
         if (amountInput) amountInput.value = this.formatAmount(0);
         this.renderPanelExpenses();
@@ -3047,7 +3281,7 @@ updateTimeline(shouldScroll = false) {
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
                 <div>
                     <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
-                    <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                    <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                 </div>
                 <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
                     -${this.formatAmount(Math.abs(tx.amount))}
@@ -3075,8 +3309,9 @@ updateTimeline(shouldScroll = false) {
         const now = new Date();
         if (dateInput) dateInput.value = this.formatDate(now.toISOString().split('T')[0]);
         if (timeInput) timeInput.value = now.toTimeString().slice(0, 5);
-        if (categoryInput) categoryInput.value = '';
-        if (subcategoryInput) subcategoryInput.value = '';
+        if (categoryInput && subcategoryInput) {
+            this.initCategoryDropdowns(categoryInput, subcategoryInput, '', '');
+        }
         overlay.style.display = 'flex';
     },
 
@@ -3101,8 +3336,9 @@ updateTimeline(shouldScroll = false) {
         if (descInput) descInput.value = tx.desc || '';
         if (dateInput) dateInput.value = this.formatDate(tx.date);
         if (timeInput) timeInput.value = tx.time || '00:00';
-        if (categoryInput) categoryInput.value = tx.category || '';
-        if (subcategoryInput) subcategoryInput.value = tx.subcategory || '';
+        if (categoryInput && subcategoryInput) {
+            this.initCategoryDropdowns(categoryInput, subcategoryInput, tx.category || '', tx.subcategory || '');
+        }
         overlay.style.display = 'flex';
     },
 
@@ -3296,6 +3532,33 @@ window.addEventListener('mouseup', () => {
                 </div>
                 <div id="settings-project-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">CATEGORIES</div>
+                    <button onclick="ENGINE.addEntity('categories')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD CATEGORY</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-categories-name" placeholder="Category name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-categories-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-category-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">SUBCATEGORIES</div>
+                    <button onclick="ENGINE.addEntity('subcategories')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD SUBCATEGORY</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-subcategories-name" placeholder="Subcategory name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <select id="settings-subcategories-category" class="subtle-select"></select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <input id="settings-subcategories-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-subcategory-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -3311,6 +3574,7 @@ window.addEventListener('mouseup', () => {
             <input id="edit-entity-name" placeholder="Name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <input id="edit-entity-email" placeholder="Email" style="display:none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <select id="edit-entity-project" class="subtle-select" style="display:none;"></select>
+            <select id="edit-entity-category" class="subtle-select" style="display:none;"></select>
             <div id="edit-entity-profiles" style="display:none; flex-direction:column; gap:6px; max-height: 160px; overflow-y: auto;"></div>
             <textarea id="edit-entity-notes" placeholder="Notes" style="width: 100%; height: 100px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; outline: none; resize: none;"></textarea>
         </div>
@@ -3336,10 +3600,10 @@ window.addEventListener('mouseup', () => {
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input id="transaction-time" type="time" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                <input id="transaction-category" placeholder="Category" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                <select id="transaction-category" class="subtle-select"></select>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input id="transaction-subcategory" placeholder="Subcategory" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                <select id="transaction-subcategory" class="subtle-select"></select>
                 <div></div>
             </div>
         </div>
