@@ -1787,18 +1787,17 @@ handleMouseMove(e) {
     const eventsCol = document.querySelector('.ledger-events-col');
     if (!eventsCol) return;
     const rect = eventsCol.getBoundingClientRect();
-    const scrollTop = container.scrollTop;
-    const relativeY = e.clientY - rect.top + scrollTop;
+    const relativeY = e.clientY - rect.top;
 
+    const rawH = relativeY / this.HOUR_HEIGHT;
     if (this.dragStartClient) {
         const dx = Math.abs(e.clientX - this.dragStartClient.x);
         const dy = Math.abs(e.clientY - this.dragStartClient.y);
-        this.dragHasMoved = dx > 3 || dy > 3;
+        this.dragHasMoved = dx > 3 || dy > 3 || Math.abs(rawH - this.dragStartH) > 0.02;
     } else {
         this.dragHasMoved = true;
     }
     // Constrain to 0-24 hour range
-    const rawH = relativeY / this.HOUR_HEIGHT;
     this.dragEndH = Math.max(0, Math.min(24, rawH));
 
     // Use requestAnimationFrame for smooth updates
@@ -1820,7 +1819,7 @@ handleMouseUp() {
     let end = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
 
     // Only create a block if the user actually dragged
-    if (!this.dragHasMoved || start === end) {
+    if (!this.dragHasMoved && start === end) {
         this.isDragging = false;
         document.body.classList.remove('dragging');
         this.dragStartH = null;
@@ -1831,6 +1830,9 @@ handleMouseUp() {
         if (ghost) ghost.style.display = 'none';
         this.renderDay();
         return;
+    }
+    if (start === end) {
+        end = Math.min(24, start + 0.25);
     }
 
     if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
@@ -1932,9 +1934,7 @@ getHourAtClientY(clientY) {
     const bounds = this.getEventsBounds();
     if (!bounds) return null;
     if (clientY < bounds.top || clientY > bounds.bottom) return null;
-    const container = document.getElementById('ledger-container');
-    const scrollTop = container ? container.scrollTop : 0;
-    const offsetY = clientY - bounds.top + scrollTop;
+    const offsetY = clientY - bounds.top;
     const rawH = offsetY / this.HOUR_HEIGHT;
     return Math.max(0, Math.min(24, rawH));
 },
