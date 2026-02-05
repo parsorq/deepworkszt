@@ -568,10 +568,13 @@ body.dragging .reminder-marker {
         box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.45), 0 0 18px rgba(0, 255, 135, 0.25);
     }
 
-    .panel-section--expandable[open],
-    .panel-section--expandable.active-input-row {
-        border-color: rgba(0, 255, 135, 0.25) !important;
-        box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.18), 0 0 12px rgba(0, 255, 135, 0.12);
+    .panel-section--static {
+        border-color: rgba(255,255,255,0.04) !important;
+        box-shadow: none !important;
+    }
+
+    .panel-section--static.active-input-row {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.08) !important;
     }
 
     .data-row {
@@ -2816,7 +2819,7 @@ updatePanelContext() {
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                 <div style="display: flex; gap: 8px; align-items:center;">
-                    <input id="timeblock-date" type="text" value="${this.formatDate(eventDate)}" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 120px;">
+                    <input id="timeblock-date" type="date" value="${this.formatDate(eventDate)}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 140px;">
                     ${this.activeType === 'REMINDER' ? `<label style="display:flex; align-items:center; gap:6px; font-size:10px; color: rgba(255,255,255,0.6);">
                         <input id="timeblock-all-day" type="checkbox" ${activeEvent?.allDay ? 'checked' : ''} />
                         All day
@@ -2869,16 +2872,9 @@ updatePanelContext() {
                 </div>
             </div>
             ${showTimeblockDetails ? `
-            <details class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03);">
-                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
-                    <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
-                        Stakeholders
-                    </span>
-                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
-                </summary>
-                <div style="display:flex; justify-content:space-between; margin: 10px 0 8px;">
-                    <div></div>
+            <div class="panel-section panel-section--static" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03);">
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    Stakeholders
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
                 <div id="stakeholder-list" style="max-height: 84px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
@@ -2889,24 +2885,21 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </details>` : '<div></div>'}
+            </div>` : '<div></div>'}
         </div>
     `;
 
     // --- 4. SESSION AGENDA (Advanced) ---
     if (showTimeblockDetails) {
         html += `
-            <details class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
-                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
-                    <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
-                        Session Agenda
-                    </span>
-                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
-                </summary>
+            <div class="panel-section panel-section--static" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    Session Agenda
+                    <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
+                </div>
                 <div style="display:flex; justify-content:space-between; margin: 10px 0 8px;">
                     <div></div>
-                    <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
+                    <div></div>
                 </div>
                 <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
@@ -2917,7 +2910,7 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </details>
+            </div>
         `;
     }
 
@@ -2926,14 +2919,11 @@ updatePanelContext() {
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         const expenseDisplayItems = [...expenseItems].reverse();
         html += `
-            <details class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
-                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
-                    <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
-                        Timeblock Expenses
-                    </span>
-                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700;">Optional</span>
-                </summary>
+            <div class="panel-section panel-section--static" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    Timeblock Expenses
+                    <div></div>
+                </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 8px;">
                     <div></div>
                     <div style="display:flex; gap: 8px; align-items:center;">
@@ -2969,7 +2959,7 @@ updatePanelContext() {
                     `;
                     }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses.</div>'}
                 </div>
-            </details>
+            </div>
         `;
     }
     
@@ -2999,16 +2989,65 @@ updatePanelContext() {
             durationLabel.textContent = this.getDurationLabel(startInput.value, endInput.value);
         }
     };
+    const applyTimeChanges = () => {
+        if (!activeEvent) return;
+        const targetDate = this.formatDate(dateInput ? dateInput.value : this.selectedDate);
+        const isAllDay = allDayInput ? allDayInput.checked : false;
+        const startTime = startInput && !isAllDay ? startInput.value : '00:00';
+        const endTime = endInput && !isAllDay ? endInput.value : '00:00';
+        const startDec = this.timeToDecimal(startTime);
+        const endDec = this.timeToDecimal(endTime);
+
+        if (this.activeType === 'REMINDER') {
+            activeEvent.start = isAllDay ? 0 : startDec;
+            activeEvent.end = isAllDay ? 0 : startDec;
+        } else {
+            activeEvent.start = startDec;
+            activeEvent.end = endDec;
+        }
+        activeEvent.allDay = isAllDay;
+
+        const fromDate = activeEvent.date || this.selectedDate;
+        if (targetDate && targetDate !== fromDate) {
+            const fromList = this.db[fromDate] || [];
+            const fromIdx = fromList.indexOf(activeEvent);
+            if (fromIdx > -1) fromList.splice(fromIdx, 1);
+            if (!this.db[targetDate]) this.db[targetDate] = [];
+            this.db[targetDate].push(activeEvent);
+            activeEvent.date = targetDate;
+            this.selectedDate = targetDate;
+            this.currentEventIdx = this.db[targetDate].indexOf(activeEvent);
+            this.updateDateDisplay();
+        }
+
+        this.renderDay();
+    };
     if (startInput) startInput.addEventListener('input', updateDuration);
     if (endInput) endInput.addEventListener('input', updateDuration);
-    if (dateInput) dateInput.addEventListener('blur', () => {
-        dateInput.value = this.formatDate(dateInput.value);
-    });
+    if (dateInput) {
+        dateInput.addEventListener('change', () => {
+            dateInput.value = this.formatDate(dateInput.value);
+            applyTimeChanges();
+        });
+        dateInput.addEventListener('blur', () => {
+            dateInput.value = this.formatDate(dateInput.value);
+            applyTimeChanges();
+        });
+    }
+    if (startInput) {
+        startInput.addEventListener('change', applyTimeChanges);
+        startInput.addEventListener('blur', applyTimeChanges);
+    }
+    if (endInput) {
+        endInput.addEventListener('change', applyTimeChanges);
+        endInput.addEventListener('blur', applyTimeChanges);
+    }
     if (allDayInput) {
         allDayInput.addEventListener('change', () => {
             if (startInput) startInput.style.display = allDayInput.checked ? 'none' : '';
             if (endInput) endInput.style.display = allDayInput.checked ? 'none' : '';
             if (durationLabel) durationLabel.style.display = allDayInput.checked ? 'none' : 'block';
+            applyTimeChanges();
         });
     }
     const modalInputs = container ? container.querySelectorAll('input, textarea') : [];
@@ -4760,7 +4799,7 @@ document.addEventListener('mousedown', (e) => {
 
 <!-- Modal Overlay - Centered Glass Panel -->
 <div id="modal-overlay" oncontextmenu="event.preventDefault(); event.stopPropagation();">
-    <div class="meeting-panel meeting-panel--editor">
+    <div class="meeting-panel meeting-panel--editor" oncontextmenu="event.preventDefault(); event.stopPropagation();">
         <div class="meeting-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
             <div style="display: flex; gap: 8px; align-items: center;">
