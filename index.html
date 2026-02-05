@@ -3308,6 +3308,8 @@ renderDay() {
         html += `
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
+                onmousedown="event.stopPropagation()"
+                onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})"
                 oncontextmenu="event.preventDefault(); event.stopPropagation(); ENGINE.handleContextMenu(event)"
                 style="
                     top: ${topPos}px;
