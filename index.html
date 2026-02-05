@@ -1388,6 +1388,10 @@ const ENGINE = {
     moveStartH: null,
     isMoving: false,
     moveType: null,
+    moveTxIdx: null,
+    moveTxEl: null,
+    moveTxPointerId: null,
+    moveTxTempH: null,
 
     db: {},
     transactions: [],
@@ -1456,6 +1460,7 @@ async init() {
         if (e.target.closest('#block-context-menu')) return;
         if (this.getReminderAtPoint(e.clientX, e.clientY) !== null) return;
         if (e.target.closest('.reminder-marker')) return;
+        if (e.target.closest('.transaction-marker')) return;
         if (e.target.closest('[data-block-idx]')) return;
         const bounds = this.getEventsBounds();
         if (!bounds) return;
@@ -1828,6 +1833,21 @@ handleMouseDown(e) {
 },
 
 handleMouseMove(e) {
+    if (this.moveTxIdx !== null) {
+        if (this.moveTxPointerId !== null && e.pointerId !== this.moveTxPointerId) return;
+        const bounds = this.getTransactionsBounds();
+        if (!bounds) return;
+        const relativeY = e.clientY - bounds.top;
+        const rawH = relativeY / this.HOUR_HEIGHT;
+        const clamped = Math.max(0, Math.min(24, rawH));
+        const step = 0.25;
+        const snapped = Math.round(clamped / step) * step;
+        if (this.moveTxEl) {
+            this.moveTxEl.style.top = `${snapped * this.HOUR_HEIGHT}px`;
+        }
+        this.moveTxTempH = snapped;
+        return;
+    }
     if (this.isMoving) {
         if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
         const eventsCol = document.querySelector('.ledger-events-col');
@@ -1880,6 +1900,10 @@ handleMouseMove(e) {
     },
 
 handleMouseUp() {
+    if (this.moveTxIdx !== null) {
+        this.finishMoveTransaction();
+        return;
+    }
     if (this.isMoving) {
         this.finishMoveEvent();
         return;
@@ -2084,6 +2108,12 @@ getReminderAtPoint(clientX, clientY) {
     return null;
 },
 
+getTransactionsBounds() {
+    const col = document.querySelector('.ledger-transactions-col');
+    if (!col) return null;
+    return col.getBoundingClientRect();
+},
+
 updateBlockHover(clientX, clientY) {
     if (this.isDragging) return;
     const bounds = this.getEventsBounds();
@@ -2135,6 +2165,54 @@ clearMoveState() {
     this.moveOffsetH = 0;
     this.moveStartH = null;
     this.moveType = null;
+},
+
+startMoveTransaction(idx, el, e) {
+    if (this.moveTxIdx !== null) return;
+    const tx = this.transactions[idx];
+    if (!tx) return;
+    this.moveTxIdx = idx;
+    this.moveTxEl = el || null;
+    this.moveTxPointerId = e.pointerId !== undefined ? e.pointerId : null;
+    this.moveTxTempH = null;
+    document.body.classList.add('dragging');
+    if (e.pointerId !== undefined && e.target && e.target.setPointerCapture) {
+        try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    e.preventDefault();
+},
+
+finishMoveTransaction() {
+    const idx = this.moveTxIdx;
+    if (idx === null || !this.transactions[idx]) {
+        this.moveTxIdx = null;
+        this.moveTxEl = null;
+        this.moveTxPointerId = null;
+        document.body.classList.remove('dragging');
+        return;
+    }
+    const targetH = typeof this.moveTxTempH === 'number' ? this.moveTxTempH : null;
+    if (targetH === null) {
+        this.moveTxIdx = null;
+        this.moveTxEl = null;
+        this.moveTxPointerId = null;
+        document.body.classList.remove('dragging');
+        this.renderDay();
+        return;
+    }
+    const hours = Math.floor(targetH);
+    const minutes = Math.round((targetH - hours) * 60);
+    const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    this.transactions[idx].time = time;
+    void this.saveTransaction(this.transactions[idx]);
+    this.sortTransactions();
+    this.renderTransactions();
+    this.renderDay();
+    this.moveTxIdx = null;
+    this.moveTxEl = null;
+    this.moveTxPointerId = null;
+    this.moveTxTempH = null;
+    document.body.classList.remove('dragging');
 },
 
 applyMoveToTime(clientY) {
@@ -2276,6 +2354,31 @@ hideBlockMenu() {
     if (menu) menu.style.display = 'none';
 },
 
+showTransactionMenu(x, y, idx) {
+    let menu = document.getElementById('transaction-context-menu');
+    if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'transaction-context-menu';
+        menu.style.cssText = 'position: fixed; z-index: 2000; background: rgba(20,20,20,0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-width: 120px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);';
+        document.body.appendChild(menu);
+    }
+    menu.innerHTML = `
+        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideTransactionMenu(); ENGINE.openTransactionModalWithData('', ${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
+        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideTransactionMenu(); ENGINE.deleteTransaction(${idx});" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+    `;
+    const menuRect = menu.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
+    const top = Math.min(window.innerHeight - menuRect.height - 12, Math.max(12, y));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.display = 'flex';
+},
+
+hideTransactionMenu() {
+    const menu = document.getElementById('transaction-context-menu');
+    if (menu) menu.style.display = 'none';
+},
+
 showQuickCreateMenu(x, y, startH) {
     this.quickCreateStartH = startH;
     this.hideBlockMenu();
@@ -2306,6 +2409,7 @@ hideQuickCreateMenu() {
 hideAllMenus() {
     this.hideBlockMenu();
     this.hideQuickCreateMenu();
+    this.hideTransactionMenu();
 },
 
 hideMenusOnOutsideClick(e) {
@@ -2316,6 +2420,10 @@ hideMenusOnOutsideClick(e) {
     const quick = document.getElementById('quick-create-menu');
     if (quick && quick.style.display === 'flex' && !e.target.closest('#quick-create-menu')) {
         this.hideQuickCreateMenu();
+    }
+    const txMenu = document.getElementById('transaction-context-menu');
+    if (txMenu && txMenu.style.display === 'flex' && !e.target.closest('#transaction-context-menu')) {
+        this.hideTransactionMenu();
     }
 },
 
@@ -3586,14 +3694,14 @@ renderDay() {
             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
             : '';
         html += `
-            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px; cursor: pointer;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}', ${idx})">
-                <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                    <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${this.escapeHTML(tx.item || tx.desc)}</span>
-                    <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); margin-left: 8px;">
-                        ${isIncome ? '+' : ''}${this.formatAmount(tx.amount, 0)}
-                    </span>
+            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" data-tx-idx="${idx}" style="top: ${topPos}px; cursor: pointer;"
+                onpointerdown="event.stopPropagation(); ENGINE.startMoveTransaction(${idx}, this, event)"
+                oncontextmenu="event.preventDefault(); event.stopPropagation(); ENGINE.showTransactionMenu(event.clientX, event.clientY, ${idx})">
+                <div style="display:flex; align-items:center; gap:8px; font-family:'SF Mono'; font-size:10px; color: rgba(255,255,255,0.65); white-space: nowrap; overflow: hidden;">
+                    <span style="color: rgba(255,255,255,0.35);">${this.escapeHTML(tx.time || '00:00')}</span>
+                    <span style="color: rgba(255,255,255,0.65);">${isIncome ? '+' : ''}${this.formatAmount(tx.amount, 0)}</span>
+                    ${categoryLabel ? `<span style="color: rgba(255,255,255,0.45);">• ${categoryLabel}</span>` : ''}
                 </div>
-                <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 2px;">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
             </div>`;
     });
 
@@ -3652,6 +3760,39 @@ async deleteEvent(idx) {
         await this.deleteEventById(removed.id);
     }
     this.renderDay();
+},
+
+async deleteTransaction(idx) {
+    const tx = this.transactions[idx];
+    if (!tx) return;
+    this.transactions.splice(idx, 1);
+    if (tx.id) {
+        await this.deleteTransactionById(tx.id);
+    }
+    this.renderTransactions();
+    this.renderDay();
+},
+
+async deleteTransactionById(txId) {
+    if (!txId) return;
+    await this.ensureUserStorage();
+    const rowIndex = await this.findRowById(this.sheetNames.transactions, txId);
+    if (!rowIndex || !this.sheetInfo || !this.sheetInfo[this.sheetNames.transactions]) return;
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.userSheetId,
+        resource: {
+            requests: [{
+                deleteDimension: {
+                    range: {
+                        sheetId: this.sheetInfo[this.sheetNames.transactions],
+                        dimension: 'ROWS',
+                        startIndex: rowIndex - 1,
+                        endIndex: rowIndex
+                    }
+                }
+            }]
+        }
+    });
 },
     
 updateTimeline(shouldScroll = false) {
