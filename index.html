@@ -884,8 +884,6 @@ body {
         <div style="display: flex; flex-direction: column; height: calc(100% - 60px); gap: 16px;">
             <div id="ledger-wrapper" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
                 <div id="ledger-container" 
-                     onmousedown="ENGINE.handleMouseDown(event)" 
-                     oncontextmenu="ENGINE.handleContextMenu(event)"
                      style="overflow-y: auto; flex: 1; padding: 20px 20px 20px 60px; position: relative; cursor: crosshair;">
                 </div>
             </div>
@@ -1245,6 +1243,7 @@ async init() {
     this.updatePanelContext();
     this.initFinancialPulse();
     this.startTimelineUpdater();
+    this.bindLedgerInteractions();
 
     // Global listeners for smooth drag
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -3739,6 +3738,14 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         });
     },
 
+    bindLedgerInteractions() {
+        const container = document.getElementById('ledger-container');
+        if (!container || container.dataset.bound === 'true') return;
+        container.dataset.bound = 'true';
+        container.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        container.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+    },
+
     updateTransactionTypeUI(sign) {
         const signEl = document.getElementById('transaction-sign');
         if (!signEl) return;
@@ -4034,10 +4041,16 @@ document.addEventListener('click', () => {
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input id="transaction-time" type="time" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                <select id="transaction-category" class="subtle-select"></select>
+                <div>
+                    <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px;">Category</div>
+                    <select id="transaction-category" class="subtle-select"></select>
+                </div>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <select id="transaction-subcategory" class="subtle-select"></select>
+                <div>
+                    <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px;">Subcategory</div>
+                    <select id="transaction-subcategory" class="subtle-select"></select>
+                </div>
                 <div></div>
             </div>
         </div>
