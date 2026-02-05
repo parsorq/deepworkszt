@@ -1832,6 +1832,7 @@ updatePanelContext() {
     const noteItems = activeEvent?.notes ? activeEvent.notes.split('|').filter(Boolean) : [];
     const noteDisplayItems = noteItems.length ? [...noteItems].reverse() : [];
     const eventBudget = activeEvent?.budget || '';
+    const widgetTitleColor = 'rgba(122,162,255,0.85)';
 
     modalTitle.innerText = `${activeEvent ? 'EDIT' : 'NEW'} ${this.activeType}`;
 
@@ -1870,15 +1871,15 @@ updatePanelContext() {
 
     // --- 2. LOCATION / URL TOGGLE ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03);">
-            <div style="display: flex; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px;">
+        <div style="grid-column: span 2; pointer-events: all; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.015); padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03);">
+            <div style="display: flex; background: rgba(0,0,0,0.15); padding: 4px; border-radius: 8px;">
                 <button onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
-                        style="background: rgba(255,255,255,0.1); border: none; cursor: pointer; padding: 4px 10px; border-radius: 6px; font-size: 14px;">
+                        style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 13px; color: rgba(255,255,255,0.65); transition: all 0.15s;">
                     ${isRemote ? '🌐' : '📍'}
                 </button>
             </div>
             <div style="flex: 1;">
-                <label style="opacity: 0.3; font-size: 8px; font-weight: 800; text-transform:uppercase; display: block;">${isRemote ? 'Meeting URL' : 'Location'}</label>
+                <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; display: block; opacity: 0.75;">${isRemote ? 'Meeting URL' : 'Location'}</label>
                 <input type="text" id="modal-location" value="${isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A'}" 
                        style="background: transparent; border: none; color: white; font-size: 12px; width: 100%; outline: none; font-family: 'SF Mono';">
             </div>
@@ -1889,7 +1890,7 @@ updatePanelContext() {
     html += `
         <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 14px 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
             <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
-                <label style="opacity: 0.3; font-size: 9px; font-weight: 800; text-transform:uppercase;">Session Agenda</label>
+                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Agenda</label>
                 <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color:${activeColor}; font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
             </div>
             <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
@@ -1909,7 +1910,7 @@ updatePanelContext() {
         <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; margin-bottom: 12px;">
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <label style="opacity: 0.3; font-size: 8px; font-weight: 800; text-transform:uppercase;">Stakeholders</label>
+                    <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Stakeholders</label>
                     <span onclick="ENGINE.addStakeholder()" style="color:${activeColor}; font-size:8px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
                 <div id="stakeholder-list" style="max-height: 105px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
@@ -1923,7 +1924,7 @@ updatePanelContext() {
             </div>
 
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
-                <label style="opacity: 0.3; font-size: 8px; font-weight: 800; text-transform:uppercase; margin-bottom:8px;">Notes</label>
+                <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; margin-bottom:8px; opacity: 0.8;">Notes</label>
                 <div style="display:flex; gap:8px; margin-bottom:10px;">
                     <input id="timeblock-notes-input" placeholder="Add note..." style="flex:1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 10px; color: white; font-size: 11px; outline:none;">
                     <button onclick="ENGINE.saveSession()" style="background:${activeColor}; border:none; color:white; font-size:9px; font-weight:800; padding:0 10px; border-radius:8px; cursor:pointer;">ADD</button>
@@ -1944,7 +1945,7 @@ updatePanelContext() {
     html += `
         <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="opacity:0.3; font-size: 9px; font-weight: 800; text-transform:uppercase;">Timeblock Expenses</label>
+                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Timeblock Expenses</label>
                 <div style="display:flex; gap: 8px; align-items:center;">
                     <span style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">Budget</span>
                     <input id="timeblock-budget" type="text" value="${eventBudget}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
@@ -1976,7 +1977,7 @@ updatePanelContext() {
     html += `
         <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="opacity:0.3; font-size: 9px; font-weight: 800; text-transform:uppercase;">Session Audit Ledger</label>
+                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Audit Ledger</label>
             </div>
             <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
                 ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => `
@@ -2010,6 +2011,24 @@ updatePanelContext() {
     if (endInput) endInput.addEventListener('input', updateDuration);
     if (dateInput) dateInput.addEventListener('blur', () => {
         dateInput.value = this.formatDate(dateInput.value);
+    });
+    const modalInputs = container ? container.querySelectorAll('input, textarea') : [];
+    modalInputs.forEach((input) => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (input.id === 'timeblock-expense-desc' || input.id === 'timeblock-expense-amount') {
+                e.preventDefault();
+                this.addTimeblockExpense();
+                return;
+            }
+            if (input.id === 'timeblock-notes-input') {
+                e.preventDefault();
+                this.saveSession();
+                return;
+            }
+            e.preventDefault();
+            this.saveSession();
+        });
     });
 },
 
@@ -3098,6 +3117,16 @@ updateTimeline(shouldScroll = false) {
         });
         amountInput.addEventListener('input', () => {
             amountInput.value = amountInput.value.replace(/[^\d.,]/g, '');
+        });
+        const inputIds = ['transaction-amount', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category'];
+        inputIds.forEach((id) => {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                this.saveTransactionModal();
+            });
         });
     },
 
