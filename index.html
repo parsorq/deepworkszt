@@ -17,6 +17,10 @@
         --accent-cyan: #00F2FE;
         --accent-blue: #4FACFE;
         --accent-emerald: #00FF87;
+        --btn-accent-bg: rgba(0, 255, 135, 0.12);
+        --btn-accent-border: rgba(0, 255, 135, 0.28);
+        --btn-accent-text: rgba(255, 255, 255, 0.88);
+        --btn-accent-bg-strong: rgba(0, 255, 135, 0.2);
         --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
         --font-serif: "Playfair Display", "SF Pro Display", serif;
         --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -653,9 +657,9 @@ body {
 /* Real-time Ticker */
 #burn-ticker {
     font-family: 'SF Mono', monospace;
-    color: #32D74B;
+    color: rgba(50, 215, 75, 0.7);
     font-size: 14px;
-    background: rgba(50, 215, 75, 0.1);
+    background: rgba(50, 215, 75, 0.08);
     padding: 4px 10px;
     border-radius: 6px;
 }
@@ -796,10 +800,10 @@ body {
 }
 
 .tx-neg { border: 1px solid rgba(255, 69, 58, 0.2); color: rgba(255, 69, 58, 0.5); }
-.tx-neg:hover { background: rgba(255, 69, 58, 0.1); color: #FF453A; border-color: #FF453A; }
+.tx-neg:hover { background: rgba(255, 69, 58, 0.08); color: rgba(255, 69, 58, 0.8); border-color: rgba(255, 69, 58, 0.6); }
 
 .tx-pos { border: 1px solid rgba(50, 215, 75, 0.2); color: rgba(50, 215, 75, 0.5); }
-.tx-pos:hover { background: rgba(50, 215, 75, 0.1); color: #32D74B; border-color: #32D74B; }
+.tx-pos:hover { background: rgba(50, 215, 75, 0.08); color: rgba(50, 215, 75, 0.8); border-color: rgba(50, 215, 75, 0.6); }
 
 /* Subtle Select Dropdown */
 .subtle-select {
@@ -894,7 +898,7 @@ body {
     <div id="week-view" class="view-content">
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
             <h1>Weekly Tactical</h1>
-            <div style="font-family:'SF Mono'; font-size: 12px; color: #007AFF;">WEEK 05 / 2026</div>
+            <div style="font-family:'SF Mono'; font-size: 12px; color: rgba(0,255,135,0.6);">WEEK 05 / 2026</div>
         </div>
         <div id="weekly-columns" style="display: grid; grid-template-columns: 60px repeat(7, 1fr); gap: 10px; flex: 1; overflow-y: auto;"></div>
     </div>
@@ -902,7 +906,7 @@ body {
     <div id="month-view" class="view-content">
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px;">
             <h1>Monthly Analysis</h1>
-            <div id="month-burn-total" style="font-family:'SF Mono'; font-weight:700; color:#32D74B;">TOTAL: $0.00</div>
+            <div id="month-burn-total" style="font-family:'SF Mono'; font-weight:700; color: rgba(0,255,135,0.6);">TOTAL: $0.00</div>
         </div>
         <div id="monthly-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; flex: 1; overflow-y: auto;"></div>
     </div>
@@ -957,14 +961,14 @@ body {
 
     <div style="margin-top: auto; border-top: 0.5px solid #1B222C; padding-top: 25px;">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.05); border: 0.5px solid #1B222C; color: rgba(255,69,58,0.7); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">-</button>
-            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(0,255,135,0.06); border: 0.5px solid #1B222C; color: rgba(0,255,135,0.75); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">+</button>
+            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">-</button>
+            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">+</button>
         </div>
 
         <div id="recent-transactions" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
         </div>
 
-        <button onclick="ENGINE.openAudit()" style="width: 100%; margin-top: 20px; background: transparent; border: 0.5px solid #1B222C; color: rgba(255,255,255,0.6); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px;">AUDIT LEDGER</button>
+        <button onclick="ENGINE.openAudit()" style="width: 100%; margin-top: 20px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px;">AUDIT LEDGER</button>
 
         <div id="system-health" style="margin-top: 18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; letter-spacing:1px; color: rgba(177,189,211,0.8);">
@@ -1133,7 +1137,7 @@ function showLoginUI() {
             <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
             <div style="font-size: 22px; color: #ffffff; font-weight: 700; margin-bottom: 10px;">Authenticate with Google</div>
             <div id="engine-login-status" style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</div>
-            <button id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: #007AFF; border: none; border-radius: 10px; color: #fff; font-weight: 700; cursor: pointer;">Sign in</button>
+            <button id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 10px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">Sign in</button>
         </div>
     `;
     document.body.appendChild(loginOverlay);
@@ -1372,17 +1376,19 @@ renderTransactions() {
     if (!container) return;
 
     const recentTx = this.transactions.slice(0, 3);
-    container.innerHTML = recentTx.map(tx => `
-        <div onclick="ENGINE.openTransactionModalWithData('${tx.id}')" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: pointer;">
+    container.innerHTML = recentTx.map(tx => {
+        const idx = this.transactions.indexOf(tx);
+        return `
+        <div onclick="ENGINE.openTransactionModalWithData('${tx.id}', ${idx})" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: pointer;">
             <div>
                 <div style="font-size: 11px; color: white; font-weight: 500;">${tx.item || tx.desc}</div>
                 <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
             </div>
-            <div style="font-family: 'SF Mono'; font-size: 12px; font-weight: 600; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
+            <div style="font-family: 'SF Mono'; font-size: 12px; font-weight: 600; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
                 ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 },
 
 // Add a new transaction
@@ -1403,10 +1409,19 @@ addTransaction(desc, amount, category = 'General', subcategory = '', date = null
         eventId: eventId || ''
     };
     this.transactions.unshift(tx);
+    this.sortTransactions();
     this.currentNet += tx.amount;
     void this.saveTransaction(tx);
     this.renderTransactions();
     return tx;
+},
+
+sortTransactions() {
+    this.transactions.sort((a, b) => {
+        const aStamp = `${a.date} ${a.time || '00:00'}`;
+        const bStamp = `${b.date} ${b.time || '00:00'}`;
+        return bStamp.localeCompare(aStamp);
+    });
 },
 
 // Quick transaction buttons
@@ -1879,7 +1894,7 @@ renderAuditGraph() {
         <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.05);">
         </div>
         
-        <div style="position:absolute; bottom:0; left:0; width:${percent}%; height:4px; background:#007AFF; box-shadow: 0 0 15px #007AFF; transition: width 0.5s ease; z-index: 2;">
+        <div style="position:absolute; bottom:0; left:0; width:${percent}%; height:4px; background: var(--btn-accent-bg-strong); box-shadow: 0 0 12px rgba(0,255,135,0.35); transition: width 0.5s ease; z-index: 2;">
         </div>
 
     `;
@@ -1969,7 +1984,7 @@ renderAuditGraph() {
                     <div style="font-size: 12px; color: white; font-weight: 600;">${tx.item || tx.desc}</div>
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                 </div>
-                <div style="font-family:'SF Mono'; font-size: 12px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
+                <div style="font-family:'SF Mono'; font-size: 12px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
                     ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
                 </div>
             </div>
@@ -2083,7 +2098,7 @@ updatePanelContext() {
             <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 14px 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
                     <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Agenda</label>
-                    <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color:${activeColor}; font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
+                    <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
                 </div>
                 <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
@@ -2105,7 +2120,7 @@ updatePanelContext() {
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                     <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Stakeholders</label>
-                    <span onclick="ENGINE.addStakeholder()" style="color:${activeColor}; font-size:8px; font-weight:800; cursor:pointer;">+ INVITE</span>
+                    <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.75); font-size:8px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
                 <div id="stakeholder-list" style="max-height: 105px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
@@ -2121,7 +2136,7 @@ updatePanelContext() {
                 <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; margin-bottom:8px; opacity: 0.8;">Notes</label>
                 <div style="display:flex; gap:8px; margin-bottom:10px;">
                     <input id="timeblock-notes-input" placeholder="Add note..." style="flex:1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 10px; color: white; font-size: 11px; outline:none;">
-                    <button onclick="ENGINE.saveSession()" style="background:${activeColor}; border:none; color:white; font-size:9px; font-weight:800; padding:0 10px; border-radius:8px; cursor:pointer;">ADD</button>
+                    <button onclick="ENGINE.saveSession()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:9px; font-weight:800; padding:0 10px; border-radius:8px; cursor:pointer;">ADD</button>
                 </div>
                 <div id="timeblock-notes-history" style="display:flex; flex-direction:column; gap:8px; max-height: 90px; overflow-y:auto;">
                     ${noteDisplayItems.length ? noteDisplayItems.map(note => `
@@ -2154,7 +2169,7 @@ updatePanelContext() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap: 8px;">
                     <select id="timeblock-expense-category" class="subtle-select"></select>
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
-                    <button onclick="ENGINE.addTimeblockExpense()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
+                    <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
                 <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
                     ${expenseItems.length ? expenseItems.map(tx => `
@@ -2163,7 +2178,7 @@ updatePanelContext() {
                                 <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                                 <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                             </div>
-                            <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
+                            <div style="font-family:'SF Mono'; font-size: 11px; color: rgba(255, 69, 58, 0.75);">
                                 -${this.formatAmount(Math.abs(tx.amount))}
                             </div>
                         </div>
@@ -2186,7 +2201,7 @@ updatePanelContext() {
                                 <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                                 <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                             </div>
-                            <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
+                            <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
                                 ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
                             </div>
                         </div>
@@ -2863,7 +2878,9 @@ renderDay() {
     };
 
     // Get transactions for today
-    const todayTx = this.transactions.filter(tx => tx.date === this.selectedDate);
+    const todayTx = this.transactions
+        .map((tx, idx) => ({ tx, idx }))
+        .filter(({ tx }) => tx.date === this.selectedDate);
 
     // Build two-column layout
     let html = `
@@ -3001,14 +3018,14 @@ renderDay() {
     }
 
     // Transaction markers
-    todayTx.forEach(tx => {
-        const [hours, mins] = tx.time.split(':').map(Number);
+    todayTx.forEach(({ tx, idx }) => {
+        const [hours, mins] = String(tx.time || '00:00').split(':').map(Number);
         const timeDecimal = hours + (mins / 60);
         const topPos = timeDecimal * this.HOUR_HEIGHT;
         const isIncome = tx.amount >= 0;
 
         html += `
-            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px; cursor: pointer;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openTransactionModalWithData('${tx.id}')">
+            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px; cursor: pointer;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openTransactionModalWithData('${tx.id}', ${idx})">
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${tx.item || tx.desc}</span>
                     <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); margin-left: 8px;">
@@ -3160,7 +3177,7 @@ updateTimeline(shouldScroll = false) {
                 </div>
                 <div style="display:flex; gap:6px;">
                     <button onclick="ENGINE.openEditEntity('${type}', '${item.id}')" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">EDIT</button>
-                    <button onclick="ENGINE.removeEntity('${type}', '${item.id}')" style="background: rgba(255,59,48,0.15); border: 1px solid rgba(255,59,48,0.3); color: #FF453A; padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">REMOVE</button>
+                <button onclick="ENGINE.removeEntity('${type}', '${item.id}')" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); padding: 6px 10px; border-radius: 6px; font-size: 10px; cursor: pointer;">REMOVE</button>
                 </div>
             </div>
         `).join('');
@@ -3449,8 +3466,12 @@ getSubcategoriesForCategory(categoryName) {
 
 populateSelectOptions(select, items, selectedValue, placeholder, includeManage = false) {
     if (!select) return;
+    const normalizedItems = Array.from(new Set(items));
+    if (selectedValue && !normalizedItems.includes(selectedValue)) {
+        normalizedItems.unshift(selectedValue);
+    }
     const options = [`<option value="">${placeholder}</option>`]
-        .concat(items.map(item => `<option value="${item}">${item}</option>`));
+        .concat(normalizedItems.map(item => `<option value="${item}">${item}</option>`));
     if (includeManage) {
         options.push('<option value="__divider__" disabled>────────</option>');
         options.push('<option value="__create__">+ Create</option>');
@@ -3607,7 +3628,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                     <div style="font-size: 11px; color:white; font-weight:600;">${tx.item || tx.desc}</div>
                     <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
                 </div>
-                <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
+                <div style="font-family:'SF Mono'; font-size: 11px; color: rgba(255, 69, 58, 0.75);">
                     -${this.formatAmount(Math.abs(tx.amount))}
                 </div>
             </div>
@@ -3628,7 +3649,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
 
         overlay.dataset.sign = String(sign);
         delete overlay.dataset.txId;
-        if (title) title.textContent = sign > 0 ? 'Add Income' : 'Add Expense';
+        if (title) title.textContent = 'Add Transaction';
         if (amountInput) amountInput.value = this.formatAmount(0);
         if (itemInput) itemInput.value = '';
         if (descInput) descInput.value = '';
@@ -3641,8 +3662,9 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         overlay.style.display = 'flex';
     },
 
-    openTransactionModalWithData(id) {
-        const tx = this.transactions.find(item => item.id === id);
+    openTransactionModalWithData(id, idx = null) {
+        let tx = this.transactions.find(item => item.id === id);
+        if (!tx && Number.isInteger(idx)) tx = this.transactions[idx];
         if (!tx) return;
         const overlay = document.getElementById('transaction-overlay');
         if (!overlay) return;
@@ -3658,8 +3680,9 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
 
         overlay.dataset.sign = String(sign);
         overlay.dataset.txId = tx.id;
-        if (title) title.textContent = sign > 0 ? 'Edit Income' : 'Edit Expense';
-        if (amountInput) amountInput.value = this.formatAmount(Math.abs(tx.amount));
+        if (title) title.textContent = 'Edit Transaction';
+        const amountVal = Number.isFinite(tx.amount) ? Math.abs(tx.amount) : parseFloat(String(tx.amount || '0').replace(/,/g, ''));
+        if (amountInput) amountInput.value = this.formatAmount(amountVal);
         if (itemInput) itemInput.value = tx.item || '';
         if (descInput) descInput.value = tx.description || tx.desc || '';
         if (dateInput) dateInput.value = this.formatDate(tx.date);
@@ -3776,6 +3799,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 tx.category = category;
                 tx.subcategory = subcategory;
                 void this.saveTransaction(tx);
+                this.sortTransactions();
                 this.renderTransactions();
                 this.renderDay();
             }
@@ -3790,8 +3814,8 @@ commence() {
     
     if (this.isMeetingActive) {
         btn.innerText = "TERMINATE SESSION";
-        btn.style.background = "#FF453A"; 
-        btn.style.color = "white";
+        btn.style.background = "rgba(255, 69, 58, 0.25)"; 
+        btn.style.color = "rgba(255,255,255,0.9)";
         // Start recording time logic...
     } else {
         btn.innerText = "START";
@@ -3837,13 +3861,13 @@ document.addEventListener('click', () => {
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <button id="delete-event-btn" onclick="ENGINE.deleteCurrentEvent()" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
-                <button onclick="ENGINE.closeModal()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
+                <button onclick="ENGINE.closeModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
             </div>
         </div>
         <div id="dynamic-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;"></div>
         <div style="display: flex; gap: 12px; margin-top: 24px;">
-            <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE SESSION</button>
+            <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE SESSION</button>
         </div>
     </div>
 </div>
@@ -3853,14 +3877,14 @@ document.addEventListener('click', () => {
     <div class="meeting-panel" style="max-width: 820px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h2 style="margin:0; color:white; font-size: 20px; font-weight: 600;">Settings Registry</h2>
-            <button onclick="ENGINE.closeSettings()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+            <button onclick="ENGINE.closeSettings()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr; gap: 20px;">
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">TEAMS</div>
-                    <button onclick="ENGINE.addEntity('teams')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD TEAM</button>
+                    <button onclick="ENGINE.addEntity('teams')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD TEAM</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-teams-name" placeholder="Team name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3876,7 +3900,7 @@ document.addEventListener('click', () => {
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PROFILES</div>
-                    <button onclick="ENGINE.addEntity('profiles')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROFILE</button>
+                    <button onclick="ENGINE.addEntity('profiles')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROFILE</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-profiles-name" placeholder="Profile name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3891,7 +3915,7 @@ document.addEventListener('click', () => {
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">INSTITUTIONS</div>
-                    <button onclick="ENGINE.addEntity('institutions')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD INSTITUTION</button>
+                    <button onclick="ENGINE.addEntity('institutions')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD INSTITUTION</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-institutions-name" placeholder="Institution name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3903,7 +3927,7 @@ document.addEventListener('click', () => {
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PROJECTS</div>
-                    <button onclick="ENGINE.addEntity('projects')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROJECT</button>
+                    <button onclick="ENGINE.addEntity('projects')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROJECT</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-projects-name" placeholder="Project name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3915,7 +3939,7 @@ document.addEventListener('click', () => {
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">CATEGORIES</div>
-                    <button onclick="ENGINE.addEntity('categories')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD CATEGORY</button>
+                    <button onclick="ENGINE.addEntity('categories')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD CATEGORY</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-categories-name" placeholder="Category name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3927,7 +3951,7 @@ document.addEventListener('click', () => {
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">SUBCATEGORIES</div>
-                    <button onclick="ENGINE.addEntity('subcategories')" style="background:#007AFF; border:none; color:white; padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD SUBCATEGORY</button>
+                    <button onclick="ENGINE.addEntity('subcategories')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD SUBCATEGORY</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-subcategories-name" placeholder="Subcategory name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3947,7 +3971,7 @@ document.addEventListener('click', () => {
     <div class="meeting-panel" style="max-width: 520px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h2 id="edit-entity-title" style="margin:0; color:white; font-size: 18px; font-weight: 600;">Edit</h2>
-            <button onclick="ENGINE.closeEditEntity()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+            <button onclick="ENGINE.closeEditEntity()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <div style="display:flex; flex-direction:column; gap: 12px;">
             <input id="edit-entity-name" placeholder="Name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3958,8 +3982,8 @@ document.addEventListener('click', () => {
             <textarea id="edit-entity-notes" placeholder="Notes" style="width: 100%; height: 100px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; color: white; outline: none; resize: none;"></textarea>
         </div>
         <div style="display:flex; gap: 12px; margin-top: 20px;">
-            <button onclick="ENGINE.closeEditEntity()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button onclick="ENGINE.saveEditEntity()" style="flex: 1; padding: 12px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE</button>
+            <button onclick="ENGINE.closeEditEntity()" style="flex: 1; padding: 12px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button onclick="ENGINE.saveEditEntity()" style="flex: 1; padding: 12px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
@@ -3969,7 +3993,7 @@ document.addEventListener('click', () => {
     <div class="meeting-panel" style="max-width: 520px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h2 id="transaction-title" style="margin:0; color:white; font-size: 18px; font-weight: 600;">Add Transaction</h2>
-            <button onclick="ENGINE.closeTransactionModal()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+            <button onclick="ENGINE.closeTransactionModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <div style="display:flex; flex-direction:column; gap: 12px;">
             <input id="transaction-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -3988,8 +4012,8 @@ document.addEventListener('click', () => {
             </div>
         </div>
         <div style="display:flex; gap: 12px; margin-top: 20px;">
-            <button onclick="ENGINE.closeTransactionModal()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button onclick="ENGINE.saveTransactionModal()" style="flex: 1; padding: 12px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE</button>
+            <button onclick="ENGINE.closeTransactionModal()" style="flex: 1; padding: 12px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button onclick="ENGINE.saveTransactionModal()" style="flex: 1; padding: 12px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
@@ -3999,7 +4023,7 @@ document.addEventListener('click', () => {
     <div class="meeting-panel" style="max-width: 720px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h2 style="margin:0; color:white; font-size: 18px; font-weight: 600;">Audit Ledger</h2>
-            <button onclick="ENGINE.closeAudit()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+            <button onclick="ENGINE.closeAudit()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <div id="audit-transaction-list" style="display:flex; flex-direction:column; gap: 10px; max-height: 60vh; overflow-y: auto;"></div>
     </div>
