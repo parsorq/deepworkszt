@@ -787,21 +787,30 @@ body {
         <div class="header-top">
             <div class="brand">DEEPWORKSZT</div>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <select class="config-button" id="cfg-level" onchange="ENGINE.setLevel(this.value)" style="appearance: none;">
-                    <option value="INDIVIDUAL">LEVEL: INDIVIDUAL</option>
-                    <option value="TEAM">LEVEL: TEAM</option>
-                    <option value="INSTITUTION">LEVEL: INSTITUTION</option>
-                </select>
-                <select class="config-button" id="cfg-role" onchange="ENGINE.setRole(this.value)" style="appearance: none;">
-                    <option value="ARCHITECT">ROLE: ARCHITECT</option>
-                    <option value="SUPERVISOR">ROLE: SUPERVISOR</option>
-                </select>
-                <select class="config-button" id="cfg-lens" onchange="ENGINE.setLens(this.value)" style="appearance: none;">
-                    <option value="PROD">LENS: PROD</option>
-                    <option value="FINANCE">LENS: FINANCE</option>
-                    <option value="BOTH">LENS: BOTH</option>
-                </select>
-                <button class="config-button" onclick="ENGINE.openSettings()">SETTINGS</button>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 700;">Level</div>
+                    <select class="config-button" id="cfg-level" onchange="ENGINE.setLevel(this.value)" style="appearance: none;">
+                        <option value="INDIVIDUAL">INDIVIDUAL</option>
+                        <option value="TEAM">TEAM</option>
+                        <option value="INSTITUTION">INSTITUTION</option>
+                    </select>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 700;">Role</div>
+                    <select class="config-button" id="cfg-role" onchange="ENGINE.setRole(this.value)" style="appearance: none;">
+                        <option value="ARCHITECT">ARCHITECT</option>
+                        <option value="SUPERVISOR">SUPERVISOR</option>
+                    </select>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 700;">Lens</div>
+                    <select class="config-button" id="cfg-lens" onchange="ENGINE.setLens(this.value)" style="appearance: none;">
+                        <option value="PROD">PROD</option>
+                        <option value="FINANCE">FINANCE</option>
+                        <option value="BOTH">BOTH</option>
+                    </select>
+                </div>
+                <button class="config-button" onclick="ENGINE.openSettings()" aria-label="Settings">⚙︎</button>
             </div>
         </div>
 
@@ -817,9 +826,14 @@ body {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 id="day-title" style="margin: 0;">Daily Ledger</h1>
             <div class="date-nav">
-                <button class="date-nav-btn" onclick="ENGINE.navigateDate(-1)">‹</button>
-                <span id="current-date-display" class="date-display-main">2026-01-30</span>
-                <button class="date-nav-btn" onclick="ENGINE.navigateDate(1)">›</button>
+                <div style="display:flex; flex-direction:column; align-items:center; gap: 6px;">
+                    <span id="current-date-display" class="date-display-main">2026-01-30</span>
+                    <div style="display:flex; align-items:center; gap: 8px;">
+                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(-1)">‹</button>
+                        <button class="date-nav-btn" onclick="ENGINE.goToToday()">Today</button>
+                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(1)">›</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div style="display: flex; flex-direction: column; height: calc(100% - 60px); gap: 16px;">
@@ -1009,7 +1023,7 @@ async function validateMasterRegistry(email) {
     );
 }
 
-async function handleLogin() {
+async function handleLogin(promptMode = 'consent') {
     await ensureGoogleReady();
     return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
@@ -1032,13 +1046,14 @@ async function handleLogin() {
                     return;
                 }
                 ENGINE.userEmail = profile.email;
+                localStorage.setItem('ENGINE_LAST_USER', profile.email);
                 await ENGINE.init();
                 resolve();
             } catch (err) {
                 reject(err);
             }
         };
-        googleTokenClient.requestAccessToken({ prompt: 'consent' });
+        googleTokenClient.requestAccessToken({ prompt: promptMode });
     });
 }
 
@@ -1070,10 +1085,22 @@ function showLoginUI() {
     btn.disabled = true;
     btn.style.opacity = '0.6';
     setLoginStatus('Loading Google services...');
-    ensureGoogleReady().then(() => {
+    ensureGoogleReady().then(async () => {
+        const lastUser = localStorage.getItem('ENGINE_LAST_USER');
+        if (lastUser) {
+            setLoginStatus('Checking existing session...');
+            try {
+                await handleLogin('');
+                loginOverlay.remove();
+                return;
+            } catch (err) {
+                setLoginStatus('Sign in to sync with your Sheets ledger.');
+            }
+        } else {
+            setLoginStatus('Sign in to sync with your Sheets ledger.');
+        }
         btn.disabled = false;
         btn.style.opacity = '1';
-        setLoginStatus('Sign in to sync with your Sheets ledger.');
     }).catch(() => {
         setLoginStatus('Unable to load Google services. Check blockers or network.', true);
     });
@@ -1082,7 +1109,7 @@ function showLoginUI() {
         btn.style.opacity = '0.6';
         setLoginStatus('Connecting to Google...');
         try {
-            await handleLogin();
+            await handleLogin('consent');
             loginOverlay.remove();
         } catch (err) {
             console.error('Login failed:', err);
@@ -1169,6 +1196,33 @@ async init() {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 this.closeModal();
+            }
+        });
+    }
+
+    const settingsOverlay = document.getElementById('settings-overlay');
+    if (settingsOverlay) {
+        settingsOverlay.addEventListener('click', (e) => {
+            if (e.target === settingsOverlay) {
+                this.closeSettings();
+            }
+        });
+    }
+
+    const editOverlay = document.getElementById('edit-entity-overlay');
+    if (editOverlay) {
+        editOverlay.addEventListener('click', (e) => {
+            if (e.target === editOverlay) {
+                this.closeEditEntity();
+            }
+        });
+    }
+
+    const transactionOverlay = document.getElementById('transaction-overlay');
+    if (transactionOverlay) {
+        transactionOverlay.addEventListener('click', (e) => {
+            if (e.target === transactionOverlay) {
+                this.closeTransactionModal();
             }
         });
     }
