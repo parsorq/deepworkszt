@@ -896,8 +896,8 @@ body {
 
     <div style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.1); border: 1px solid #FF453A; color: #FF453A; border-radius: 8px; font-size: 18px;">-</button>
-            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(50,215,75,0.1); border: 1px solid #32D74B; color: #32D74B; border-radius: 8px; font-size: 18px;">+</button>
+            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.08); border: 1px solid rgba(255,69,58,0.35); color: rgba(255,69,58,0.8); border-radius: 10px; font-size: 16px; font-weight: 600; letter-spacing: 1px;">EXPENSE</button>
+            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(50,215,75,0.08); border: 1px solid rgba(50,215,75,0.35); color: rgba(50,215,75,0.85); border-radius: 10px; font-size: 16px; font-weight: 600; letter-spacing: 1px;">INCOME</button>
         </div>
 
         <div id="recent-transactions" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
@@ -1248,22 +1248,24 @@ renderTransactions() {
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px;">
             <div>
                 <div style="font-size: 11px; color: white; font-weight: 500;">${tx.desc}</div>
-                <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${tx.date}</div>
+                <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}</div>
             </div>
             <div style="font-family: 'SF Mono'; font-size: 12px; font-weight: 600; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
-                ${tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(2)}
+                ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
             </div>
         </div>
     `).join('');
 },
 
 // Add a new transaction
-addTransaction(desc, amount, category = 'General') {
+addTransaction(desc, amount, category = 'General', date = null, time = null) {
     const now = new Date();
+    const txDate = date || this.formatDate(now.toISOString().split('T')[0]);
+    const txTime = time || now.toTimeString().slice(0, 5);
     const tx = {
         id: `tx-${Date.now()}`,
-        date: now.toISOString().split('T')[0],
-        time: now.toTimeString().slice(0, 5),
+        date: txDate,
+        time: txTime,
         desc,
         amount: parseFloat(amount),
         category
@@ -1277,11 +1279,7 @@ addTransaction(desc, amount, category = 'General') {
 
 // Quick transaction buttons
 quickTx(sign) {
-    const amount = prompt(`Enter ${sign > 0 ? 'income' : 'expense'} amount:`);
-    if (!amount || isNaN(parseFloat(amount))) return;
-
-    const desc = prompt('Description:') || (sign > 0 ? 'Income' : 'Expense');
-    this.addTransaction(desc, sign * Math.abs(parseFloat(amount)));
+    this.openTransactionModal(sign);
 },
 
 updateLifeClock() {
@@ -1680,8 +1678,8 @@ renderAuditGraph() {
     },
 
     // Financial Actions
-    addExpense() { console.log("Expense added"); },
-    addIncome() { console.log("Income added"); },
+    addExpense() { this.openTransactionModal(-1); },
+    addIncome() { this.openTransactionModal(1); },
     audit() { alert("Strategic Audit Log: 24h cycle verified."); },
     
 closeModal() {
@@ -2458,10 +2456,10 @@ renderDay() {
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${tx.desc}</span>
                     <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); margin-left: 8px;">
-                        ${isIncome ? '+' : ''}${tx.amount.toFixed(0)}
+                        ${isIncome ? '+' : ''}${this.formatAmount(tx.amount, 0)}
                     </span>
                 </div>
-                <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 2px;">${tx.time}</div>
+                <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 2px;">${this.formatDate(tx.date)} ${tx.time}</div>
             </div>`;
     });
 
@@ -2746,6 +2744,71 @@ updateTimeline(shouldScroll = false) {
             return profile ? profile.name : id;
         });
     },
+
+    formatDate(value) {
+        if (!value) return '';
+        const isoMatch = String(value).slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(isoMatch)) return isoMatch;
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+
+    formatAmount(amount, decimals = 2) {
+        if (amount === null || amount === undefined || Number.isNaN(amount)) return '';
+        return Number(amount).toLocaleString(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        });
+    },
+
+    openTransactionModal(sign) {
+        const overlay = document.getElementById('transaction-overlay');
+        if (!overlay) return;
+        const title = document.getElementById('transaction-title');
+        const amountInput = document.getElementById('transaction-amount');
+        const descInput = document.getElementById('transaction-desc');
+        const dateInput = document.getElementById('transaction-date');
+        const timeInput = document.getElementById('transaction-time');
+
+        overlay.dataset.sign = String(sign);
+        if (title) title.textContent = sign > 0 ? 'Add Income' : 'Add Expense';
+        if (amountInput) amountInput.value = '';
+        if (descInput) descInput.value = '';
+        const now = new Date();
+        if (dateInput) dateInput.value = this.formatDate(now.toISOString().split('T')[0]);
+        if (timeInput) timeInput.value = now.toTimeString().slice(0, 5);
+        overlay.style.display = 'flex';
+    },
+
+    closeTransactionModal() {
+        const overlay = document.getElementById('transaction-overlay');
+        if (overlay) overlay.style.display = 'none';
+    },
+
+    saveTransactionModal() {
+        const overlay = document.getElementById('transaction-overlay');
+        if (!overlay) return;
+        const sign = parseInt(overlay.dataset.sign || '1', 10);
+        const amountInput = document.getElementById('transaction-amount');
+        const descInput = document.getElementById('transaction-desc');
+        const dateInput = document.getElementById('transaction-date');
+        const timeInput = document.getElementById('transaction-time');
+        const categoryInput = document.getElementById('transaction-category');
+
+        const amountVal = amountInput ? parseFloat(amountInput.value) : NaN;
+        if (!amountInput || Number.isNaN(amountVal)) return;
+        const desc = descInput && descInput.value.trim() ? descInput.value.trim() : (sign > 0 ? 'Income' : 'Expense');
+        const date = dateInput ? this.formatDate(dateInput.value) : this.formatDate(new Date().toISOString().split('T')[0]);
+        const time = timeInput ? timeInput.value : new Date().toTimeString().slice(0, 5);
+        const category = categoryInput && categoryInput.value.trim() ? categoryInput.value.trim() : 'General';
+
+        this.addTransaction(desc, sign * Math.abs(amountVal), category, date, time);
+        this.closeTransactionModal();
+    },
 commence() {
     this.isMeetingActive = !this.isMeetingActive;
     const btn = document.getElementById('commence-btn');
@@ -2888,6 +2951,31 @@ window.addEventListener('mouseup', () => {
         <div style="display:flex; gap: 12px; margin-top: 20px;">
             <button onclick="ENGINE.closeEditEntity()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
             <button onclick="ENGINE.saveEditEntity()" style="flex: 1; padding: 12px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE</button>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Overlay -->
+<div id="transaction-overlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 1350; justify-content:center; align-items:center; padding: 40px;">
+    <div class="meeting-panel" style="max-width: 520px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2 id="transaction-title" style="margin:0; color:white; font-size: 18px; font-weight: 600;">Add Transaction</h2>
+            <button onclick="ENGINE.closeTransactionModal()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap: 12px;">
+            <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input id="transaction-amount" type="number" step="0.01" placeholder="Amount" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                <input id="transaction-date" type="date" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input id="transaction-time" type="time" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                <input id="transaction-category" placeholder="Category" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            </div>
+        </div>
+        <div style="display:flex; gap: 12px; margin-top: 20px;">
+            <button onclick="ENGINE.closeTransactionModal()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button onclick="ENGINE.saveTransactionModal()" style="flex: 1; padding: 12px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
