@@ -1829,7 +1829,8 @@ updatePanelContext() {
     const eventEnd = activeEvent ? this.decimalToTime(activeEvent.end) : this.decimalToTime(Math.min(24, (now.getHours() + 1)));
     const agendaItems = activeEvent?.agenda ? activeEvent.agenda.split('|').filter(Boolean) : [];
     const stakeholderItems = activeEvent?.stakeholders ? activeEvent.stakeholders.split('|').filter(Boolean) : [];
-    const eventNotes = activeEvent?.notes || '';
+    const noteItems = activeEvent?.notes ? activeEvent.notes.split('|').filter(Boolean) : [];
+    const noteDisplayItems = noteItems.length ? [...noteItems].reverse() : [];
     const eventBudget = activeEvent?.budget || '';
 
     modalTitle.innerText = `${activeEvent ? 'EDIT' : 'NEW'} ${this.activeType}`;
@@ -1923,7 +1924,17 @@ updatePanelContext() {
 
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
                 <label style="opacity: 0.3; font-size: 8px; font-weight: 800; text-transform:uppercase; margin-bottom:8px;">Notes</label>
-                <textarea id="timeblock-notes" placeholder="Notes..." style="width: 100%; height: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; color: white; font-size: 11px; outline:none; resize:none;">${eventNotes}</textarea>
+                <div style="display:flex; gap:8px; margin-bottom:10px;">
+                    <input id="timeblock-notes-input" placeholder="Add note..." style="flex:1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 10px; color: white; font-size: 11px; outline:none;">
+                    <button onclick="ENGINE.saveSession()" style="background:${activeColor}; border:none; color:white; font-size:9px; font-weight:800; padding:0 10px; border-radius:8px; cursor:pointer;">ADD</button>
+                </div>
+                <div id="timeblock-notes-history" style="display:flex; flex-direction:column; gap:8px; max-height: 90px; overflow-y:auto;">
+                    ${noteDisplayItems.length ? noteDisplayItems.map(note => `
+                        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 10px; color: rgba(255,255,255,0.8); font-size: 11px;">
+                            ${note}
+                        </div>
+                    `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No notes yet.</div>'}
+                </div>
             </div>
         </div>
     `;
@@ -1956,6 +1967,29 @@ updatePanelContext() {
                         </div>
                     </div>
                 `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>'}
+            </div>
+        </div>
+    `;
+
+    // --- 6. SESSION AUDIT LEDGER ---
+    const sessionLedgerItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
+    html += `
+        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="opacity:0.3; font-size: 9px; font-weight: 800; text-transform:uppercase;">Session Audit Ledger</label>
+            </div>
+            <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
+                ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div>
+                            <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                        </div>
+                        <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
+                            ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
+                        </div>
+                    </div>
+                `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No transactions yet.</div>'}
             </div>
         </div>
     `;
@@ -2004,7 +2038,7 @@ saveSession() {
     const dateInput = document.getElementById('timeblock-date');
     const startInput = document.getElementById('timeblock-start');
     const endInput = document.getElementById('timeblock-end');
-    const notesInput = document.getElementById('timeblock-notes');
+    const notesInput = document.getElementById('timeblock-notes-input');
     const budgetInput = document.getElementById('timeblock-budget');
     const agendaInputs = document.querySelectorAll('#agenda-items-list input');
     const stakeholderInputs = document.querySelectorAll('#stakeholder-list input');
@@ -2030,7 +2064,10 @@ saveSession() {
     event.end = endDec;
     event.agenda = agenda;
     event.stakeholders = stakeholders;
-    event.notes = notesInput ? notesInput.value.trim() : '';
+    const existingNotes = event.notes ? event.notes.split('|').filter(Boolean) : [];
+    const newNote = notesInput ? notesInput.value.trim() : '';
+    if (newNote) existingNotes.push(newNote);
+    event.notes = existingNotes.join('|');
     event.budget = budgetInput ? budgetInput.value.trim() : '';
 
     if (targetDate !== this.selectedDate) {
