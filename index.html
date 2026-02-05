@@ -1592,7 +1592,7 @@ handleMouseDown(e) {
     this.hideQuickCreateMenu();
 
     const container = document.getElementById('ledger-container');
-    const rect = container.getBoundingClientRect();
+    const rect = eventsCol.getBoundingClientRect();
     const scrollTop = container.scrollTop;
     const offsetY = e.clientY - rect.top + scrollTop;
 
@@ -1614,7 +1614,9 @@ handleMouseMove(e) {
     const container = document.getElementById('ledger-container');
     if (!container) return;
 
-    const rect = container.getBoundingClientRect();
+    const eventsCol = document.querySelector('.ledger-events-col');
+    if (!eventsCol) return;
+    const rect = eventsCol.getBoundingClientRect();
     const scrollTop = container.scrollTop;
     const relativeY = e.clientY - rect.top + scrollTop;
 
@@ -1735,7 +1737,7 @@ handleContextMenu(e) {
     e.stopPropagation();
     const container = document.getElementById('ledger-container');
     if (!container) return;
-    const rect = container.getBoundingClientRect();
+    const rect = eventsCol.getBoundingClientRect();
     const scrollTop = container.scrollTop;
     const offsetY = e.clientY - rect.top + scrollTop;
     const rawH = offsetY / this.HOUR_HEIGHT;
