@@ -221,6 +221,11 @@ body {
     border-color: rgba(255, 255, 255, 0.12) !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
     transform: translateY(-1px);
+    cursor: grab;
+}
+
+.block-space * {
+    cursor: inherit;
 }
 
 #block-context-menu button:hover,
@@ -228,6 +233,27 @@ body {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.18);
     color: rgba(255, 255, 255, 0.9);
+}
+
+#block-context-menu button,
+#quick-create-menu button {
+    transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+#block-context-menu button:active,
+#quick-create-menu button:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08) inset;
+}
+
+.ledger-events-col,
+.events-hit-layer {
+    cursor: crosshair;
+}
+
+body.dragging .ledger-events-col,
+body.dragging .events-hit-layer {
+    cursor: ns-resize;
 }
 
 
@@ -1778,6 +1804,7 @@ handleMouseUp() {
     // Only create a block if the user actually dragged
     if (!this.dragHasMoved || start === end) {
         this.isDragging = false;
+        document.body.classList.remove('dragging');
         this.dragStartH = null;
         this.dragEndH = null;
         this.dragHasMoved = false;
@@ -1813,6 +1840,7 @@ handleMouseUp() {
 
     // Clean up drag state
     this.isDragging = false;
+    document.body.classList.remove('dragging');
     this.dragStartH = null;
     this.dragEndH = null;
     this.dragHasMoved = false;
@@ -1909,6 +1937,7 @@ startDragFromEvent(e) {
     const startH = this.getHourAtClientY(e.clientY);
     if (startH === null) return;
     this.isDragging = true;
+    document.body.classList.add('dragging');
     this.dragStartH = startH;
     this.dragEndH = startH;
     this.dragHasMoved = false;
@@ -3141,10 +3170,7 @@ renderDay() {
             <div class="ledger-events-col" style="position: relative;" onmousedown="ENGINE.handleMouseDown(event)" oncontextmenu="ENGINE.handleContextMenu(event)">
                 <div id="time-now-line"></div>
                 <div class="events-hit-layer"
-                    onpointerdown="ENGINE.startDragFromEvent(event)"
-                    onmousedown="ENGINE.startDragFromEvent(event)"
-                    oncontextmenu="ENGINE.handleContextMenu(event)"
-                    style="position:absolute; inset:0; z-index:500; pointer-events:auto; cursor: crosshair;"></div>`;
+                    style="position:absolute; inset:0; z-index:500; pointer-events:none;"></div>`;
 
     // Hour grid lines
     for (let h = 0; h <= 23; h++) {
