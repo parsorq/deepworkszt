@@ -554,12 +554,19 @@ body.dragging .events-hit-layer {
     .reminder-marker {
         cursor: pointer !important;
         transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+        pointer-events: auto;
     }
     .reminder-marker:hover {
         transform: translateY(-1px);
         background: rgba(255,255,255,0.03);
         border-color: rgba(255,255,255,0.08);
         box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .reminder-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 800;
+        pointer-events: none;
     }
 
     @keyframes spark {
@@ -1441,6 +1448,7 @@ async init() {
         if (e.pointerType === 'mouse' && e.ctrlKey) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
+        if (e.target.closest('.reminder-marker')) return;
         if (e.target.closest('[data-block-idx]')) return;
         const bounds = this.getEventsBounds();
         if (!bounds) return;
@@ -2042,6 +2050,10 @@ updateBlockHover(clientX, clientY) {
         return;
     }
     const elements = document.elementsFromPoint(clientX, clientY);
+    if (elements.some((el) => el && el.closest && el.closest('.reminder-marker'))) {
+        this.clearBlockHover();
+        return;
+    }
     const blockEl = elements.find((el) => el && el.closest && el.closest('[data-block-idx]'));
     const container = blockEl && blockEl.closest ? blockEl.closest('[data-block-idx]') : null;
     if (container === this.hoverBlockEl) return;
@@ -3499,7 +3511,7 @@ renderDay() {
     });
 
     if (reminderMarkers.length) {
-        html += reminderMarkers.join('');
+        html += `<div class="reminder-layer">${reminderMarkers.join('')}</div>`;
     }
 
     html += `</div>`; // Close events column
