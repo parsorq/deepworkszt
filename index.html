@@ -305,7 +305,7 @@ body {
     #time-now-line::before {
         content: '';
         position: absolute;
-        left: -6px;
+        left: -10px;
         top: -4px;
         width: 10px;
         height: 10px;
@@ -2900,7 +2900,7 @@ renderDay() {
     // Build two-column layout
     let html = `
         <div class="ledger-grid" style="position: relative; height: ${24 * this.HOUR_HEIGHT}px;">
-            <div class="ledger-events-col" style="position: relative;">
+            <div class="ledger-events-col" style="position: relative;" onmousedown="ENGINE.handleMouseDown(event)" oncontextmenu="ENGINE.handleContextMenu(event)">
                 <div id="time-now-line"></div>`;
 
     // Hour grid lines
