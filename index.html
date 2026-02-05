@@ -1416,10 +1416,12 @@ async init() {
     document.addEventListener('pointercancel', (e) => this.handlePointerUp(e), true);
 
     // Global capture handlers for ledger interactions
-    document.addEventListener('mousedown', (e) => {
+    document.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
+        if (e.pointerType === 'mouse' && e.ctrlKey) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
+        if (e.target.closest('[data-block-idx]')) return;
         const bounds = this.getEventsBounds();
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
@@ -1777,6 +1779,7 @@ handleMouseDown(e) {
 
 handleMouseMove(e) {
     if (!this.isDragging) return;
+    if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
 
     const container = document.getElementById('ledger-container');
     if (!container) return;
@@ -1942,12 +1945,6 @@ startDragFromEvent(e) {
     const bounds = this.getEventsBounds();
     if (!bounds) return;
     if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
-    const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
-    if (eventIdx !== null) {
-        this.openMeeting(eventIdx);
-        return;
-    }
-
     this.hideQuickCreateMenu();
     const startH = this.getHourAtClientY(e.clientY);
     if (startH === null) return;
@@ -2009,8 +2006,6 @@ clearBlockHover() {
 },
 
 handlePointerMove(e) {
-    if (!this.isDragging) return;
-    if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
     this.handleMouseMove(e);
 },
 
