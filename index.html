@@ -488,7 +488,7 @@ body.dragging .reminder-marker {
 .meeting-panel--editor .meeting-panel-body {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding-right: 4px;
+    padding: 4px 6px 8px;
 }
 
 @keyframes modalSlideIn {
@@ -569,12 +569,7 @@ body.dragging .reminder-marker {
     }
 
     .panel-section--expandable {
-        border-color: rgba(255,255,255,0.05) !important;
-        box-shadow: none !important;
-    }
-
-    .panel-section--expandable:not([open]) {
-        border-color: transparent !important;
+        border-color: rgba(255,255,255,0.04) !important;
         box-shadow: none !important;
     }
 
@@ -2858,7 +2853,7 @@ updatePanelContext() {
 
     // --- 3. LOCATION / URL + STAKEHOLDERS ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 14px; margin-bottom: 14px; margin-top: 6px;">
+        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 14px; margin-bottom: 14px; margin-top: 2px;">
             <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.015); padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03);">
                 <div style="display: flex; background: rgba(0,0,0,0.15); padding: 4px; border-radius: 8px;">
                     <button onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
@@ -2873,14 +2868,14 @@ updatePanelContext() {
                 </div>
             </div>
             ${showTimeblockDetails ? `
-            <details class="panel-section panel-section--expandable" open style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); height: 86px; display:flex; flex-direction:column; overflow:hidden;">
-                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto;">
+            <div class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); height: 86px; display:flex; flex-direction:column; overflow:hidden;">
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto;">
                     <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
                         Stakeholders
+                        <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
-                </summary>
+                </div>
                 <div id="stakeholder-list" style="overflow-y: auto; display:flex; flex-direction:column; gap:8px; margin-top: 10px; flex:1 1 auto; min-height: 0; height: 72px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -2889,21 +2884,21 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </details>` : '<div></div>'}
+            </div>` : '<div></div>'}
         </div>
     `;
 
     // --- 4. SESSION AGENDA (Advanced) ---
     if (showTimeblockDetails) {
         html += `
-            <details class="panel-section panel-section--expandable" open style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
-                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+            <div class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
                         Session Agenda
+                        <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
-                </summary>
+                    <div></div>
+                </div>
                 <div style="display:flex; justify-content:space-between; margin: 10px 0 8px;">
                     <div></div>
                     <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
@@ -2917,7 +2912,7 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </details>
+            </div>
         `;
     }
 
@@ -2926,14 +2921,14 @@ updatePanelContext() {
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         const expenseDisplayItems = [...expenseItems].reverse();
         html += `
-            <details class="panel-section panel-section--expandable" open style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
-                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+            <div class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
                         Timeblock Expenses
+                        <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
-                </summary>
+                    <div></div>
+                </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 8px;">
                     <div></div>
                     <div style="display:flex; gap: 8px; align-items:center;">
@@ -2941,17 +2936,17 @@ updatePanelContext() {
                         <input id="timeblock-budget" type="text" value="${this.escapeAttribute(eventBudget)}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
                     </div>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px; margin-top: 6px;">
                     <input id="timeblock-expense-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                     <input id="timeblock-expense-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                     <input id="timeblock-expense-amount" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap: 8px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 6px;">
                     <select id="timeblock-expense-category" class="subtle-select"></select>
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
                     <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
-                <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; height: 126px; overflow-y: auto; margin-top: 10px;">
+                <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; height: 126px; overflow-y: auto; margin-top: 14px;">
                     ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
@@ -2969,7 +2964,7 @@ updatePanelContext() {
                     `;
                     }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses.</div>'}
                 </div>
-            </details>
+            </div>
         `;
     }
     
