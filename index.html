@@ -787,9 +787,20 @@ body {
         <div class="header-top">
             <div class="brand">DEEPWORKSZT</div>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button class="config-button" id="cfg-level" onclick="ENGINE.cycle('scope')">LEVEL: INDIVIDUAL</button>
-                <button class="config-button" id="cfg-role" onclick="ENGINE.cycle('role')">ROLE: ARCHITECT</button>
-                <button class="config-button" id="cfg-lens" onclick="ENGINE.cycle('lens')">LENS: BOTH</button>
+                <select class="config-button" id="cfg-level" onchange="ENGINE.setLevel(this.value)" style="appearance: none;">
+                    <option value="INDIVIDUAL">LEVEL: INDIVIDUAL</option>
+                    <option value="TEAM">LEVEL: TEAM</option>
+                    <option value="INSTITUTION">LEVEL: INSTITUTION</option>
+                </select>
+                <select class="config-button" id="cfg-role" onchange="ENGINE.setRole(this.value)" style="appearance: none;">
+                    <option value="ARCHITECT">ROLE: ARCHITECT</option>
+                    <option value="SUPERVISOR">ROLE: SUPERVISOR</option>
+                </select>
+                <select class="config-button" id="cfg-lens" onchange="ENGINE.setLens(this.value)" style="appearance: none;">
+                    <option value="PROD">LENS: PROD</option>
+                    <option value="FINANCE">LENS: FINANCE</option>
+                    <option value="BOTH">LENS: BOTH</option>
+                </select>
                 <button class="config-button" onclick="ENGINE.openSettings()">SETTINGS</button>
             </div>
         </div>
@@ -1130,6 +1141,7 @@ const ENGINE = {
 async init() {
     await this.loadData();
     this.injectStyles();
+    this.syncConfigControls();
     this.updateDateDisplay();
     this.render();
     this.renderTransactions();
@@ -1163,6 +1175,15 @@ async init() {
 
     // Initial timeline position
     setTimeout(() => this.updateTimeline(true), 100);
+},
+
+syncConfigControls() {
+    const level = document.getElementById('cfg-level');
+    const role = document.getElementById('cfg-role');
+    const lens = document.getElementById('cfg-lens');
+    if (level) level.value = this.scope;
+    if (role) role.value = this.role;
+    if (lens) lens.value = this.lens;
 },
 
 // Date Navigation
@@ -1546,23 +1567,23 @@ setLevel(level) {
     this.scope = level;
     this.activeBurnRate = this.rates[level]; // THIS LINE IS VITAL
     
-    const btn = document.getElementById('cfg-level');
-    if(btn) btn.innerText = `LEVEL: ${level}`;
+    const select = document.getElementById('cfg-level');
+    if (select) select.value = level;
     
     this.render();
 },
 
     setRole(role) {
         this.role = role;
-        const btn = document.getElementById('cfg-role');
-        if(btn) btn.innerText = `ROLE: ${role}`;
+        const select = document.getElementById('cfg-role');
+        if (select) select.value = role;
         this.render();
     },
 
     setLens(lens) {
         this.lens = lens;
-        const btn = document.getElementById('cfg-lens');
-        if(btn) btn.innerText = `LENS: ${lens}`;
+        const select = document.getElementById('cfg-lens');
+        if (select) select.value = lens;
         document.body.className = `mode-${this.role.toLowerCase()} lens-${lens.toLowerCase()}`;
         this.render();
     },
