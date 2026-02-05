@@ -731,6 +731,10 @@ body {
         border-color: var(--accent-blue);
         color: white;
     }
+
+body.logged-out #tablet-shell {
+    display: none;
+}
     
 
 /* Ensure only the active tab is visible and takes up the full viewport space */
@@ -826,7 +830,7 @@ body {
 
 </head>
 
-<body class="mode-architect lens-both">
+<body class="mode-architect lens-both logged-out">
 <div id="tablet-shell">
     <div id="content-area">
         <div class="header-top">
@@ -1142,6 +1146,7 @@ async function handleLogin(promptMode = 'consent') {
                 ENGINE.userEmail = profile.email;
                 localStorage.setItem('ENGINE_LAST_USER', profile.email);
                 await ENGINE.init();
+                document.body.classList.remove('logged-out');
                 resolve();
             } catch (err) {
                 reject(err);
@@ -1179,6 +1184,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
                 ENGINE.userEmail = profile.email;
                 localStorage.setItem('ENGINE_LAST_USER', profile.email);
                 await ENGINE.init();
+                document.body.classList.remove('logged-out');
                 resolve();
             } catch (err) {
                 reject(err);
@@ -1190,6 +1196,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
 
 function showLoginUI() {
     if (document.getElementById('engine-login-overlay')) return;
+    document.body.classList.add('logged-out');
     loginOverlay = document.createElement('div');
     loginOverlay.id = 'engine-login-overlay';
     loginOverlay.style.cssText = `
