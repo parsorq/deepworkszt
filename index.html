@@ -1252,11 +1252,15 @@ async init() {
     // Global capture handlers for ledger interactions
     document.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
-        if (!e.target.closest('.ledger-events-col')) return;
-        this.handleMouseDown(e);
+        const bounds = this.getEventsBounds();
+        if (!bounds) return;
+        if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
+        this.startDragFromEvent(e);
     }, true);
     document.addEventListener('contextmenu', (e) => {
-        if (!e.target.closest('.ledger-events-col')) return;
+        const bounds = this.getEventsBounds();
+        if (!bounds) return;
+        if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
         this.handleContextMenu(e);
     }, true);
 
@@ -1567,8 +1571,6 @@ setBurnGear(val) {
 },
 
 handleMouseDown(e) {
-    if (e.engineHandled) return;
-    e.engineHandled = true;
     // Ignore if clicking delete button
     this.hideBlockMenu();
     if (e.target.closest('.transaction-marker')) return;
@@ -1587,30 +1589,7 @@ handleMouseDown(e) {
     }
     if (e.target.closest('.reminder-marker')) return;
 
-    // Only start drag on left mouse button inside events column bounds
-    if (e.button !== 0) return;
-    const eventsCol = document.querySelector('.ledger-events-col');
-    if (!eventsCol) return;
-    const bounds = eventsCol.getBoundingClientRect();
-    if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
-    this.hideQuickCreateMenu();
-
-    const container = document.getElementById('ledger-container');
-    const rect = bounds;
-    const scrollTop = container.scrollTop;
-    const offsetY = e.clientY - rect.top + scrollTop;
-
-    // Calculate hour position
-    const rawH = offsetY / this.HOUR_HEIGHT;
-
-    this.isDragging = true;
-    this.dragStartH = Math.max(0, Math.min(24, rawH));
-    this.dragEndH = this.dragStartH;
-    this.dragHasMoved = false;
-    this.dragStartClient = { x: e.clientX, y: e.clientY };
-
-    // Immediately show ghost for responsiveness
-    requestAnimationFrame(() => this.updateGhost());
+    this.startDragFromEvent(e);
 },
 
 handleMouseMove(e) {
@@ -1731,20 +1710,14 @@ updateGhost() {
 },
 
 handleContextMenu(e) {
-    if (e.engineHandled) return;
-    e.engineHandled = true;
     e.preventDefault();
     e.stopPropagation();
     if (e.target.closest('.reminder-marker')) return;
     if (e.target.closest('.transaction-marker')) return;
-    const eventsCol = document.querySelector('.ledger-events-col');
-    if (!eventsCol) return;
-    const bounds = eventsCol.getBoundingClientRect();
-    if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
     this.hideQuickCreateMenu();
     this.hideBlockMenu();
-
-    const block = e.target.closest('.block-space');
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const block = el ? el.closest('.block-space') : null;
     if (block) {
         const idx = parseInt(block.dataset.blockIdx, 10);
         if (Number.isFinite(idx)) {
@@ -1752,14 +1725,45 @@ handleContextMenu(e) {
             return;
         }
     }
+    const startH = this.getHourAtClientY(e.clientY);
+    if (startH !== null) this.showQuickCreateMenu(e.clientX, e.clientY, startH);
+},
+    
+getEventsBounds() {
+    const eventsCol = document.querySelector('.ledger-events-col');
+    if (!eventsCol) return null;
+    return eventsCol.getBoundingClientRect();
+},
+
+getHourAtClientY(clientY) {
+    const bounds = this.getEventsBounds();
+    if (!bounds) return null;
+    if (clientY < bounds.top || clientY > bounds.bottom) return null;
     const container = document.getElementById('ledger-container');
-    if (!container) return;
-    const rect = bounds;
-    const scrollTop = container.scrollTop;
-    const offsetY = e.clientY - rect.top + scrollTop;
+    const scrollTop = container ? container.scrollTop : 0;
+    const offsetY = clientY - bounds.top + scrollTop;
     const rawH = offsetY / this.HOUR_HEIGHT;
-    const startH = Math.max(0, Math.min(24, rawH));
-    this.showQuickCreateMenu(e.clientX, e.clientY, startH);
+    return Math.max(0, Math.min(24, rawH));
+},
+
+startDragFromEvent(e) {
+    if (this.isDragging) return;
+    if (e.button !== 0) return;
+    const bounds = this.getEventsBounds();
+    if (!bounds) return;
+    if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el && (el.closest('.block-space') || el.closest('.reminder-marker') || el.closest('.transaction-marker'))) return;
+
+    this.hideQuickCreateMenu();
+    const startH = this.getHourAtClientY(e.clientY);
+    if (startH === null) return;
+    this.isDragging = true;
+    this.dragStartH = startH;
+    this.dragEndH = startH;
+    this.dragHasMoved = false;
+    this.dragStartClient = { x: e.clientX, y: e.clientY };
+    requestAnimationFrame(() => this.updateGhost());
 },
 
 showBlockMenu(x, y, idx) {
@@ -3784,8 +3788,6 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         container.dataset.bound = 'true';
         container.onmousedown = (e) => this.handleMouseDown(e);
         container.oncontextmenu = (e) => this.handleContextMenu(e);
-        container.addEventListener('mousedown', (e) => this.handleMouseDown(e), true);
-        container.addEventListener('contextmenu', (e) => this.handleContextMenu(e), true);
     },
 
     updateTransactionTypeUI(sign) {
