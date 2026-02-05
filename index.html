@@ -1571,14 +1571,17 @@ setBurnGear(val) {
 },
 
 handleMouseDown(e) {
-    // Ignore if clicking delete button
     this.hideBlockMenu();
-    if (e.target.closest('.transaction-marker')) return;
     if (e.target.closest('#quick-create-menu')) return;
     if (e.target.closest('#block-context-menu')) return;
 
-    // If we click a block directly, handle it as a block click (left click only)
-    const block = e.target.closest('.block-space');
+    const stack = document.elementsFromPoint(e.clientX, e.clientY);
+    const block = stack.find(el => el.classList && el.classList.contains('block-space'));
+    const reminder = stack.find(el => el.classList && el.classList.contains('reminder-marker'));
+    const transaction = stack.find(el => el.classList && el.classList.contains('transaction-marker'));
+
+    if (transaction) return;
+    if (reminder) return;
     if (block) {
         if (e.button !== 0) return;
         e.preventDefault();
@@ -1587,7 +1590,6 @@ handleMouseDown(e) {
         this.openMeeting(idx);
         return;
     }
-    if (e.target.closest('.reminder-marker')) return;
 
     this.startDragFromEvent(e);
 },
@@ -1712,12 +1714,14 @@ updateGhost() {
 handleContextMenu(e) {
     e.preventDefault();
     e.stopPropagation();
-    if (e.target.closest('.reminder-marker')) return;
-    if (e.target.closest('.transaction-marker')) return;
     this.hideQuickCreateMenu();
     this.hideBlockMenu();
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const block = el ? el.closest('.block-space') : null;
+
+    const stack = document.elementsFromPoint(e.clientX, e.clientY);
+    const reminder = stack.find(el => el.classList && el.classList.contains('reminder-marker'));
+    const transaction = stack.find(el => el.classList && el.classList.contains('transaction-marker'));
+    if (reminder || transaction) return;
+    const block = stack.find(el => el.classList && el.classList.contains('block-space'));
     if (block) {
         const idx = parseInt(block.dataset.blockIdx, 10);
         if (Number.isFinite(idx)) {
@@ -2912,7 +2916,7 @@ renderDay() {
                 <div class="events-hit-layer"
                     onmousedown="ENGINE.startDragFromEvent(event)"
                     oncontextmenu="ENGINE.handleContextMenu(event)"
-                    style="position:absolute; inset:0; z-index:1; pointer-events:auto;"></div>`;
+                    style="position:absolute; inset:0; z-index:200; pointer-events:auto;"></div>`;
 
     // Hour grid lines
     for (let h = 0; h <= 23; h++) {
