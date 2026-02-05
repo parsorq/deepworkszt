@@ -14,13 +14,13 @@
         --border: rgba(27, 34, 44, 0.9); 
         --text-main: #F0F9FF; 
         --text-dim: #8a95a6; 
-        --accent-cyan: #00F2FE;
-        --accent-blue: #4FACFE;
-        --accent-emerald: #00FF87;
-        --btn-accent-bg: rgba(0, 255, 135, 0.12);
-        --btn-accent-border: rgba(0, 255, 135, 0.28);
-        --btn-accent-text: rgba(255, 255, 255, 0.88);
-        --btn-accent-bg-strong: rgba(0, 255, 135, 0.2);
+        --accent-cyan: rgba(0, 242, 254, 0.7);
+        --accent-blue: rgba(79, 172, 254, 0.7);
+        --accent-emerald: rgba(0, 255, 135, 0.7);
+        --btn-accent-bg: rgba(0, 255, 135, 0.08);
+        --btn-accent-border: rgba(0, 255, 135, 0.2);
+        --btn-accent-text: rgba(255, 255, 255, 0.82);
+        --btn-accent-bg-strong: rgba(0, 255, 135, 0.14);
         --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
         --font-serif: "Playfair Display", "SF Pro Display", serif;
         --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -568,13 +568,14 @@ body.dragging .reminder-marker {
         box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.45), 0 0 18px rgba(0, 255, 135, 0.25);
     }
 
-    .panel-section--static {
-        border-color: rgba(255,255,255,0.04) !important;
+    .panel-section--expandable {
+        border-color: rgba(255,255,255,0.05) !important;
         box-shadow: none !important;
     }
 
-    .panel-section--static.active-input-row {
-        box-shadow: 0 0 0 1px rgba(255,255,255,0.08) !important;
+    .panel-section--expandable:not([open]) {
+        border-color: transparent !important;
+        box-shadow: none !important;
     }
 
     .data-row {
@@ -2872,12 +2873,15 @@ updatePanelContext() {
                 </div>
             </div>
             ${showTimeblockDetails ? `
-            <div class="panel-section panel-section--static" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03);">
-                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
-                    Stakeholders
-                    <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
-                </div>
-                <div id="stakeholder-list" style="max-height: 84px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+            <details class="panel-section panel-section--expandable" open style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03);">
+                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
+                        Stakeholders
+                    </span>
+                    <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
+                </summary>
+                <div id="stakeholder-list" style="max-height: 84px; overflow-y: auto; display:flex; flex-direction:column; gap:8px; margin-top: 10px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="color:${activeColor};">●</span>
@@ -2885,21 +2889,24 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </div>` : '<div></div>'}
+            </details>` : '<div></div>'}
         </div>
     `;
 
     // --- 4. SESSION AGENDA (Advanced) ---
     if (showTimeblockDetails) {
         html += `
-            <div class="panel-section panel-section--static" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
-                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
-                    Session Agenda
-                    <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.75); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
-                </div>
+            <details class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
+                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
+                        Session Agenda
+                    </span>
+                    <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
+                </summary>
                 <div style="display:flex; justify-content:space-between; margin: 10px 0 8px;">
                     <div></div>
-                    <div></div>
+                    <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
                 </div>
                 <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
@@ -2910,7 +2917,7 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </div>
+            </details>
         `;
     }
 
@@ -2919,11 +2926,14 @@ updatePanelContext() {
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         const expenseDisplayItems = [...expenseItems].reverse();
         html += `
-            <div class="panel-section panel-section--static" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
-                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
-                    Timeblock Expenses
-                    <div></div>
-                </div>
+            <details class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
+                <summary style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; list-style:none; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:12px; color: rgba(255,255,255,0.5);">▸</span>
+                        Timeblock Expenses
+                    </span>
+                    <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
+                </summary>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 8px;">
                     <div></div>
                     <div style="display:flex; gap: 8px; align-items:center;">
@@ -2959,7 +2969,7 @@ updatePanelContext() {
                     `;
                     }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses.</div>'}
                 </div>
-            </div>
+            </details>
         `;
     }
     
@@ -4810,8 +4820,8 @@ document.addEventListener('mousedown', (e) => {
         <div id="fixed-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px;"></div>
         <div id="dynamic-fields-container" class="meeting-panel-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;"></div>
         <div class="meeting-panel-footer" style="display: flex; gap: 12px; margin-top: 24px;">
-            <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE SESSION</button>
+            <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; color: rgba(255,255,255,0.45); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
