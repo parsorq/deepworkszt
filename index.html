@@ -917,8 +917,8 @@ body {
 
     <div style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.08); border: 1px solid rgba(255,69,58,0.35); color: rgba(255,69,58,0.8); border-radius: 10px; font-size: 16px; font-weight: 600; letter-spacing: 1px;">EXPENSE</button>
-            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(50,215,75,0.08); border: 1px solid rgba(50,215,75,0.35); color: rgba(50,215,75,0.85); border-radius: 10px; font-size: 16px; font-weight: 600; letter-spacing: 1px;">INCOME</button>
+            <button onclick="ENGINE.quickTx(-1)" style="flex: 1; height: 44px; background: rgba(255,69,58,0.05); border: 1px solid rgba(255,69,58,0.25); color: rgba(255,69,58,0.7); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">-</button>
+            <button onclick="ENGINE.quickTx(1)" style="flex: 1; height: 44px; background: rgba(50,215,75,0.05); border: 1px solid rgba(50,215,75,0.25); color: rgba(50,215,75,0.75); border-radius: 10px; font-size: 20px; font-weight: 700; letter-spacing: 1px;">+</button>
         </div>
 
         <div id="recent-transactions" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
@@ -1235,6 +1235,15 @@ async init() {
         });
     }
 
+    const auditOverlay = document.getElementById('audit-overlay');
+    if (auditOverlay) {
+        auditOverlay.addEventListener('click', (e) => {
+            if (e.target === auditOverlay) {
+                this.closeAudit();
+            }
+        });
+    }
+
     // Initial timeline position
     setTimeout(() => this.updateTimeline(true), 100);
 },
@@ -1305,7 +1314,7 @@ renderTransactions() {
     const container = document.getElementById('recent-transactions');
     if (!container) return;
 
-    const recentTx = this.transactions.slice(0, 5);
+    const recentTx = this.transactions.slice(0, 3);
     container.innerHTML = recentTx.map(tx => `
         <div onclick="ENGINE.openTransactionModalWithData('${tx.id}')" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer;">
             <div>
@@ -1466,6 +1475,7 @@ setBurnGear(val) {
 handleMouseDown(e) {
     // Ignore if clicking delete button
     if (e.target.closest('.block-delete-btn')) return;
+    if (e.target.closest('.transaction-marker')) return;
 
     // If we click a block directly, handle it as a block click
     const block = e.target.closest('.block-space');
@@ -1734,6 +1744,37 @@ renderAuditGraph() {
     addExpense() { this.openTransactionModal(-1); },
     addIncome() { this.openTransactionModal(1); },
     audit() { alert("Strategic Audit Log: 24h cycle verified."); },
+    openAudit() {
+        const overlay = document.getElementById('audit-overlay');
+        if (!overlay) return;
+        this.renderAudit();
+        overlay.style.display = 'flex';
+    },
+
+    closeAudit() {
+        const overlay = document.getElementById('audit-overlay');
+        if (overlay) overlay.style.display = 'none';
+    },
+
+    renderAudit() {
+        const list = document.getElementById('audit-transaction-list');
+        if (!list) return;
+        if (!this.transactions.length) {
+            list.innerHTML = '<div style="color: rgba(255,255,255,0.4); font-size: 12px;">No transactions yet.</div>';
+            return;
+        }
+        list.innerHTML = this.transactions.map(tx => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div>
+                    <div style="font-size: 12px; color: white; font-weight: 600;">${tx.desc}</div>
+                    <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                </div>
+                <div style="font-family:'SF Mono'; font-size: 12px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
+                    ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
+                </div>
+            </div>
+        `).join('');
+    },
     
 closeModal() {
     this.isMeetingActive = false;
@@ -2432,6 +2473,7 @@ renderDay() {
         const color = colors[session.type] || colors.MEETING;
         const duration = session.end - session.start;
         const durationStr = duration >= 1 ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : `${Math.round(duration * 60)}m`;
+        const deleteStyle = height <= 40 ? 'top: 50%; transform: translateY(-50%);' : '';
 
         // Responsive content based on block height
         const isCompact = height <= 35;  // 15min or less
@@ -2482,7 +2524,7 @@ renderDay() {
                     z-index: 60;
                     pointer-events: all;
                 ">
-                <button class="block-delete-btn" onclick="event.stopPropagation(); ENGINE.deleteEvent(${idx});" title="Delete">🗑</button>
+                <button class="block-delete-btn" style="${deleteStyle}" onclick="event.stopPropagation(); ENGINE.deleteEvent(${idx});" title="Delete">🗑</button>
                 ${blockContent}
             </div>`;
         session.isNew = false;
@@ -2506,7 +2548,7 @@ renderDay() {
         const isIncome = tx.amount >= 0;
 
         html += `
-            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px; cursor: pointer;" onclick="ENGINE.openTransactionModalWithData('${tx.id}')">
+            <div class="transaction-marker ${isIncome ? 'income' : 'expense'}" style="top: ${topPos}px; cursor: pointer;" onclick="event.stopPropagation(); ENGINE.openTransactionModalWithData('${tx.id}')">
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <span style="color: rgba(255,255,255,0.6); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${tx.desc}</span>
                     <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); margin-left: 8px;">
@@ -3089,6 +3131,17 @@ window.addEventListener('mouseup', () => {
             <button onclick="ENGINE.closeTransactionModal()" style="flex: 1; padding: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: rgba(255,255,255,0.7); font-weight: 600; cursor: pointer;">CANCEL</button>
             <button onclick="ENGINE.saveTransactionModal()" style="flex: 1; padding: 12px; background: #007AFF; border: none; border-radius: 12px; color: white; font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
+    </div>
+</div>
+
+<!-- Audit Overlay -->
+<div id="audit-overlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 1400; justify-content:center; align-items:center; padding: 40px;">
+    <div class="meeting-panel" style="max-width: 720px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2 style="margin:0; color:white; font-size: 18px; font-weight: 600;">Audit Ledger</h2>
+            <button onclick="ENGINE.closeAudit()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+        <div id="audit-transaction-list" style="display:flex; flex-direction:column; gap: 10px; max-height: 60vh; overflow-y: auto;"></div>
     </div>
 </div>
 
