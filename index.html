@@ -988,8 +988,9 @@ const GOOGLE_CLIENT_ID = window.LOGSZT_CONFIG?.googleClientId
     || localStorage.getItem('LOGSZT_GOOGLE_CLIENT_ID')
     || '';
 const MASTER_REGISTRY_SHEET_ID = window.LOGSZT_CONFIG?.masterRegistrySheetId
-    || localStorage.getItem('LOGSZT_MASTER_REGISTRY_SHEET_ID')
-    || '';
+    || '1t9WclgP_VyDu4BWyyvnAFjVza7p5fuwJ73X6t5NAGs8';
+const USER_TEMPLATE_SHEET_ID = window.LOGSZT_CONFIG?.userTemplateSheetId
+    || '1-HtYYGeSRQdSf0gH3Fpudi_nBuLl6jJnZZQjSKHp7pw';
 const ENGINE_USER_FILE_NAME = 'ENGINE_USER_DATA_V1';
 const GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/drive.file',
@@ -1038,8 +1039,8 @@ function loadGoogleScript(src) {
 
 function ensureGoogleReady() {
     if (googleReadyPromise) return googleReadyPromise;
-    if (!GOOGLE_CLIENT_ID || !MASTER_REGISTRY_SHEET_ID) {
-        const message = 'Missing Google configuration. Set LOGSZT_GOOGLE_CLIENT_ID and LOGSZT_MASTER_REGISTRY_SHEET_ID in localStorage.';
+    if (!GOOGLE_CLIENT_ID) {
+        const message = 'Missing Google configuration. Set LOGSZT_GOOGLE_CLIENT_ID in localStorage.';
         setLoginStatus(message, true);
         return Promise.reject(new Error(message));
     }
@@ -1147,10 +1148,9 @@ function showLoginUI() {
             <div style="font-size: 22px; color: #ffffff; font-weight: 700; margin-bottom: 10px;">Authenticate with Google</div>
             <div id="engine-login-status" style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</div>
             <div id="engine-login-config" style="display: none; margin-bottom: 16px; text-align: left;">
-                <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 8px;">Google config (stored locally)</div>
+                <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 8px;">Google client ID (stored locally)</div>
                 <input id="engine-google-client-id" placeholder="Google Client ID" style="width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline: none; margin-bottom: 8px;">
-                <input id="engine-google-sheet-id" placeholder="Master Registry Sheet ID" style="width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline: none; margin-bottom: 8px;">
-                <button id="engine-login-save-config" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: white; font-weight: 700; font-size: 10px; cursor: pointer;">Save config</button>
+                <button id="engine-login-save-config" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: white; font-weight: 700; font-size: 10px; cursor: pointer;">Save client ID</button>
             </div>
             <button id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 10px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">Sign in</button>
         </div>
@@ -1161,13 +1161,11 @@ function showLoginUI() {
     const configPanel = document.getElementById('engine-login-config');
     const saveConfigBtn = document.getElementById('engine-login-save-config');
     const clientIdInput = document.getElementById('engine-google-client-id');
-    const sheetIdInput = document.getElementById('engine-google-sheet-id');
-    const configMissing = !GOOGLE_CLIENT_ID || !MASTER_REGISTRY_SHEET_ID;
+    const configMissing = !GOOGLE_CLIENT_ID;
 
     if (configMissing && configPanel) {
         configPanel.style.display = 'block';
         if (clientIdInput && GOOGLE_CLIENT_ID) clientIdInput.value = GOOGLE_CLIENT_ID;
-        if (sheetIdInput && MASTER_REGISTRY_SHEET_ID) sheetIdInput.value = MASTER_REGISTRY_SHEET_ID;
     }
     btn.disabled = true;
     btn.style.opacity = '0.6';
@@ -1196,13 +1194,11 @@ function showLoginUI() {
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', () => {
             const clientId = clientIdInput ? clientIdInput.value.trim() : '';
-            const sheetId = sheetIdInput ? sheetIdInput.value.trim() : '';
-            if (!clientId || !sheetId) {
-                setLoginStatus('Please enter both the Google Client ID and Sheet ID.', true);
+            if (!clientId) {
+                setLoginStatus('Please enter the Google Client ID.', true);
                 return;
             }
             localStorage.setItem('LOGSZT_GOOGLE_CLIENT_ID', clientId);
-            localStorage.setItem('LOGSZT_MASTER_REGISTRY_SHEET_ID', sheetId);
             setLoginStatus('Config saved. Reloading...', false);
             window.location.reload();
         });
@@ -2465,21 +2461,53 @@ saveSession() {
 
 async ensureUserStorage() {
     if (this.userSheetId) return;
+    if (!this.userEmail) {
+        throw new Error('Missing user email for storage provisioning.');
+    }
 
-    const listRes = await gapi.client.drive.files.list({
-        q: `name = '${ENGINE_USER_FILE_NAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
-        fields: 'files(id, name)',
-        spaces: 'drive'
-    });
-    const existing = listRes.result.files && listRes.result.files[0];
-    if (existing) {
-        this.userSheetId = existing.id;
-    } else {
-        const createRes = await gapi.client.drive.files.create({
-            resource: { name: ENGINE_USER_FILE_NAME, mimeType: 'application/vnd.google-apps.spreadsheet' },
-            fields: 'id'
+    const emailKey = this.userEmail.trim().toLowerCase();
+    const storageKey = `ENGINE_USER_FILE_ID_${emailKey}`;
+    const cachedId = localStorage.getItem(storageKey);
+
+    if (cachedId) {
+        try {
+            await gapi.client.sheets.spreadsheets.get({ spreadsheetId: cachedId });
+            this.userSheetId = cachedId;
+        } catch (err) {
+            this.userSheetId = null;
+        }
+    }
+
+    if (!this.userSheetId) {
+        const fileName = `${ENGINE_USER_FILE_NAME} - ${emailKey}`;
+        const listRes = await gapi.client.drive.files.list({
+            q: `name = '${fileName}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+            fields: 'files(id, name)',
+            spaces: 'drive'
         });
-        this.userSheetId = createRes.result.id;
+        const existing = listRes.result.files && listRes.result.files[0];
+        if (existing) {
+            this.userSheetId = existing.id;
+        } else {
+            try {
+                const copyRes = await gapi.client.drive.files.copy({
+                    fileId: USER_TEMPLATE_SHEET_ID,
+                    resource: { name: fileName },
+                    fields: 'id'
+                });
+                this.userSheetId = copyRes.result.id;
+            } catch (err) {
+                const createRes = await gapi.client.drive.files.create({
+                    resource: { name: fileName, mimeType: 'application/vnd.google-apps.spreadsheet' },
+                    fields: 'id'
+                });
+                this.userSheetId = createRes.result.id;
+            }
+        }
+    }
+
+    if (this.userSheetId) {
+        localStorage.setItem(storageKey, this.userSheetId);
     }
 
     await this.ensureSheetStructure();
