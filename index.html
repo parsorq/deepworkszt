@@ -852,7 +852,7 @@ body {
     <div id="content-area">
         <div class="header-top">
             <div class="brand" style="display:flex; align-items:center; gap:8px;">
-                <img src="assets/logo-mark.png" alt="logszt mark" style="height: 14px; opacity: 0.45; mix-blend-mode: screen;">
+                <img src="assets/logo-mark.png" alt="logszt mark" style="height: 140px; opacity: 0.5; mix-blend-mode: screen; background: transparent; display: block;">
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <div style="display:flex; flex-direction:column; gap:6px;">
@@ -995,8 +995,8 @@ body {
 
         <div id="system-health" style="margin-top: 18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; letter-spacing:1px; color: rgba(177,189,211,0.8);">
-                <span>DATA INTEGRITY</span>
-                <span id="system-health-value">92%</span>
+                <span>HOURS LOGGED</span>
+                <span id="system-health-value">0.0h / 24h</span>
             </div>
             <div style="height: 6px; margin-top: 8px; background: rgba(255,255,255,0.05); border-radius: 999px; overflow: hidden; border: 0.5px solid #1B222C;">
                 <div id="system-health-bar" style="height: 100%; width: 92%; background: linear-gradient(90deg, #00F2FE, #4FACFE, #00FF87); box-shadow: 0 0 10px rgba(0,242,254,0.4);"></div>
@@ -3017,11 +3017,19 @@ renderDay() {
 },
 
 updateIntegrityMeter() {
-    const totalLogs = Object.values(this.db).reduce((acc, list) => acc + list.length, 0) + this.transactions.length;
-    const percent = Math.min(99, 70 + Math.floor(totalLogs / 3));
+    const events = this.db[this.selectedDate] || [];
+    const totalHours = events.reduce((acc, event) => {
+        if (!event || event.type === 'REMINDER') return acc;
+        const start = parseFloat(event.start);
+        const end = parseFloat(event.end);
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return acc;
+        return acc + Math.max(0, end - start);
+    }, 0);
+    const clampedHours = Math.min(24, totalHours);
+    const percent = Math.round((clampedHours / 24) * 100);
     const value = document.getElementById('system-health-value');
     const bar = document.getElementById('system-health-bar');
-    if (value) value.textContent = `${percent}%`;
+    if (value) value.textContent = `${clampedHours.toFixed(1)}h / 24h`;
     if (bar) {
         bar.style.width = `${percent}%`;
         bar.style.boxShadow = '0 0 12px rgba(0,255,135,0.35)';
