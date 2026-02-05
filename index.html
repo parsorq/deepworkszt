@@ -1640,8 +1640,8 @@ handleMouseUp() {
     let start = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
     let end = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
 
-    // Default to a 30-minute block on click (Google Calendar-style)
-    if (!this.dragHasMoved || start === end) end = Math.min(24, start + 0.5);
+    // Default to a 15-minute block on click
+    if (!this.dragHasMoved || start === end) end = Math.min(24, start + 0.25);
 
     if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
 
@@ -1703,7 +1703,7 @@ updateGhost() {
     const step = 0.25;
     const topH = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
     let bottomH = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
-    if (topH === bottomH) bottomH += 0.5;
+    if (topH === bottomH) bottomH += 0.25;
     const duration = bottomH - topH;
 
     g.style.display = 'block';
@@ -3646,6 +3646,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const timeInput = document.getElementById('transaction-time');
         const categoryInput = document.getElementById('transaction-category');
         const subcategoryInput = document.getElementById('transaction-subcategory');
+        const typeInput = document.getElementById('transaction-type');
 
         overlay.dataset.sign = String(sign);
         delete overlay.dataset.txId;
@@ -3659,6 +3660,8 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         if (categoryInput && subcategoryInput) {
             this.initCategoryDropdowns(categoryInput, subcategoryInput, '', '');
         }
+        if (typeInput) typeInput.value = sign > 0 ? 'INCOME' : 'EXPENSE';
+        this.updateTransactionTypeUI(sign);
         overlay.style.display = 'flex';
     },
 
@@ -3677,6 +3680,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const timeInput = document.getElementById('transaction-time');
         const categoryInput = document.getElementById('transaction-category');
         const subcategoryInput = document.getElementById('transaction-subcategory');
+        const typeInput = document.getElementById('transaction-type');
 
         overlay.dataset.sign = String(sign);
         overlay.dataset.txId = tx.id;
@@ -3690,6 +3694,8 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         if (categoryInput && subcategoryInput) {
             this.initCategoryDropdowns(categoryInput, subcategoryInput, tx.category || '', tx.subcategory || '');
         }
+        if (typeInput) typeInput.value = sign > 0 ? 'INCOME' : 'EXPENSE';
+        this.updateTransactionTypeUI(sign);
         overlay.style.display = 'flex';
     },
 
@@ -3704,6 +3710,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
     bindTransactionInputs() {
         const amountInput = document.getElementById('transaction-amount');
         if (!amountInput) return;
+        const typeInput = document.getElementById('transaction-type');
         amountInput.addEventListener('blur', () => {
             const raw = String(amountInput.value || '').replace(/,/g, '');
             const val = parseFloat(raw);
@@ -3712,6 +3719,14 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         amountInput.addEventListener('input', () => {
             amountInput.value = amountInput.value.replace(/[^\d.,]/g, '');
         });
+        if (typeInput) {
+            typeInput.addEventListener('change', () => {
+                const sign = typeInput.value === 'INCOME' ? 1 : -1;
+                const overlay = document.getElementById('transaction-overlay');
+                if (overlay) overlay.dataset.sign = String(sign);
+                this.updateTransactionTypeUI(sign);
+            });
+        }
         const inputIds = ['transaction-amount', 'transaction-item', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category', 'transaction-subcategory'];
         inputIds.forEach((id) => {
             const input = document.getElementById(id);
@@ -3722,6 +3737,13 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 this.saveTransactionModal();
             });
         });
+    },
+
+    updateTransactionTypeUI(sign) {
+        const signEl = document.getElementById('transaction-sign');
+        if (!signEl) return;
+        signEl.textContent = sign > 0 ? '+' : '-';
+        signEl.style.opacity = '0.85';
     },
 
     bindInputEffects() {
@@ -3767,7 +3789,8 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
     saveTransactionModal() {
         const overlay = document.getElementById('transaction-overlay');
         if (!overlay) return;
-        const sign = parseInt(overlay.dataset.sign || '1', 10);
+        const typeInput = document.getElementById('transaction-type');
+        const sign = typeInput ? (typeInput.value === 'INCOME' ? 1 : -1) : parseInt(overlay.dataset.sign || '1', 10);
         const txId = overlay.dataset.txId || '';
         const amountInput = document.getElementById('transaction-amount');
         const itemInput = document.getElementById('transaction-item');
@@ -3996,6 +4019,13 @@ document.addEventListener('click', () => {
             <button onclick="ENGINE.closeTransactionModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <div style="display:flex; flex-direction:column; gap: 12px;">
+            <div style="display:grid; grid-template-columns: 1fr auto; gap: 10px;">
+                <select id="transaction-type" class="subtle-select">
+                    <option value="EXPENSE">Expense</option>
+                    <option value="INCOME">Income</option>
+                </select>
+                <div id="transaction-sign" style="min-width: 32px; height: 36px; display:flex; align-items:center; justify-content:center; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: rgba(255,255,255,0.75); font-weight: 800;">-</div>
+            </div>
             <input id="transaction-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
