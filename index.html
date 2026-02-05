@@ -258,7 +258,7 @@ body.block-hover:not(.dragging) .events-hit-layer {
 
 body.dragging .ledger-events-col,
 body.dragging .events-hit-layer {
-    cursor: ns-resize;
+    cursor: grabbing;
 }
 
 .block-space.block-hover {
@@ -270,6 +270,11 @@ body.dragging .events-hit-layer {
 .block-space.block-moving {
     border-color: rgba(0, 122, 255, 0.6) !important;
     box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset;
+}
+
+body.dragging .block-space,
+body.dragging .reminder-marker {
+    cursor: grabbing !important;
 }
 
 
@@ -1382,6 +1387,7 @@ const ENGINE = {
     moveOffsetH: 0,
     moveStartH: null,
     isMoving: false,
+    moveType: null,
 
     db: {},
     transactions: [],
@@ -1979,6 +1985,11 @@ handleContextMenu(e) {
     this.hideQuickCreateMenu();
     this.hideBlockMenu();
 
+    const reminderIdx = this.getReminderAtPoint(e.clientX, e.clientY);
+    if (reminderIdx !== null) {
+        this.showBlockMenu(e.clientX, e.clientY, reminderIdx);
+        return;
+    }
     const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
     if (eventIdx !== null) {
         this.showBlockMenu(e.clientX, e.clientY, eventIdx);
@@ -2041,6 +2052,19 @@ getEventAtPoint(clientX, clientY) {
     return null;
 },
 
+getReminderAtPoint(clientX, clientY) {
+    const elements = document.elementsFromPoint(clientX, clientY);
+    const reminder = elements.find((el) => el && el.closest && el.closest('[data-reminder-idx]'));
+    if (reminder && reminder.closest) {
+        const container = reminder.closest('[data-reminder-idx]');
+        if (container && container.dataset && container.dataset.reminderIdx !== undefined) {
+            const idx = parseInt(container.dataset.reminderIdx, 10);
+            if (!Number.isNaN(idx)) return idx;
+        }
+    }
+    return null;
+},
+
 updateBlockHover(clientX, clientY) {
     if (this.isDragging) return;
     const bounds = this.getEventsBounds();
@@ -2091,6 +2115,7 @@ clearMoveState() {
     this.moveBlockEl = null;
     this.moveOffsetH = 0;
     this.moveStartH = null;
+    this.moveType = null;
 },
 
 applyMoveToTime(clientY) {
@@ -2129,10 +2154,12 @@ applyMoveToTime(clientY) {
     this.renderDay();
 },
 
-startMoveDrag(idx, blockEl, e) {
+startMoveDrag(idx, blockEl, e, mode = 'block') {
     const events = this.db[this.selectedDate] || [];
     const ev = events[idx];
-    if (!ev || ev.type === 'REMINDER') return;
+    if (!ev) return;
+    if (mode === 'block' && ev.type === 'REMINDER') return;
+    if (mode === 'reminder' && ev.type !== 'REMINDER') return;
     this.clearMoveState();
     this.isMoving = true;
     document.body.classList.add('dragging');
@@ -2140,6 +2167,7 @@ startMoveDrag(idx, blockEl, e) {
     this.moveDurationH = Math.max(0.25, (ev.end - ev.start));
     this.moveBlockEl = blockEl || null;
     if (this.moveBlockEl) this.moveBlockEl.classList.add('block-moving');
+    this.moveType = mode;
     const startH = this.getHourAtClientY(e.clientY);
     this.moveOffsetH = startH !== null ? (startH - ev.start) : 0;
     this.moveStartH = ev.start;
@@ -3432,8 +3460,8 @@ renderDay() {
             } else {
                 const topPos = session.start * this.HOUR_HEIGHT;
                 reminderMarkers.push(`
-                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; right: 22px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 950; pointer-events: auto; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent;"
-                        onpointerdown="event.stopPropagation()" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
+                    <div class="reminder-marker" data-reminder-idx="${idx}" style="position:absolute; top:${topPos - 6}px; right: 22px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 950; pointer-events: auto; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent;"
+                        onpointerdown="event.stopPropagation(); ENGINE.startMoveDrag(${idx}, this, event, 'reminder')" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
                         <div style="display:flex; align-items:center; gap:8px; pointer-events:none; text-align:right;">
                             <div style="width:6px; height:6px; border-radius:50%; background:${color}; opacity:0.85; box-shadow: 0 0 0 2px rgba(255,255,255,0.04);"></div>
                             <div style="font-size:10px; color: rgba(255,255,255,0.7); font-weight:600;">${label}</div>
