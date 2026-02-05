@@ -2908,7 +2908,11 @@ renderDay() {
     let html = `
         <div class="ledger-grid" style="position: relative; height: ${24 * this.HOUR_HEIGHT}px;">
             <div class="ledger-events-col" style="position: relative;" onmousedown="ENGINE.handleMouseDown(event)" oncontextmenu="ENGINE.handleContextMenu(event)">
-                <div id="time-now-line"></div>`;
+                <div id="time-now-line"></div>
+                <div class="events-hit-layer"
+                    onmousedown="ENGINE.startDragFromEvent(event)"
+                    oncontextmenu="ENGINE.handleContextMenu(event)"
+                    style="position:absolute; inset:0; z-index:1; pointer-events:auto;"></div>`;
 
     // Hour grid lines
     for (let h = 0; h <= 23; h++) {
