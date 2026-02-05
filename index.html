@@ -2882,9 +2882,9 @@ renderDay() {
             } else {
                 const topPos = session.start * this.HOUR_HEIGHT;
                 reminderMarkers.push(`
-                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; left: 80px; right: 12px; height: 0; cursor: pointer; z-index: 120; pointer-events: auto;"
+                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; left: 80px; right: 12px; height: 16px; display:flex; align-items:center; justify-content:flex-end; cursor: pointer; z-index: 120; pointer-events: auto;"
                         onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
-                        <div style="display:flex; align-items:center; gap:8px; pointer-events:none;">
+                        <div style="display:flex; align-items:center; gap:8px; pointer-events:none; text-align:right;">
                             <div style="width:6px; height:6px; border-radius:50%; background:${color}; opacity:0.85; box-shadow: 0 0 0 2px rgba(255,255,255,0.04);"></div>
                             <div style="font-size:10px; color: rgba(255,255,255,0.7); font-weight:600;">${label}</div>
                             <div style="font-family:'SF Mono'; font-size:9px; color: rgba(255,255,255,0.35);">${formatTime(session.start)}</div>
