@@ -1716,12 +1716,12 @@ updateGhost() {
 },
 
 handleContextMenu(e) {
+    e.preventDefault();
+    e.stopPropagation();
     if (e.target.closest('.reminder-marker')) return;
     if (e.target.closest('.transaction-marker')) return;
     const eventsCol = e.target.closest('.ledger-events-col');
     if (!eventsCol) return;
-    e.preventDefault();
-    e.stopPropagation();
     this.hideQuickCreateMenu();
     this.hideBlockMenu();
 
@@ -2063,8 +2063,8 @@ updatePanelContext() {
                         <input id="timeblock-all-day" type="checkbox" ${activeEvent?.allDay ? 'checked' : ''} />
                         All day
                     </label>` : ''}
-                    <input id="timeblock-start" type="time" value="${eventStart}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
-                    <input id="timeblock-end" type="time" value="${eventEnd}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
+                    <input id="timeblock-start" type="text" value="${eventStart}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
+                    <input id="timeblock-end" type="text" value="${eventEnd}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
                 </div>
                 <div id="timeblock-duration" style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); ${this.activeType === 'REMINDER' ? 'display:none;' : ''}">
                     ${this.getDurationLabel(eventStart, eventEnd)}
@@ -2985,7 +2985,7 @@ renderDay() {
         html += `
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
-                oncontextmenu="ENGINE.handleContextMenu(event)"
+                oncontextmenu="event.preventDefault(); ENGINE.handleContextMenu(event)"
                 style="
                     top: ${topPos}px;
                     height: ${height}px;
@@ -3738,12 +3738,35 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         });
     },
 
+    normalizeTimeInput(value) {
+        if (!value) return '';
+        const trimmed = String(value).trim();
+        const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+        if (ampmMatch) {
+            let hours = parseInt(ampmMatch[1], 10);
+            const mins = parseInt(ampmMatch[2], 10);
+            const isPM = ampmMatch[3].toLowerCase() === 'pm';
+            if (isPM && hours < 12) hours += 12;
+            if (!isPM && hours === 12) hours = 0;
+            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        }
+        const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+        if (match) {
+            const hours = Math.min(23, Math.max(0, parseInt(match[1], 10)));
+            const mins = Math.min(59, Math.max(0, parseInt(match[2], 10)));
+            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        }
+        return '';
+    },
+
     bindLedgerInteractions() {
         const container = document.getElementById('ledger-container');
         if (!container || container.dataset.bound === 'true') return;
         container.dataset.bound = 'true';
-        container.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        container.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+        container.onmousedown = (e) => this.handleMouseDown(e);
+        container.oncontextmenu = (e) => this.handleContextMenu(e);
+        container.addEventListener('mousedown', (e) => this.handleMouseDown(e), true);
+        container.addEventListener('contextmenu', (e) => this.handleContextMenu(e), true);
     },
 
     updateTransactionTypeUI(sign) {
@@ -3765,6 +3788,10 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
             if (!(target instanceof HTMLElement)) return;
             const row = target.closest('.panel-section, .data-row, .meeting-panel');
             if (row) row.classList.remove('active-input-row');
+            if (target.id === 'timeblock-start' || target.id === 'timeblock-end' || target.id === 'transaction-time') {
+                const normalized = this.normalizeTimeInput(target.value);
+                if (normalized) target.value = normalized;
+            }
         });
         document.addEventListener('input', (e) => {
             this.triggerInputSpark(e);
@@ -3876,8 +3903,10 @@ window.addEventListener('mouseup', () => {
     if (ENGINE.isDragging) ENGINE.handleMouseUp();
 });
 
-// Auto-dismiss context menus on any click
-document.addEventListener('click', () => {
+// Auto-dismiss context menus on left click only
+document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('#quick-create-menu') || e.target.closest('#block-context-menu')) return;
     if (ENGINE.hideQuickCreateMenu) ENGINE.hideQuickCreateMenu();
     if (ENGINE.hideBlockMenu) ENGINE.hideBlockMenu();
 });
@@ -4027,31 +4056,24 @@ document.addEventListener('click', () => {
         </div>
         <div style="display:flex; flex-direction:column; gap: 12px;">
             <div style="display:grid; grid-template-columns: 1fr auto; gap: 10px;">
-                <select id="transaction-type" class="subtle-select">
+                <select id="transaction-type" class="subtle-select" style="font-size: 11px;">
                     <option value="EXPENSE">Expense</option>
                     <option value="INCOME">Income</option>
                 </select>
-                <div id="transaction-sign" style="min-width: 32px; height: 36px; display:flex; align-items:center; justify-content:center; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: rgba(255,255,255,0.75); font-weight: 800;">-</div>
+                <div id="transaction-sign" style="min-width: 32px; height: 34px; display:flex; align-items:center; justify-content:center; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: rgba(255,255,255,0.7); font-weight: 800;">-</div>
             </div>
-            <input id="transaction-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-            <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <input id="transaction-amount" type="text" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-            <input id="transaction-date" type="text" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px;">
+                <input id="transaction-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                <input id="transaction-amount" type="text" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input id="transaction-time" type="time" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                <div>
-                    <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px;">Category</div>
-                    <select id="transaction-category" class="subtle-select"></select>
-                </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <input id="transaction-date" type="text" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                <input id="transaction-time" type="text" placeholder="HH:MM" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div>
-                    <div style="font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px;">Subcategory</div>
-                    <select id="transaction-subcategory" class="subtle-select"></select>
-                </div>
-                <div></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <select id="transaction-category" class="subtle-select" style="font-size: 11px;"></select>
+                <select id="transaction-subcategory" class="subtle-select" style="font-size: 11px;"></select>
             </div>
         </div>
         <div style="display:flex; gap: 12px; margin-top: 20px;">
