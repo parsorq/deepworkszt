@@ -94,6 +94,13 @@ body {
         color: #ffffff !important;
     }
 
+    .brand {
+        font-size: 16px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        opacity: 0.7;
+    }
+
     .nav-tabs { 
         display: flex; 
         background: rgba(255, 255, 255, 0.08); 
@@ -206,10 +213,10 @@ body {
     right: 6px;
     width: 20px;
     height: 20px;
-    background: rgba(255, 59, 48, 0.9);
+    background: transparent;
     border: none;
     border-radius: 4px;
-    color: white;
+    color: rgba(255,255,255,0.6);
     font-size: 12px;
     cursor: pointer;
     opacity: 0;
@@ -221,7 +228,7 @@ body {
 }
 
 .block-delete-btn:hover {
-    background: #FF453A;
+    color: #FF453A;
 }
 
 /* Two-column ledger layout */
@@ -250,7 +257,7 @@ body {
     background: rgba(255, 255, 255, 0.02);
     border-radius: 4px;
     font-size: 11px;
-    pointer-events: none;
+    pointer-events: all;
     border-left: 2px solid transparent;
 }
 
@@ -810,7 +817,7 @@ body {
                         <option value="BOTH">BOTH</option>
                     </select>
                 </div>
-                <button class="config-button" onclick="ENGINE.openSettings()" aria-label="Settings" style="background: transparent; border: none; font-size: 18px; width: 32px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">⚙︎</button>
+                <button class="config-button" onclick="ENGINE.openSettings()" aria-label="Settings" style="background: transparent; border: none; font-size: 20px; width: 32px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.6);">⚙︎</button>
             </div>
         </div>
 
@@ -2428,7 +2435,7 @@ renderDay() {
 
         // Responsive content based on block height
         const isCompact = height <= 35;  // 15min or less
-        const isMedium = height > 35 && height <= 80;  // ~45min
+        const isMedium = height > 35 && height <= 120;  // ~1h
 
         let blockContent = '';
         if (isCompact) {
@@ -2439,12 +2446,12 @@ renderDay() {
                     <span style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-left: 8px;">${durationStr}</span>
                 </div>`;
         } else if (isMedium) {
-            // Medium: type + label + time
+            // Medium: type + label + time + duration
             blockContent = `
                 <div style="padding: 6px 10px; pointer-events: none; height: 100%;">
                     <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
                     <div style="color: white; font-weight: 600; font-size: 12px; margin-top: 2px;">${session.label}</div>
-                    <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">${formatTime(session.start)} – ${formatTime(session.end)}</div>
+                    <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">${formatTime(session.start)} – ${formatTime(session.end)} · ${durationStr}</div>
                 </div>`;
         } else {
             // Full: all info
@@ -3072,7 +3079,7 @@ window.addEventListener('mouseup', () => {
             <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <input id="transaction-amount" type="text" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                <input id="transaction-date" type="date" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <input id="transaction-date" type="text" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input id="transaction-time" type="time" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
