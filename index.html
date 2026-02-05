@@ -886,11 +886,16 @@ body {
 
 <aside id="engine-sidebar" style="background: rgba(10,10,10,0.8); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 30px 20px; position: relative;">
 
-    <div style="margin-bottom: 40px; text-align: center;">
+    <div style="margin-bottom: 22px; text-align: center;">
         <div id="clock-display" style="font-size: 42px; font-weight: 200; color: white; letter-spacing: -1px; opacity: 0.9;">16:07:22</div>
         <div id="date-display" style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 5px; letter-spacing: 1px;">
             03 FEB 2026 // SYSTEM_ACTIVE
         </div>
+    </div>
+
+    <div style="margin-bottom: 30px;">
+        <label class="p-label" style="font-size: 9px; opacity: 0.4; margin-bottom: 8px; display: block;">ALL-DAY REMINDERS</label>
+        <div id="all-day-reminders" style="display:flex; flex-direction:column; gap: 6px;"></div>
     </div>
 
     <div style="margin-bottom: 30px;">
@@ -1559,7 +1564,7 @@ handleMouseUp() {
         const newEvent = {
             id: this.generateEventId(),
             start,
-            end,
+            end: this.activeType === 'REMINDER' ? start : end,
             label: "New Session",
             type: this.activeType || 'MEETING',
             isNew: true,
@@ -1567,7 +1572,8 @@ handleMouseUp() {
             agenda: '',
             stakeholders: '',
             notes: '',
-            budget: ''
+            budget: '',
+            allDay: false
         };
         this.db[this.selectedDate].push(newEvent);
         void this.saveEvent(newEvent);
@@ -1854,7 +1860,7 @@ updatePanelContext() {
                 <input id="strategic-objective-input" type="text" value="${activeEvent?.label || 'New Session'}" 
                        style="background:transparent; border:none; color:white; font-size:28px; font-weight:700; width:100%; outline:none; letter-spacing: -1px;">
                 <div style="display:flex; gap: 6px; margin-top: 10px;">
-                    ${['MEETING','REMINDER','TASK','SLEEP'].map(t => `
+                    ${['MEETING','REMINDER','TASK'].map(t => `
                         <button onclick="ENGINE.setType('${t}')" style="background: ${this.activeType === t ? activeColor : 'rgba(255,255,255,0.05)'}; border: 1px solid rgba(255,255,255,0.12); color: ${this.activeType === t ? '#ffffff' : 'rgba(255,255,255,0.6)'}; padding: 6px 10px; border-radius: 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; cursor: pointer;">
                             ${t}
                         </button>
@@ -1862,12 +1868,16 @@ updatePanelContext() {
                 </div>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; align-items:center;">
                     <input id="timeblock-date" type="text" value="${this.formatDate(eventDate)}" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 120px;">
-                    <input id="timeblock-start" type="time" value="${eventStart}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px;">
-                    <input id="timeblock-end" type="time" value="${eventEnd}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px;">
+                    ${this.activeType === 'REMINDER' ? `<label style="display:flex; align-items:center; gap:6px; font-size:10px; color: rgba(255,255,255,0.6);">
+                        <input id="timeblock-all-day" type="checkbox" ${activeEvent?.allDay ? 'checked' : ''} />
+                        All day
+                    </label>` : ''}
+                    <input id="timeblock-start" type="time" value="${eventStart}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
+                    <input id="timeblock-end" type="time" value="${eventEnd}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
                 </div>
-                <div id="timeblock-duration" style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5);">
+                <div id="timeblock-duration" style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); ${this.activeType === 'REMINDER' ? 'display:none;' : ''}">
                     ${this.getDurationLabel(eventStart, eventEnd)}
                 </div>
             </div>
@@ -1891,28 +1901,32 @@ updatePanelContext() {
         </div>
     `;
 
+    const showTimeblockDetails = this.activeType !== 'REMINDER';
     // --- 3. SESSION AGENDA ---
-    html += `
-        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 14px 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
-                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Agenda</label>
-                <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color:${activeColor}; font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
+    if (showTimeblockDetails) {
+        html += `
+            <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 14px 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Agenda</label>
+                    <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color:${activeColor}; font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
+                </div>
+                <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
+                    ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
+                        <div style="display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
+                            <input type="text" value="${item}" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
+                            <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
-            <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
-                ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
-                    <div style="display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
-                        <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
-                        <input type="text" value="${item}" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
-                        <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
+        `;
+    }
 
     // --- 4. STAKEHOLDERS & NOTES ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; margin-bottom: 12px;">
+        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showTimeblockDetails ? '1fr 1.5fr' : '1fr'}; gap: 12px; margin-bottom: 12px;">
+            ${showTimeblockDetails ? `
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                     <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Stakeholders</label>
@@ -1926,7 +1940,7 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </div>
+            </div>` : ''}
 
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
                 <label style="color: ${widgetTitleColor}; font-size: 8px; font-weight: 800; text-transform:uppercase; margin-bottom:8px; opacity: 0.8;">Notes</label>
@@ -1945,70 +1959,73 @@ updatePanelContext() {
         </div>
     `;
 
-    // --- 5. TIMEBLOCK EXPENSES ---
-    const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
-    html += `
-        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Timeblock Expenses</label>
-                <div style="display:flex; gap: 8px; align-items:center;">
-                    <span style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">Budget</span>
-                    <input id="timeblock-budget" type="text" value="${eventBudget}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
+    if (showTimeblockDetails) {
+        // --- 5. TIMEBLOCK EXPENSES ---
+        const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
+        html += `
+            <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Timeblock Expenses</label>
+                    <div style="display:flex; gap: 8px; align-items:center;">
+                        <span style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">Budget</span>
+                        <input id="timeblock-budget" type="text" value="${eventBudget}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1.5fr 0.6fr auto; gap: 8px;">
+                    <input id="timeblock-expense-desc" placeholder="Expense description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                    <input id="timeblock-expense-amount" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                    <button onclick="ENGINE.addTimeblockExpense()" style="background:${activeColor}; border:none; color:white; font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <select id="timeblock-expense-category" class="subtle-select"></select>
+                    <select id="timeblock-expense-subcategory" class="subtle-select"></select>
+                    <div></div>
+                </div>
+                <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
+                    ${expenseItems.length ? expenseItems.map(tx => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <div>
+                                <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                                <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
+                            </div>
+                            <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
+                                -${this.formatAmount(Math.abs(tx.amount))}
+                            </div>
+                        </div>
+                    `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>'}
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns: 1.5fr 0.6fr auto; gap: 8px;">
-                <input id="timeblock-expense-desc" placeholder="Expense description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
-                <input id="timeblock-expense-amount" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
-                <button onclick="ENGINE.addTimeblockExpense()" style="background:${activeColor}; border:none; color:white; font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                <select id="timeblock-expense-category" class="subtle-select"></select>
-                <select id="timeblock-expense-subcategory" class="subtle-select"></select>
-                <div></div>
-            </div>
-            <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
-                ${expenseItems.length ? expenseItems.map(tx => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                        <div>
-                            <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
-                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
-                        </div>
-                        <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
-                            -${this.formatAmount(Math.abs(tx.amount))}
-                        </div>
-                    </div>
-                `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>'}
-            </div>
-        </div>
-    `;
+        `;
 
-    // --- 6. SESSION AUDIT LEDGER ---
-    const sessionLedgerItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
-    html += `
-        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Audit Ledger</label>
-            </div>
-            <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
-                ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                        <div>
-                            <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
-                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
+        // --- 6. SESSION AUDIT LEDGER ---
+        const sessionLedgerItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
+        html += `
+            <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.8;">Session Audit Ledger</label>
+                </div>
+                <div id="timeblock-audit-ledger" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
+                    ${sessionLedgerItems.length ? sessionLedgerItems.map(tx => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <div>
+                                <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                                <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}${(tx.category || tx.subcategory) ? ` • ${(tx.category ? tx.category : '')}${(tx.subcategory ? ` / ${tx.subcategory}` : '')}` : ''}</div>
+                            </div>
+                            <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
+                                ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
+                            </div>
                         </div>
-                        <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? '#32D74B' : '#FF453A'};">
-                            ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
-                        </div>
-                    </div>
-                `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No transactions yet.</div>'}
+                    `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No transactions yet.</div>'}
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
     
     container.innerHTML = html;
     const dateInput = document.getElementById('timeblock-date');
     const startInput = document.getElementById('timeblock-start');
     const endInput = document.getElementById('timeblock-end');
+    const allDayInput = document.getElementById('timeblock-all-day');
     const durationLabel = document.getElementById('timeblock-duration');
     const expenseAmountInput = document.getElementById('timeblock-expense-amount');
     const expenseCategorySelect = document.getElementById('timeblock-expense-category');
@@ -2017,6 +2034,11 @@ updatePanelContext() {
     if (expenseCategorySelect && expenseSubcategorySelect) {
         const defaultCategory = this.categories.find(item => item.name === 'Timeblock') ? 'Timeblock' : '';
         this.initCategoryDropdowns(expenseCategorySelect, expenseSubcategorySelect, defaultCategory, '');
+    }
+    if (allDayInput && allDayInput.checked) {
+        if (startInput) startInput.style.display = 'none';
+        if (endInput) endInput.style.display = 'none';
+        if (durationLabel) durationLabel.style.display = 'none';
     }
     const updateDuration = () => {
         if (durationLabel && startInput && endInput) {
@@ -2028,6 +2050,13 @@ updatePanelContext() {
     if (dateInput) dateInput.addEventListener('blur', () => {
         dateInput.value = this.formatDate(dateInput.value);
     });
+    if (allDayInput) {
+        allDayInput.addEventListener('change', () => {
+            if (startInput) startInput.style.display = allDayInput.checked ? 'none' : '';
+            if (endInput) endInput.style.display = allDayInput.checked ? 'none' : '';
+            if (durationLabel) durationLabel.style.display = allDayInput.checked ? 'none' : 'block';
+        });
+    }
     const modalInputs = container ? container.querySelectorAll('input, textarea') : [];
     modalInputs.forEach((input) => {
         input.addEventListener('keydown', (e) => {
@@ -2073,14 +2102,16 @@ saveSession() {
     const dateInput = document.getElementById('timeblock-date');
     const startInput = document.getElementById('timeblock-start');
     const endInput = document.getElementById('timeblock-end');
+    const allDayInput = document.getElementById('timeblock-all-day');
     const notesInput = document.getElementById('timeblock-notes-input');
     const budgetInput = document.getElementById('timeblock-budget');
     const agendaInputs = document.querySelectorAll('#agenda-items-list input');
     const stakeholderInputs = document.querySelectorAll('#stakeholder-list input');
 
     const targetDate = this.formatDate(dateInput ? dateInput.value : this.selectedDate);
-    const startTime = startInput ? startInput.value : '00:00';
-    const endTime = endInput ? endInput.value : '00:00';
+    const isAllDay = allDayInput ? allDayInput.checked : false;
+    const startTime = startInput && !isAllDay ? startInput.value : '00:00';
+    const endTime = endInput && !isAllDay ? endInput.value : '00:00';
     const startDec = this.timeToDecimal(startTime);
     const endDec = this.timeToDecimal(endTime);
 
@@ -2095,15 +2126,23 @@ saveSession() {
 
     event.label = title;
     event.type = this.activeType;
-    event.start = startDec;
-    event.end = endDec;
-    event.agenda = agenda;
-    event.stakeholders = stakeholders;
+    if (this.activeType === 'REMINDER') {
+        event.start = isAllDay ? 0 : startDec;
+        event.end = isAllDay ? 0 : startDec;
+        event.agenda = '';
+        event.stakeholders = '';
+    } else {
+        event.start = startDec;
+        event.end = endDec;
+        event.agenda = agenda;
+        event.stakeholders = stakeholders;
+    }
     const existingNotes = event.notes ? event.notes.split('|').filter(Boolean) : [];
     const newNote = notesInput ? notesInput.value.trim() : '';
     if (newNote) existingNotes.push(newNote);
     event.notes = existingNotes.join('|');
-    event.budget = budgetInput ? budgetInput.value.trim() : '';
+    event.budget = this.activeType === 'REMINDER' ? '' : (budgetInput ? budgetInput.value.trim() : '');
+    event.allDay = isAllDay;
 
     if (targetDate !== this.selectedDate) {
         sessions.splice(targetIdx, 1);
@@ -2173,7 +2212,7 @@ async ensureSheetStructure() {
     this.sheetInfo = sheetInfo;
 
     await Promise.all([
-        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget']),
+        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget', 'allDay']),
         this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category', 'subcategory', 'eventId']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
@@ -2200,7 +2239,7 @@ async loadData() {
     const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes, categoriesRes, subcategoriesRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:J`
+            range: `${this.sheetNames.events}!A:K`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -2249,11 +2288,12 @@ async loadData() {
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
         if (row.length < 6) return;
-        const [id, date, start, end, label, type, agenda, stakeholders, notes, budget] = row;
+        const [id, date, start, end, label, type, agenda, stakeholders, notes, budget, allDay] = row;
         if (!date) return;
         if (!this.db[date]) this.db[date] = [];
         this.db[date].push({
             id,
+            date,
             start: parseFloat(start),
             end: parseFloat(end),
             label,
@@ -2261,7 +2301,8 @@ async loadData() {
             agenda: agenda || '',
             stakeholders: stakeholders || '',
             notes: notes || '',
-            budget: budget || ''
+            budget: budget || '',
+            allDay: allDay === '1' || allDay === 'true'
         });
     });
 
@@ -2434,20 +2475,21 @@ async saveEvent(event) {
         event.agenda || '',
         event.stakeholders || '',
         event.notes || '',
-        event.budget || ''
+        event.budget || '',
+        event.allDay ? '1' : '0'
     ];
     const rowIndex = await this.findRowById(this.sheetNames.events, event.id);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A${rowIndex}:J${rowIndex}`,
+            range: `${this.sheetNames.events}!A${rowIndex}:K${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:J`,
+            range: `${this.sheetNames.events}!A:K`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -2642,11 +2684,34 @@ renderDay() {
             </div>`;
     }
 
-    // Event Blocks
+    // Event Blocks + Reminder Markers
+    const reminderMarkers = [];
+    const allDayReminders = [];
     events.forEach((session, idx) => {
+        const color = colors[session.type] || colors.MEETING;
+        if (session.type === 'REMINDER') {
+            const label = session.label || 'Reminder';
+            if (session.allDay) {
+                allDayReminders.push({ idx, label, color });
+            } else {
+                const topPos = session.start * this.HOUR_HEIGHT;
+                reminderMarkers.push(`
+                    <div class="reminder-marker" style="position:absolute; top:${topPos - 6}px; left: 80px; right: 12px; height: 0; cursor: pointer;"
+                        onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); ENGINE.openMeeting(${idx})">
+                        <div style="display:flex; align-items:center; gap:8px; pointer-events:none;">
+                            <div style="width:6px; height:6px; border-radius:50%; background:${color}; opacity:0.85; box-shadow: 0 0 0 2px rgba(255,255,255,0.04);"></div>
+                            <div style="font-size:10px; color: rgba(255,255,255,0.7); font-weight:600;">${label}</div>
+                            <div style="font-family:'SF Mono'; font-size:9px; color: rgba(255,255,255,0.35);">${formatTime(session.start)}</div>
+                        </div>
+                    </div>
+                `);
+            }
+            session.isNew = false;
+            return;
+        }
+
         const topPos = session.start * this.HOUR_HEIGHT;
         const height = (session.end - session.start) * this.HOUR_HEIGHT;
-        const color = colors[session.type] || colors.MEETING;
         const duration = session.end - session.start;
         const durationStr = duration >= 1 ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : `${Math.round(duration * 60)}m`;
         const deleteStyle = height <= 40 ? 'top: 50%; transform: translateY(-50%);' : '';
@@ -2706,6 +2771,10 @@ renderDay() {
         session.isNew = false;
     });
 
+    if (reminderMarkers.length) {
+        html += reminderMarkers.join('');
+    }
+
     html += `</div>`; // Close events column
 
     // Transactions column
@@ -2738,7 +2807,23 @@ renderDay() {
     html += `</div></div>`; // Close transactions column and grid
 
     container.innerHTML = html;
+    this.renderAllDayReminders(allDayReminders);
     this.updateTimeline(false);
+},
+
+renderAllDayReminders(items) {
+    const container = document.getElementById('all-day-reminders');
+    if (!container) return;
+    if (!items || !items.length) {
+        container.innerHTML = '<div style="color: rgba(255,255,255,0.35); font-size: 11px;">No all-day reminders.</div>';
+        return;
+    }
+    container.innerHTML = items.map(item => `
+        <div onclick="ENGINE.openMeeting(${item.idx})" style="display:flex; align-items:center; gap:8px; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 8px; cursor: pointer;">
+            <div style="width:6px; height:6px; border-radius:50%; background:${item.color}; opacity:0.85;"></div>
+            <div style="font-size:11px; color: rgba(255,255,255,0.8); font-weight:600;">${item.label}</div>
+        </div>
+    `).join('');
 },
 
 // Delete event directly from block
