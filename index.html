@@ -785,7 +785,7 @@ body {
 <div id="tablet-shell">
     <div id="content-area">
         <div class="header-top">
-            <div class="brand">DEEPWORKSZT</div>
+            <div class="brand">logszt</div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <div style="display:flex; flex-direction:column; gap:6px;">
                     <div style="font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 700;">Level</div>
@@ -810,7 +810,7 @@ body {
                         <option value="BOTH">BOTH</option>
                     </select>
                 </div>
-                <button class="config-button" onclick="ENGINE.openSettings()" aria-label="Settings" style="background: transparent; border: none; font-size: 18px; width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">⚙︎</button>
+                <button class="config-button" onclick="ENGINE.openSettings()" aria-label="Settings" style="background: transparent; border: none; font-size: 18px; width: 32px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">⚙︎</button>
             </div>
         </div>
 
@@ -1169,6 +1169,7 @@ async init() {
     await this.loadData();
     this.injectStyles();
     this.syncConfigControls();
+    this.bindTransactionInputs();
     this.updateDateDisplay();
     this.render();
     this.renderTransactions();
@@ -1579,25 +1580,16 @@ updateGhost() {
     const topH = Math.round(Math.min(this.dragStartH, this.dragEndH) / step) * step;
     let bottomH = Math.round(Math.max(this.dragStartH, this.dragEndH) / step) * step;
     if (topH === bottomH) bottomH += 0.25;
-
     const duration = bottomH - topH;
-    const hours = Math.floor(duration);
-    const mins = Math.round((duration - hours) * 60);
-    const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
     g.style.display = 'block';
     g.style.top = `${topH * this.HOUR_HEIGHT}px`;
     g.style.height = `${duration * this.HOUR_HEIGHT}px`;
 
-    g.innerHTML = `
-        <div style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <div style="color: #007AFF; font-size: 8px; font-weight: 900; letter-spacing: 1.5px; margin-bottom: 4px;">${this.activeType}</div>
-                <div style="color: white; font-size: 13px; font-weight: 600;">New Session</div>
-            </div>
-            <div style="color: #007AFF; font-family: 'SF Mono'; font-size: 11px; font-weight: 600;">${timeStr}</div>
-        </div>
-    `;
+    g.innerHTML = '';
+    g.style.background = 'rgba(255,255,255,0.02)';
+    g.style.borderLeft = '2px solid rgba(0,122,255,0.6)';
+    g.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.04) inset';
 },
     
     cycle(prop) {
@@ -2101,7 +2093,7 @@ async loadData() {
             date,
             time,
             desc,
-            amount: parseFloat(amount),
+            amount: parseFloat(String(amount || '0').replace(/,/g, '')),
             category
         };
     }).filter(tx => tx.date);
@@ -2277,7 +2269,7 @@ async deleteEventById(eventId) {
 async saveTransaction(tx) {
     if (!tx || !tx.id) return;
     await this.ensureUserStorage();
-    const row = [tx.id, tx.date, tx.time, tx.desc, tx.amount, tx.category];
+    const row = [tx.id, this.formatDate(tx.date), tx.time, tx.desc, this.formatAmount(tx.amount), tx.category];
     const rowIndex = await this.findRowById(this.sheetNames.transactions, tx.id);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
@@ -2436,22 +2428,23 @@ renderDay() {
 
         // Responsive content based on block height
         const isCompact = height <= 35;  // 15min or less
-        const isMedium = height > 35 && height <= 60;  // 30min
+        const isMedium = height > 35 && height <= 80;  // ~45min
 
         let blockContent = '';
         if (isCompact) {
-            // Ultra-compact: just label
+            // Ultra-compact: label + duration
             blockContent = `
                 <div style="padding: 4px 8px; pointer-events: none; display: flex; align-items: center; justify-content: space-between; height: 100%;">
                     <span style="color: white; font-weight: 600; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${session.label}</span>
                     <span style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-left: 8px;">${durationStr}</span>
                 </div>`;
         } else if (isMedium) {
-            // Medium: type + label
+            // Medium: type + label + time
             blockContent = `
                 <div style="padding: 6px 10px; pointer-events: none; height: 100%;">
                     <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
                     <div style="color: white; font-weight: 600; font-size: 12px; margin-top: 2px;">${session.label}</div>
+                    <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">${formatTime(session.start)} – ${formatTime(session.end)}</div>
                 </div>`;
         } else {
             // Full: all info
@@ -2482,7 +2475,7 @@ renderDay() {
                     z-index: 60;
                     pointer-events: all;
                 ">
-                <button class="block-delete-btn" onclick="event.stopPropagation(); ENGINE.deleteEvent(${idx});" title="Delete">×</button>
+                <button class="block-delete-btn" onclick="event.stopPropagation(); ENGINE.deleteEvent(${idx});" title="Delete">🗑</button>
                 ${blockContent}
             </div>`;
         session.isNew = false;
@@ -2832,7 +2825,7 @@ updateTimeline(shouldScroll = false) {
         overlay.dataset.sign = String(sign);
         delete overlay.dataset.txId;
         if (title) title.textContent = sign > 0 ? 'Add Income' : 'Add Expense';
-        if (amountInput) amountInput.value = '';
+        if (amountInput) amountInput.value = this.formatAmount(0);
         if (descInput) descInput.value = '';
         const now = new Date();
         if (dateInput) dateInput.value = this.formatDate(now.toISOString().split('T')[0]);
@@ -2857,7 +2850,7 @@ updateTimeline(shouldScroll = false) {
         overlay.dataset.sign = String(sign);
         overlay.dataset.txId = tx.id;
         if (title) title.textContent = sign > 0 ? 'Edit Income' : 'Edit Expense';
-        if (amountInput) amountInput.value = Math.abs(tx.amount);
+        if (amountInput) amountInput.value = this.formatAmount(Math.abs(tx.amount));
         if (descInput) descInput.value = tx.desc || '';
         if (dateInput) dateInput.value = this.formatDate(tx.date);
         if (timeInput) timeInput.value = tx.time || '00:00';
@@ -2873,6 +2866,19 @@ updateTimeline(shouldScroll = false) {
         }
     },
 
+    bindTransactionInputs() {
+        const amountInput = document.getElementById('transaction-amount');
+        if (!amountInput) return;
+        amountInput.addEventListener('blur', () => {
+            const raw = String(amountInput.value || '').replace(/,/g, '');
+            const val = parseFloat(raw);
+            amountInput.value = Number.isNaN(val) ? this.formatAmount(0) : this.formatAmount(val);
+        });
+        amountInput.addEventListener('input', () => {
+            amountInput.value = amountInput.value.replace(/[^\d.,]/g, '');
+        });
+    },
+
     saveTransactionModal() {
         const overlay = document.getElementById('transaction-overlay');
         if (!overlay) return;
@@ -2884,7 +2890,7 @@ updateTimeline(shouldScroll = false) {
         const timeInput = document.getElementById('transaction-time');
         const categoryInput = document.getElementById('transaction-category');
 
-        const amountVal = amountInput ? parseFloat(amountInput.value) : NaN;
+        const amountVal = amountInput ? parseFloat(String(amountInput.value).replace(/,/g, '')) : NaN;
         if (!amountInput || Number.isNaN(amountVal)) return;
         const desc = descInput && descInput.value.trim() ? descInput.value.trim() : (sign > 0 ? 'Income' : 'Expense');
         const date = dateInput ? this.formatDate(dateInput.value) : this.formatDate(new Date().toISOString().split('T')[0]);
@@ -3064,7 +3070,7 @@ window.addEventListener('mouseup', () => {
         <div style="display:flex; flex-direction:column; gap: 12px;">
             <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input id="transaction-amount" type="number" step="0.01" placeholder="Amount" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <input id="transaction-amount" type="text" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 <input id="transaction-date" type="date" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
