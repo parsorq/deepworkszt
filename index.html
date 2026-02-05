@@ -218,8 +218,16 @@ body {
 }
 
 .block-space:hover {
-    border-color: rgba(255, 255, 255, 0.15) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+    transform: translateY(-1px);
+}
+
+#block-context-menu button:hover,
+#quick-create-menu button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 
@@ -1924,19 +1932,6 @@ getEventAtPoint(clientX, clientY) {
             const idx = parseInt(container.dataset.blockIdx, 10);
             if (!Number.isNaN(idx)) return idx;
         }
-    }
-    const bounds = this.getEventsBounds();
-    if (!bounds) return null;
-    const columnLeft = bounds.left + 80;
-    const columnRight = bounds.right - 12;
-    if (clientX < columnLeft || clientX > columnRight) return null;
-    const hour = this.getHourAtClientY(clientY);
-    if (hour === null) return null;
-    const events = this.db[this.selectedDate] || [];
-    for (let i = 0; i < events.length; i++) {
-        const ev = events[i];
-        if (!ev || ev.type === 'REMINDER') continue;
-        if (hour >= ev.start && hour < ev.end) return i;
     }
     return null;
 },
