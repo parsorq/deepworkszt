@@ -1330,7 +1330,7 @@ renderTransactions() {
 },
 
 // Add a new transaction
-addTransaction(desc, amount, category = 'General', date = null, time = null) {
+addTransaction(desc, amount, category = 'General', date = null, time = null, eventId = '') {
     const now = new Date();
     const txDate = date || this.formatDate(now.toISOString().split('T')[0]);
     const txTime = time || now.toTimeString().slice(0, 5);
@@ -1340,7 +1340,8 @@ addTransaction(desc, amount, category = 'General', date = null, time = null) {
         time: txTime,
         desc,
         amount: parseFloat(amount),
-        category
+        category,
+        eventId: eventId || ''
     };
     this.transactions.unshift(tx);
     this.currentNet += tx.amount;
@@ -1556,7 +1557,12 @@ handleMouseUp() {
             end,
             label: "New Session",
             type: this.activeType || 'MEETING',
-            isNew: true
+            isNew: true,
+            date: this.selectedDate,
+            agenda: '',
+            stakeholders: '',
+            notes: '',
+            budget: ''
         };
         this.db[this.selectedDate].push(newEvent);
         void this.saveEvent(newEvent);
@@ -1806,7 +1812,7 @@ injectStyles() {
 updatePanelContext() {
     const container = document.getElementById('dynamic-fields-container');
     const modalTitle = document.getElementById('modal-main-title');
-    const activeColor = { MEETING: '#007AFF', EVENT: '#FF9500', TASK: '#FF3B30' }[this.activeType];
+    const activeColor = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', SLEEP: '#8E8E93', EVENT: '#FF9500' }[this.activeType];
     
     // --- 0. INTERACTION LAYER FIX ---
     // Ensure the modal layer doesn't intercept drag events meant for the ledger
@@ -1816,26 +1822,17 @@ updatePanelContext() {
     const now = new Date();
     const todayISO = now.toISOString().split('T')[0];
     const currentTime = now.toTimeString().slice(0, 5);
+    const events = this.db[this.selectedDate] || [];
+    const activeEvent = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+    const eventDate = activeEvent?.date || this.selectedDate || todayISO;
+    const eventStart = activeEvent ? this.decimalToTime(activeEvent.start) : currentTime;
+    const eventEnd = activeEvent ? this.decimalToTime(activeEvent.end) : this.decimalToTime(Math.min(24, (now.getHours() + 1)));
+    const agendaItems = activeEvent?.agenda ? activeEvent.agenda.split('|').filter(Boolean) : [];
+    const stakeholderItems = activeEvent?.stakeholders ? activeEvent.stakeholders.split('|').filter(Boolean) : [];
+    const eventNotes = activeEvent?.notes || '';
+    const eventBudget = activeEvent?.budget || '';
 
-    const ledger = [
-        { desc: 'Vercel Edge Config', amt: -20.00, time: '2026-02-02 16:42' },
-        { desc: 'Retainer Deposit', amt: 2500.00, time: '2026-02-02 12:05' },
-        { desc: 'S3 Storage Bucket', amt: -45.00, time: '2026-02-01 09:00' }
-    ];
-
-    const historicalNotes = [
-        { date: '2026-02-02', text: 'Confirmed migration architecture.' },
-        { date: '2026-02-01', text: 'Security audit passed.' },
-        { date: '2026-01-28', text: 'Budget approval for Q1.' },
-        { date: '2026-01-25', text: 'Initial scoping session.' },
-        { date: '2026-01-20', text: 'Vendor compliance check.' },
-        { date: '2026-01-15', text: 'Project kickoff.' }
-    ];
-
-    const totalBudget = 25000.00; 
-    const netRemaining = 27435.00;
-
-    modalTitle.innerText = `NEW ${this.activeType}`;
+    modalTitle.innerText = `${activeEvent ? 'EDIT' : 'NEW'} ${this.activeType}`;
 
     if (ENGINE.activeTypeContext.isRemote === undefined) ENGINE.activeTypeContext.isRemote = true;
     const isRemote = ENGINE.activeTypeContext.isRemote;
@@ -1844,15 +1841,28 @@ updatePanelContext() {
     
     // --- 1. HEADER (Strategic Objective) ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px;">
+        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1fr auto; gap: 16px; margin-bottom: 16px; padding: 0 4px;">
             <div style="flex: 1;">
-                <label style="color: ${activeColor}; font-weight: 800; font-size: 10px; letter-spacing: 2px; text-transform:uppercase;">Strategic Objective</label>
-                <input type="text" value="Infrastructure Session" 
+                <label style="color: ${activeColor}; font-weight: 800; font-size: 10px; letter-spacing: 2px; text-transform:uppercase;">Timeblock</label>
+                <input id="strategic-objective-input" type="text" value="${activeEvent?.label || 'New Session'}" 
                        style="background:transparent; border:none; color:white; font-size:28px; font-weight:700; width:100%; outline:none; letter-spacing: -1px;">
+                <div style="display:flex; gap: 6px; margin-top: 10px;">
+                    ${['MEETING','REMINDER','TASK','SLEEP'].map(t => `
+                        <button onclick="ENGINE.setType('${t}')" style="background: ${this.activeType === t ? activeColor : 'rgba(255,255,255,0.05)'}; border: 1px solid rgba(255,255,255,0.12); color: ${this.activeType === t ? '#ffffff' : 'rgba(255,255,255,0.6)'}; padding: 6px 10px; border-radius: 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; cursor: pointer;">
+                            ${t}
+                        </button>
+                    `).join('')}
+                </div>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <input type="date" value="${todayISO}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px;">
-                <input type="time" value="${currentTime}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                <div style="display: flex; gap: 8px;">
+                    <input id="timeblock-date" type="text" value="${this.formatDate(eventDate)}" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 120px;">
+                    <input id="timeblock-start" type="time" value="${eventStart}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px;">
+                    <input id="timeblock-end" type="time" value="${eventEnd}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 11px; padding: 6px 10px; border-radius: 8px; width: 90px;">
+                </div>
+                <div id="timeblock-duration" style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5);">
+                    ${this.getDurationLabel(eventStart, eventEnd)}
+                </div>
             </div>
         </div>
     `;
@@ -1882,10 +1892,10 @@ updatePanelContext() {
                 <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color:${activeColor}; font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
             </div>
             <div id="agenda-items-list" style="display: flex; flex-direction: column; max-height: 120px; overflow-y: auto;">
-                ${[1, 2, 3, 4].map(i => `
+                ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
                     <div style="display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
-                        <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i}</span>
-                        <input type="text" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
+                        <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
+                        <input type="text" value="${item}" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
                         <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
                     </div>
                 `).join('')}
@@ -1902,68 +1912,71 @@ updatePanelContext() {
                     <span onclick="ENGINE.addStakeholder()" style="color:${activeColor}; font-size:8px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
                 <div id="stakeholder-list" style="max-height: 105px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
-                    ${['S. Chen (Arch)', 'A. Marcus (Dev)', 'J. Doe (PM)', 'K. Sato (Sec)', 'L. Wright (Ops)'].map(name => `
-                        <div style="font-size:11px; color:rgba(255,255,255,0.8); display:flex; align-items:center;">
-                            <span style="color:${activeColor}; margin-right:8px;">●</span>${name}
+                    ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="color:${activeColor};">●</span>
+                            <input type="text" value="${name}" placeholder="Stakeholder..." style="flex:1; background:transparent; border:none; color:white; font-size:11px; outline:none;">
                         </div>
                     `).join('')}
                 </div>
             </div>
 
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
-                <div style="display:flex; gap:8px; margin-bottom:10px;">
-                    <input type="text" placeholder="Quick note..." style="flex:1; background:rgba(255,255,255,0.04); border:none; color:white; font-size:11px; padding: 6px 10px; border-radius: 6px; outline:none;">
-                    <button style="background:${activeColor}; border:none; color:white; font-size:8px; font-weight:800; padding:0 12px; border-radius:6px;">SAVE</button>
-                </div>
-                <div id="notes-history" style="max-height: 85px; overflow-y: auto; opacity: 0.6;">
-                    ${historicalNotes.map(n => `
-                        <div style="font-size: 10px; margin-bottom: 8px; font-family:'SF Mono'; display: flex; gap: 32px;">
-                            <span style="color:${activeColor}; font-weight:bold; white-space: nowrap;">[${n.date}]</span>
-                            <span style="color: rgba(255,255,255,0.8);">${n.text}</span>
-                        </div>
-                    `).join('')}
-                </div>
+                <label style="opacity: 0.3; font-size: 8px; font-weight: 800; text-transform:uppercase; margin-bottom:8px;">Notes</label>
+                <textarea id="timeblock-notes" placeholder="Notes..." style="width: 100%; height: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; color: white; font-size: 11px; outline:none; resize:none;">${eventNotes}</textarea>
             </div>
         </div>
     `;
 
-    // --- 5. FINANCE BAR ---
+    // --- 5. TIMEBLOCK EXPENSES ---
+    const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
     html += `
-        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 14px;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <div>
-                        <label style="opacity:0.2; font-size: 8px; font-weight: 800; text-transform:uppercase; display:block; margin-bottom:2px;">Net Remaining</label>
-                        <span style="color:white; font-size: 22px; font-weight: 600; font-family:'SF Mono';">$${netRemaining.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                    </div>
-                    <div style="height: 24px; width: 1px; background: rgba(255,255,255,0.08);"></div>
-                    <div>
-                        <label style="opacity:0.2; font-size: 8px; font-weight: 800; text-transform:uppercase; display:block; margin-bottom:2px;">Budget Cap</label>
-                        <span style="color:rgba(255,255,255,0.4); font-size: 14px; font-family:'SF Mono';">$${totalBudget.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="ENGINE.addExpense()" style="background:rgba(255,59,48,0.1); border:1px solid rgba(255,59,48,0.2); color:#FF3B30; width:38px; height:38px; border-radius:10px; cursor:pointer; font-size:18px;">−</button>
-                    <button onclick="ENGINE.addIncome()" style="background:rgba(50,215,75,0.1); border:1px solid rgba(50,215,75,0.2); color:#32D74B; width:38px; height:38px; border-radius:10px; cursor:pointer; font-size:18px;">+</button>
-                    <button onclick="ENGINE.audit()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; font-size:9px; font-weight:800; padding:0 18px; border-radius:10px; cursor:pointer; letter-spacing:1px;">AUDIT</button>
+        <div class="panel-section" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 16px 20px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="opacity:0.3; font-size: 9px; font-weight: 800; text-transform:uppercase;">Timeblock Expenses</label>
+                <div style="display:flex; gap: 8px; align-items:center;">
+                    <span style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">Budget</span>
+                    <input id="timeblock-budget" type="text" value="${eventBudget}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
                 </div>
             </div>
-
-            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.04);">
-                ${ledger.map(t => `
-                    <div style="display:flex; flex-direction:column; flex: 1;">
-                        <label style="opacity:0.15; font-size:7px; text-transform:uppercase; white-space:nowrap; margin-bottom:2px;">${t.desc}</label>
-                        <span style="font-size:11px; font-family:'SF Mono'; font-weight:700; color:${t.amt > 0 ? '#32D74B' : 'rgba(255,255,255,0.7)'};">
-                            ${t.amt > 0 ? '+' : ''}${t.amt.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                        </span>
-                        <span style="opacity:0.15; font-size:7px; font-family:'SF Mono'; margin-top:1px;">${t.time}</span>
+            <div style="display:grid; grid-template-columns: 1.5fr 0.6fr auto; gap: 8px;">
+                <input id="timeblock-expense-desc" placeholder="Expense description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                <input id="timeblock-expense-amount" placeholder="0.00" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius: 8px; font-size: 11px; outline:none;">
+                <button onclick="ENGINE.addTimeblockExpense()" style="background:${activeColor}; border:none; color:white; font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
+            </div>
+            <div id="timeblock-expense-list" style="display:flex; flex-direction:column; gap: 8px; max-height: 140px; overflow-y: auto;">
+                ${expenseItems.length ? expenseItems.map(tx => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div>
+                            <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                        </div>
+                        <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
+                            -${this.formatAmount(Math.abs(tx.amount))}
+                        </div>
                     </div>
-                `).join('')}
+                `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>'}
             </div>
         </div>
     `;
     
     container.innerHTML = html;
+    const dateInput = document.getElementById('timeblock-date');
+    const startInput = document.getElementById('timeblock-start');
+    const endInput = document.getElementById('timeblock-end');
+    const durationLabel = document.getElementById('timeblock-duration');
+    const expenseAmountInput = document.getElementById('timeblock-expense-amount');
+    if (expenseAmountInput && !expenseAmountInput.value) expenseAmountInput.value = this.formatAmount(0);
+    const updateDuration = () => {
+        if (durationLabel && startInput && endInput) {
+            durationLabel.textContent = this.getDurationLabel(startInput.value, endInput.value);
+        }
+    };
+    if (startInput) startInput.addEventListener('input', updateDuration);
+    if (endInput) endInput.addEventListener('input', updateDuration);
+    if (dateInput) dateInput.addEventListener('blur', () => {
+        dateInput.value = this.formatDate(dateInput.value);
+    });
 },
 
     
@@ -1977,32 +1990,61 @@ setLocMode(mode) {
 },
 
 addStakeholder() {
-    const name = prompt("Enter Stakeholder Name:");
-    if (!name) return;
     const list = document.getElementById('stakeholder-list');
+    if (!list) return;
     const div = document.createElement('div');
-    div.style.cssText = "display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:8px;";
-    div.innerHTML = `<span><span style="color:${this.activeType === 'MEETING' ? '#007AFF' : '#FF9500'}; margin-right:8px;">●</span>${name}</span><span style="font-size:10px; opacity:0.2; cursor:pointer;" onclick="this.parentElement.remove()">✕</span>`;
+    div.style.cssText = "display:flex; align-items:center; gap:8px;";
+    div.innerHTML = `<span style="color:${this.activeType === 'MEETING' ? '#007AFF' : '#FF9500'};">●</span><input type="text" placeholder="Stakeholder..." style="flex:1; background:transparent; border:none; color:white; font-size:11px; outline:none;">`;
     list.appendChild(div);
 },
 
 saveSession() {
     const titleInput = document.getElementById('strategic-objective-input');
     const title = titleInput ? titleInput.value : "New Infrastructure Session";
-    
-    // Logic to update the last session or create new
+    const dateInput = document.getElementById('timeblock-date');
+    const startInput = document.getElementById('timeblock-start');
+    const endInput = document.getElementById('timeblock-end');
+    const notesInput = document.getElementById('timeblock-notes');
+    const budgetInput = document.getElementById('timeblock-budget');
+    const agendaInputs = document.querySelectorAll('#agenda-items-list input');
+    const stakeholderInputs = document.querySelectorAll('#stakeholder-list input');
+
+    const targetDate = this.formatDate(dateInput ? dateInput.value : this.selectedDate);
+    const startTime = startInput ? startInput.value : '00:00';
+    const endTime = endInput ? endInput.value : '00:00';
+    const startDec = this.timeToDecimal(startTime);
+    const endDec = this.timeToDecimal(endTime);
+
+    const agenda = Array.from(agendaInputs).map(input => input.value.trim()).filter(Boolean).join('|');
+    const stakeholders = Array.from(stakeholderInputs).map(input => input.value.trim()).filter(Boolean).join('|');
+
     if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
-    
-    // If we just added one via handleMouseUp, update its label
     const sessions = this.db[this.selectedDate];
-    if (sessions.length > 0) {
-        sessions[sessions.length - 1].label = title;
-        sessions[sessions.length - 1].type = this.activeType;
-        void this.saveEvent(sessions[sessions.length - 1]);
+    const targetIdx = this.currentEventIdx !== null ? this.currentEventIdx : (sessions.length - 1);
+    const event = sessions[targetIdx];
+    if (!event) return;
+
+    event.label = title;
+    event.type = this.activeType;
+    event.start = startDec;
+    event.end = endDec;
+    event.agenda = agenda;
+    event.stakeholders = stakeholders;
+    event.notes = notesInput ? notesInput.value.trim() : '';
+    event.budget = budgetInput ? budgetInput.value.trim() : '';
+
+    if (targetDate !== this.selectedDate) {
+        sessions.splice(targetIdx, 1);
+        if (!this.db[targetDate]) this.db[targetDate] = [];
+        this.db[targetDate].push(event);
+        event.date = targetDate;
+        this.selectedDate = targetDate;
+        this.updateDateDisplay();
     }
 
+    void this.saveEvent(event);
     document.getElementById('modal-overlay').style.display = 'none';
-    this.renderDay(); // Refresh the ledger view
+    this.renderDay();
 },
 
 async ensureUserStorage() {
@@ -2059,8 +2101,8 @@ async ensureSheetStructure() {
     this.sheetInfo = sheetInfo;
 
     await Promise.all([
-        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type']),
-        this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category']),
+        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget']),
+        this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'desc', 'amount', 'category', 'eventId']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'notes', 'createdAt', 'updatedAt']),
@@ -2084,11 +2126,11 @@ async loadData() {
     const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:F`
+            range: `${this.sheetNames.events}!A:J`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A:F`
+            range: `${this.sheetNames.transactions}!A:G`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -2123,7 +2165,7 @@ async loadData() {
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
         if (row.length < 6) return;
-        const [id, date, start, end, label, type] = row;
+        const [id, date, start, end, label, type, agenda, stakeholders, notes, budget] = row;
         if (!date) return;
         if (!this.db[date]) this.db[date] = [];
         this.db[date].push({
@@ -2131,19 +2173,24 @@ async loadData() {
             start: parseFloat(start),
             end: parseFloat(end),
             label,
-            type
+            type,
+            agenda: agenda || '',
+            stakeholders: stakeholders || '',
+            notes: notes || '',
+            budget: budget || ''
         });
     });
 
     this.transactions = txRows.slice(1).map((row) => {
-        const [id, date, time, desc, amount, category] = row;
+        const [id, date, time, desc, amount, category, eventId] = row;
         return {
             id,
             date,
             time,
             desc,
             amount: parseFloat(String(amount || '0').replace(/,/g, '')),
-            category
+            category,
+            eventId: eventId || ''
         };
     }).filter(tx => tx.date);
 
@@ -2272,19 +2319,30 @@ async saveEvent(event) {
     if (!event || !event.id) return;
     await this.ensureUserStorage();
     const date = event.date || this.selectedDate;
-    const row = [event.id, date, event.start, event.end, event.label, event.type];
+    const row = [
+        event.id,
+        date,
+        event.start,
+        event.end,
+        event.label,
+        event.type,
+        event.agenda || '',
+        event.stakeholders || '',
+        event.notes || '',
+        event.budget || ''
+    ];
     const rowIndex = await this.findRowById(this.sheetNames.events, event.id);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A${rowIndex}:F${rowIndex}`,
+            range: `${this.sheetNames.events}!A${rowIndex}:J${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:F`,
+            range: `${this.sheetNames.events}!A:J`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -2318,19 +2376,27 @@ async deleteEventById(eventId) {
 async saveTransaction(tx) {
     if (!tx || !tx.id) return;
     await this.ensureUserStorage();
-    const row = [tx.id, this.formatDate(tx.date), tx.time, tx.desc, this.formatAmount(tx.amount), tx.category];
+    const row = [
+        tx.id,
+        this.formatDate(tx.date),
+        tx.time,
+        tx.desc,
+        this.formatAmount(tx.amount),
+        tx.category,
+        tx.eventId || ''
+    ];
     const rowIndex = await this.findRowById(this.sheetNames.transactions, tx.id);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A${rowIndex}:F${rowIndex}`,
+            range: `${this.sheetNames.transactions}!A${rowIndex}:G${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.transactions}!A:F`,
+            range: `${this.sheetNames.transactions}!A:G`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -2382,6 +2448,9 @@ openMeeting(idx) {
     const events = this.db[this.selectedDate] || [];
     if (modalTitle && events[idx]) {
         modalTitle.textContent = events[idx].label || 'Edit Session';
+    }
+    if (events[idx] && events[idx].type) {
+        this.activeType = events[idx].type;
     }
 
     // Sync the sidebar button state
@@ -2439,7 +2508,7 @@ renderDay() {
     if (!container) return;
 
     this.HOUR_HEIGHT = 100;
-    const colors = { MEETING: '#007AFF', EVENT: '#FF9500', TASK: '#FF3B30' };
+    const colors = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', SLEEP: '#8E8E93', EVENT: '#FF9500' };
 
     // Format time helper
     const formatTime = (h) => {
@@ -2862,6 +2931,72 @@ updateTimeline(shouldScroll = false) {
         });
     },
 
+    decimalToTime(decimal) {
+        if (decimal === null || decimal === undefined || Number.isNaN(decimal)) return '00:00';
+        const hours = Math.floor(decimal);
+        const mins = Math.round((decimal - hours) * 60);
+        return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    },
+
+    timeToDecimal(timeStr) {
+        if (!timeStr) return 0;
+        const [h, m] = timeStr.split(':').map(Number);
+        return (h || 0) + ((m || 0) / 60);
+    },
+
+    getDurationLabel(start, end) {
+        const startDec = this.timeToDecimal(start);
+        const endDec = this.timeToDecimal(end);
+        const duration = Math.max(0, endDec - startDec);
+        const hours = Math.floor(duration);
+        const mins = Math.round((duration - hours) * 60);
+        return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    },
+
+    getEventExpenses(eventId) {
+        if (!eventId) return [];
+        return this.transactions.filter(tx => tx.eventId === eventId);
+    },
+
+    addTimeblockExpense() {
+        if (this.currentEventIdx === null) return;
+        const events = this.db[this.selectedDate] || [];
+        const event = events[this.currentEventIdx];
+        if (!event) return;
+        const descInput = document.getElementById('timeblock-expense-desc');
+        const amountInput = document.getElementById('timeblock-expense-amount');
+        const budgetInput = document.getElementById('timeblock-budget');
+        const desc = descInput ? descInput.value.trim() : '';
+        const amountVal = amountInput ? parseFloat(String(amountInput.value).replace(/,/g, '')) : NaN;
+        if (!desc || Number.isNaN(amountVal)) return;
+        if (budgetInput) event.budget = budgetInput.value.trim();
+        const date = this.formatDate(document.getElementById('timeblock-date')?.value || this.selectedDate);
+        const time = document.getElementById('timeblock-start')?.value || new Date().toTimeString().slice(0, 5);
+        this.addTransaction(desc, -Math.abs(amountVal), 'Timeblock', date, time, event.id);
+        if (descInput) descInput.value = '';
+        if (amountInput) amountInput.value = this.formatAmount(0);
+        this.renderPanelExpenses();
+    },
+
+    renderPanelExpenses() {
+        const list = document.getElementById('timeblock-expense-list');
+        if (!list) return;
+        const events = this.db[this.selectedDate] || [];
+        const event = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+        const expenseItems = event ? this.getEventExpenses(event.id) : [];
+        list.innerHTML = expenseItems.length ? expenseItems.map(tx => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div>
+                    <div style="font-size: 11px; color:white; font-weight:600;">${tx.desc}</div>
+                    <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${tx.time || ''}</div>
+                </div>
+                <div style="font-family:'SF Mono'; font-size: 11px; color: #FF453A;">
+                    -${this.formatAmount(Math.abs(tx.amount))}
+                </div>
+            </div>
+        `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>';
+    },
+
     openTransactionModal(sign) {
         const overlay = document.getElementById('transaction-overlay');
         if (!overlay) return;
@@ -3010,7 +3145,7 @@ window.addEventListener('mouseup', () => {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <button id="delete-event-btn" onclick="ENGINE.deleteCurrentEvent()" style="background: rgba(255,59,48,0.1); border: 1px solid rgba(255,59,48,0.3); color: #FF453A; padding: 8px 16px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; display: none;">DELETE</button>
+                <button id="delete-event-btn" onclick="ENGINE.deleteCurrentEvent()" style="background: transparent; border: none; color: rgba(255,255,255,0.6); padding: 8px; border-radius: 8px; font-size: 16px; cursor: pointer; display: none;">🗑</button>
                 <button onclick="ENGINE.closeModal()" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.6); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
             </div>
         </div>
