@@ -1325,7 +1325,7 @@ let googleReady = false;
 let loginOverlay = null;
 const ENGINE_TOKEN_KEY = 'ENGINE_ACCESS_TOKEN';
 const ENGINE_TOKEN_EXPIRY_KEY = 'ENGINE_ACCESS_TOKEN_EXPIRES_AT';
-const TOKEN_SHEET_NAME = 'SessionTokens';
+const USER_TOKEN_SHEET_NAME = 'SessionTokens';
 
 function loadGoogleScript(src) {
     return new Promise((resolve, reject) => {
@@ -1478,7 +1478,7 @@ async function handleLogin(promptMode = 'consent') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
-                    saveTokenToRegistry(profile.email).catch(() => {});
+                    saveTokenToUserSheet(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1524,7 +1524,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
-                    saveTokenToRegistry(profile.email).catch(() => {});
+                    saveTokenToUserSheet(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1577,7 +1577,7 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             localStorage.setItem('ENGINE_LAST_USER', profile.email);
             await ENGINE.init();
             finalizeLoginSuccess();
-            saveTokenToRegistry(profile.email).catch(() => {});
+            saveTokenToUserSheet(profile.email).catch(() => {});
             onSuccess();
         } catch (err) {
             console.error('Login failed:', err);
@@ -1627,28 +1627,28 @@ async function tryTokenRestore() {
     const cachedEmail = localStorage.getItem('ENGINE_LAST_USER');
     let token = localStorage.getItem(ENGINE_TOKEN_KEY);
     let expiresAt = Number(localStorage.getItem(ENGINE_TOKEN_EXPIRY_KEY) || 0);
-    if (cachedEmail) {
-        try {
-            const registryToken = await fetchTokenFromRegistry(cachedEmail);
-            if (registryToken?.token && registryToken?.expiresAt) {
-                token = registryToken.token;
-                expiresAt = registryToken.expiresAt;
-                localStorage.setItem(ENGINE_TOKEN_KEY, token);
-                localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
-            }
-        } catch (_) {
-            // Ignore registry lookup failures; fallback to local cache.
-        }
-    }
-    if (!token || !Number.isFinite(expiresAt) || Date.now() >= expiresAt) {
-        clearPersistedToken();
-        return false;
-    }
+    if (!cachedEmail || !token) return false;
     await ensureGoogleReady();
     googleAccessToken = token;
-    googleAccessTokenExpiresAt = expiresAt;
     gapi.client.setToken({ access_token: googleAccessToken });
     if (cachedEmail) {
+        try {
+            const userSheetId = getUserSheetIdFromCache(cachedEmail);
+            if (userSheetId) {
+                const storedToken = await fetchTokenFromUserSheet(userSheetId, cachedEmail);
+                if (storedToken?.token && storedToken?.expiresAt) {
+                    token = storedToken.token;
+                    expiresAt = storedToken.expiresAt;
+                    googleAccessToken = token;
+                    googleAccessTokenExpiresAt = expiresAt;
+                    gapi.client.setToken({ access_token: googleAccessToken });
+                    localStorage.setItem(ENGINE_TOKEN_KEY, token);
+                    localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
+                }
+            }
+        } catch (_) {
+            // Ignore user-sheet lookup failures; fallback to local cache.
+        }
         try {
             ENGINE.userEmail = cachedEmail;
             await ENGINE.init();
@@ -1672,49 +1672,60 @@ async function tryTokenRestore() {
     return true;
 }
 
-async function ensureTokenSheet() {
+function normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
+}
+
+function getUserSheetIdFromCache(email) {
+    const key = `ENGINE_USER_FILE_ID_${normalizeEmail(email)}`;
+    return localStorage.getItem(key);
+}
+
+async function ensureUserTokenSheet(userSheetId) {
     await ensureGoogleReady();
     const sheetRes = await gapi.client.sheets.spreadsheets.get({
-        spreadsheetId: MASTER_REGISTRY_SHEET_ID
+        spreadsheetId: userSheetId
     });
     const sheets = sheetRes.result.sheets || [];
-    const existing = sheets.find(s => s.properties?.title === TOKEN_SHEET_NAME);
+    const existing = sheets.find(s => s.properties?.title === USER_TOKEN_SHEET_NAME);
     if (!existing) {
         await gapi.client.sheets.spreadsheets.batchUpdate({
-            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
-            resource: { requests: [{ addSheet: { properties: { title: TOKEN_SHEET_NAME } } }] }
+            spreadsheetId: userSheetId,
+            resource: { requests: [{ addSheet: { properties: { title: USER_TOKEN_SHEET_NAME } } }] }
         });
         await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
-            range: `${TOKEN_SHEET_NAME}!A1:D1`,
+            spreadsheetId: userSheetId,
+            range: `${USER_TOKEN_SHEET_NAME}!A1:D1`,
             valueInputOption: 'RAW',
             resource: { values: [['email', 'access_token', 'expires_at', 'updated_at']] }
         });
     }
 }
 
-async function saveTokenToRegistry(email) {
+async function saveTokenToUserSheet(email) {
     if (!email || !googleAccessToken || !googleAccessTokenExpiresAt) return;
-    await ensureTokenSheet();
+    const userSheetId = ENGINE.userSheetId || getUserSheetIdFromCache(email);
+    if (!userSheetId) return;
+    await ensureUserTokenSheet(userSheetId);
     const valuesRes = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: MASTER_REGISTRY_SHEET_ID,
-        range: `${TOKEN_SHEET_NAME}!A:D`
+        spreadsheetId: userSheetId,
+        range: `${USER_TOKEN_SHEET_NAME}!A:D`
     });
     const rows = valuesRes.result.values || [];
-    const rowIndex = rows.findIndex((row, idx) => idx > 0 && String(row[0] || '').trim().toLowerCase() === email.trim().toLowerCase());
+    const rowIndex = rows.findIndex((row, idx) => idx > 0 && normalizeEmail(row[0]) === normalizeEmail(email));
     const row = [email, googleAccessToken, String(googleAccessTokenExpiresAt), new Date().toISOString()];
     if (rowIndex > 0) {
         const targetRow = rowIndex + 1;
         await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
-            range: `${TOKEN_SHEET_NAME}!A${targetRow}:D${targetRow}`,
+            spreadsheetId: userSheetId,
+            range: `${USER_TOKEN_SHEET_NAME}!A${targetRow}:D${targetRow}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
-            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
-            range: `${TOKEN_SHEET_NAME}!A:D`,
+            spreadsheetId: userSheetId,
+            range: `${USER_TOKEN_SHEET_NAME}!A:D`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -1722,28 +1733,18 @@ async function saveTokenToRegistry(email) {
     }
 }
 
-async function fetchTokenFromRegistry(email) {
-    if (!email) return null;
-    const sheetName = encodeURIComponent(TOKEN_SHEET_NAME);
-    const url = `https://docs.google.com/spreadsheets/d/${MASTER_REGISTRY_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return null;
-    const text = await res.text();
-    const lines = text.trim().split(/\r?\n/);
-    if (lines.length < 2) return null;
-    const header = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
-    const emailIdx = header.indexOf('email');
-    const tokenIdx = header.indexOf('access_token');
-    const expiresIdx = header.indexOf('expires_at');
-    if (emailIdx === -1 || tokenIdx === -1 || expiresIdx === -1) return null;
-    for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
-        if ((cols[emailIdx] || '').trim().toLowerCase() === email.trim().toLowerCase()) {
-            const token = cols[tokenIdx];
-            const expiresAt = Number(cols[expiresIdx] || 0);
-            if (token && Number.isFinite(expiresAt)) return { token, expiresAt };
-        }
-    }
+async function fetchTokenFromUserSheet(userSheetId, email) {
+    if (!userSheetId || !email) return null;
+    const valuesRes = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: userSheetId,
+        range: `${USER_TOKEN_SHEET_NAME}!A:D`
+    });
+    const rows = valuesRes.result.values || [];
+    const row = rows.find((r, idx) => idx > 0 && normalizeEmail(r[0]) === normalizeEmail(email));
+    if (!row) return null;
+    const token = row[1];
+    const expiresAt = Number(row[2] || 0);
+    if (token && Number.isFinite(expiresAt)) return { token, expiresAt };
     return null;
 }
 
