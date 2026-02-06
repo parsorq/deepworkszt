@@ -1587,6 +1587,15 @@ async init() {
         });
     }
 
+    const editMeetingSettingsOverlay = document.getElementById('edit-meeting-settings-overlay');
+    if (editMeetingSettingsOverlay) {
+        editMeetingSettingsOverlay.addEventListener('click', (e) => {
+            if (e.target === editMeetingSettingsOverlay) {
+                this.closeEditMeetingSettings();
+            }
+        });
+    }
+
     const editOverlay = document.getElementById('edit-entity-overlay');
     if (editOverlay) {
         editOverlay.addEventListener('click', (e) => {
