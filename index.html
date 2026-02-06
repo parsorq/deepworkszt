@@ -596,6 +596,14 @@ body.dragging .reminder-marker {
         border: 0.5px solid #1B222C !important;
     }
 
+    .modal-panel-row {
+        transition: background 0.12s ease, border-color 0.12s ease;
+    }
+    .modal-panel-row:hover {
+        background: rgba(255,255,255,0.04) !important;
+        border-color: rgba(255,255,255,0.08) !important;
+    }
+
     .reminder-marker {
         cursor: pointer !important;
         transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
@@ -1520,6 +1528,28 @@ async init() {
             if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
                 e.preventDefault();
                 e.stopPropagation();
+                const row = e.target.closest('[data-tx-id], [data-stakeholder-idx], [data-agenda-idx], #timeblock-notes-history > div');
+                if (row) {
+                    if (row.hasAttribute('data-tx-id')) {
+                        const txId = row.getAttribute('data-tx-id');
+                        const idx = this.transactions.findIndex(t => t.id === txId);
+                        if (idx !== -1) this.showTransactionMenu(e.clientX, e.clientY, idx);
+                        return;
+                    }
+                    if (row.hasAttribute('data-stakeholder-idx')) {
+                        const idx = parseInt(row.getAttribute('data-stakeholder-idx'), 10);
+                        this.showModalRowMenu(e.clientX, e.clientY, 'stakeholder', idx);
+                        return;
+                    }
+                    if (row.hasAttribute('data-agenda-idx')) {
+                        const idx = parseInt(row.getAttribute('data-agenda-idx'), 10);
+                        this.showModalRowMenu(e.clientX, e.clientY, 'agenda', idx);
+                        return;
+                    }
+                    if (row.closest('#timeblock-notes-history')) {
+                        return;
+                    }
+                }
                 return;
             }
         }
@@ -1548,11 +1578,18 @@ async init() {
     const modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter') return;
             const el = e.target;
+            if (!modalOverlay.contains(el) || modalOverlay.style.display === 'none') return;
+            if (e.key === 'Tab' && !e.shiftKey && el && el.id === 'timeblock-expense-subcategory') {
+                const addBtn = document.querySelector('#dynamic-fields-container button[onclick*="addTimeblockExpense"]');
+                if (addBtn) {
+                    e.preventDefault();
+                    addBtn.focus();
+                }
+                return;
+            }
+            if (e.key !== 'Enter') return;
             if (!el || !el.matches || !el.matches('input, textarea, select')) return;
-            if (!modalOverlay.contains(el)) return;
-            if (modalOverlay.style.display === 'none') return;
             e.preventDefault();
             if (el.id === 'timeblock-notes-input') { this.addNoteOnly(); return; }
             if (['timeblock-expense-item', 'timeblock-expense-desc', 'timeblock-expense-amount'].includes(el.id)) { this.addTimeblockExpense(); return; }
@@ -2575,6 +2612,77 @@ hideTransactionMenu() {
     if (menu) menu.style.display = 'none';
 },
 
+showModalRowMenu(x, y, type, index) {
+    let menu = document.getElementById('modal-row-context-menu');
+    if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'modal-row-context-menu';
+        menu.style.cssText = 'position: fixed; z-index: 2000; background: rgba(20,20,20,0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-width: 120px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);';
+        document.body.appendChild(menu);
+    }
+    menu.innerHTML = `
+        <button data-action="edit" data-type="${type}" data-index="${index}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
+        <button data-action="delete" data-type="${type}" data-index="${index}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+    `;
+    menu.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            ENGINE.hideModalRowMenu();
+            const typ = btn.getAttribute('data-type');
+            const idx = parseInt(btn.getAttribute('data-index'), 10);
+            if (btn.getAttribute('data-action') === 'edit') {
+                setTimeout(() => {
+                    const list = typ === 'stakeholder' ? document.getElementById('stakeholder-list') : document.getElementById('agenda-items-list');
+                    if (list) {
+                        const row = list.querySelectorAll('div')[idx];
+                        if (row) {
+                            const input = row.querySelector('input');
+                            if (input) input.focus();
+                        }
+                    }
+                }, 0);
+            } else {
+                if (typ === 'stakeholder') ENGINE.removeStakeholderAt(idx);
+                else ENGINE.removeAgendaItemAt(idx);
+            }
+        });
+    });
+    const menuRect = menu.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
+    const top = Math.min(window.innerHeight - menuRect.height - 12, Math.max(12, y));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.display = 'flex';
+},
+
+hideModalRowMenu() {
+    const menu = document.getElementById('modal-row-context-menu');
+    if (menu) menu.style.display = 'none';
+},
+
+removeStakeholderAt(index) {
+    const ev = this.getActiveEvent();
+    if (!ev) return;
+    const arr = (ev.stakeholders || '').split('|').filter(Boolean);
+    if (index < 0 || index >= arr.length) return;
+    arr.splice(index, 1);
+    ev.stakeholders = arr.join('|');
+    this.saveSessionWithoutClosing();
+    this.updatePanelContext();
+},
+
+removeAgendaItemAt(index) {
+    const ev = this.getActiveEvent();
+    if (!ev) return;
+    const arr = (ev.agenda || '').split('|').filter(Boolean);
+    if (index < 0 || index >= arr.length) return;
+    arr.splice(index, 1);
+    ev.agenda = arr.join('|');
+    this.saveSessionWithoutClosing();
+    this.updatePanelContext();
+},
+
 showQuickCreateMenu(x, y, startH) {
     this.quickCreateStartH = startH;
     this.hideBlockMenu();
@@ -2606,6 +2714,7 @@ hideAllMenus() {
     this.hideBlockMenu();
     this.hideQuickCreateMenu();
     this.hideTransactionMenu();
+    this.hideModalRowMenu();
 },
 
 hideMenusOnOutsideClick(e) {
@@ -2620,6 +2729,10 @@ hideMenusOnOutsideClick(e) {
     const txMenu = document.getElementById('transaction-context-menu');
     if (txMenu && txMenu.style.display === 'flex' && !e.target.closest('#transaction-context-menu')) {
         this.hideTransactionMenu();
+    }
+    const modalRowMenu = document.getElementById('modal-row-context-menu');
+    if (modalRowMenu && modalRowMenu.style.display === 'flex' && !e.target.closest('#modal-row-context-menu')) {
+        this.hideModalRowMenu();
     }
 },
 
@@ -2995,7 +3108,7 @@ updatePanelContext() {
                 </div>
                 <div id="timeblock-notes-history" class="internal-scroll" style="display:flex; flex-direction:column; gap:2px; max-height:72px; overflow-y:auto; padding:0;">
                     ${noteDisplayItems.length ? noteDisplayItems.map(({ date, text }) => `
-                        <div style="color: rgba(255,255,255,0.85); font-size: 11px; padding: 2px 0; border: none; background: none;" title="${this.escapeAttribute(text)}">
+                        <div class="modal-panel-row" style="color: rgba(255,255,255,0.85); font-size: 11px; padding: 2px 0; border: none; background: none; border-radius: 4px;" title="${this.escapeAttribute(text)}">
                             ${date ? `<span style="color: rgba(255,255,255,0.5); font-family:'SF Mono'; font-size:10px; margin-right:8px;">${this.formatNoteDate(date)}</span>` : ''}${this.escapeAttribute(text)}
                         </div>
                     `).join('') : ''}
@@ -3035,9 +3148,9 @@ updatePanelContext() {
                 <div style="display:flex; justify-content:flex-end; align-items:center; min-height: 22px;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 52px; padding-bottom: 16px;">
-                    ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
-                        <div style="display:flex; align-items:center; gap:8px;">
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 72px; padding-bottom: 14px;">
+                    ${(stakeholderItems.length ? stakeholderItems : ['']).map((name, i) => `
+                        <div class="modal-panel-row" data-stakeholder-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 2px 0; border: 1px solid transparent; border-radius: 6px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
                             <input type="text" value="${name}" placeholder="Name or org..." style="flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;">
                         </div>
@@ -3064,7 +3177,7 @@ updatePanelContext() {
                 </div>
                 <div id="agenda-items-list" class="internal-scroll" style="display: flex; flex-direction: column; height: 46px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
-                        <div style="display:flex; align-items:center; gap:10px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                        <div class="modal-panel-row" data-agenda-idx="${i}" style="display:flex; align-items:center; gap:10px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 6px;">
                             <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
                             <input type="text" value="${item}" placeholder="Decision, objective, or question..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;">
                             <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
@@ -3116,7 +3229,7 @@ updatePanelContext() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 8px; align-items:center;">
                     <select id="timeblock-expense-category" class="subtle-select"></select>
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
-                    <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
+                    <button type="button" tabindex="0" onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
                 <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 4px; min-height: 28px; max-height: 100px; overflow-y: auto; margin-top: 8px;">
                     ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
@@ -3125,7 +3238,7 @@ updatePanelContext() {
                             : '';
                         const lineText = `${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')} • ${this.escapeHTML(tx.item || tx.desc || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}`;
                         return `
-                        <div onclick="ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}')" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                        <div onclick="ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}')" class="data-row modal-panel-row" data-tx-id="${this.escapeAttribute(tx.id)}" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">
                             <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${lineText}</div>
                             <div style="font-family:'SF Mono'; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-left: 8px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
                                 ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
