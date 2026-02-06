@@ -6126,12 +6126,12 @@ document.addEventListener('mousedown', (e) => {
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PERSONAL FILE</div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 8px;">
-                    <input id="settings-custom-sheet" placeholder="Paste Google Sheet URL or ID" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-custom-sheet" placeholder="Paste Google Sheet URL or ID" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none; pointer-events:auto;">
                     <button id="settings-custom-sheet-apply" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">USE</button>
                     <button id="settings-custom-sheet-reset" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">RESET</button>
                 </div>
                 <div id="settings-custom-sheet-status" style="font-size: 11px; color: rgba(255,255,255,0.6);">
-                    By default, Logszt creates and manages your personal file.
+                    By default, Logszt creates and manages your personal file. You can find it in Google Drive as “ENGINE_USER_DATA_V1 - your@email”.
                 </div>
             </div>
 
