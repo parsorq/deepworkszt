@@ -1024,6 +1024,14 @@ body.logged-out #tablet-shell {
 #engine-login-btn[aria-busy="true"] {
     opacity: 0.7;
 }
+.login-click-pulse {
+    animation: loginClickPulse 220ms ease-out 1;
+}
+@keyframes loginClickPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(79,172,254,0.35); }
+    70% { transform: scale(0.98); box-shadow: 0 0 0 6px rgba(79,172,254,0.08); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(79,172,254,0); }
+}
     
 
 /* Ensure only the active tab is visible and takes up the full viewport space */
@@ -1597,8 +1605,8 @@ function finalizeLoginSuccess() {
 
 function persistAccessToken(response) {
     if (!response || !response.access_token) return;
-    const expiresIn = Number(response.expires_in || 0);
-    if (!Number.isFinite(expiresIn) || expiresIn <= 0) return;
+    const rawExpires = Number(response.expires_in || 0);
+    const expiresIn = Number.isFinite(rawExpires) && rawExpires > 0 ? rawExpires : 3600;
     const expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
     localStorage.setItem(ENGINE_TOKEN_KEY, response.access_token);
     localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
@@ -1716,7 +1724,12 @@ function showLoginUI() {
     const setBusy = () => { btn.setAttribute('aria-busy', 'true'); btn.style.opacity = '0.7'; };
     const setIdle = () => { btn.removeAttribute('aria-busy'); btn.style.opacity = '1'; };
     const onSuccess = () => {};
-    const doSignIn = () => runGoogleSignIn(setBusy, setIdle, onSuccess);
+    const doSignIn = () => {
+        btn.classList.remove('login-click-pulse');
+        void btn.offsetWidth;
+        btn.classList.add('login-click-pulse');
+        runGoogleSignIn(setBusy, setIdle, onSuccess);
+    };
     btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); doSignIn(); return false; };
 }
 
