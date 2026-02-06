@@ -680,6 +680,24 @@ body.dragging .reminder-marker {
     transform: scale(0.95);
 }
 
+.date-nav-today-btn {
+    min-width: 52px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: 'SF Mono', monospace;
+    letter-spacing: 0.5px;
+}
+
+.date-nav-today-plain {
+    min-width: 52px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: 'SF Mono', monospace;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.45);
+    cursor: default;
+}
+
 .date-display-main {
     font-family: 'SF Mono', monospace;
     font-size: 13px;
@@ -1180,10 +1198,11 @@ body.logged-out #tablet-shell {
             <div class="date-nav">
                 <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
                     <span id="current-date-display" class="date-display-main">2026-01-30</span>
-                    <div style="display:flex; align-items:center; gap: 12px; margin-top: 2px;">
-                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(-1)">‹</button>
-                        <button class="date-nav-btn" onclick="ENGINE.goToToday()" style="background: transparent; border: none; color: rgba(255,255,255,0.6); padding: 0 4px;">Today</button>
-                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(1)">›</button>
+                    <div class="date-nav-row" style="display:flex; align-items:center; gap: 24px; margin-top: 4px;">
+                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(-1)" aria-label="Previous day">‹</button>
+                        <span id="today-label-plain" class="date-nav-today-plain" style="display: none;">Today</span>
+                        <button id="today-nav-btn" class="date-nav-btn date-nav-today-btn" onclick="ENGINE.goToToday()" aria-label="Go to today" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);">Today</button>
+                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(1)" aria-label="Next day">›</button>
                     </div>
                 </div>
             </div>
@@ -2092,6 +2111,14 @@ navigateDate(delta) {
 updateDateDisplay() {
     const el = document.getElementById('current-date-display');
     if (el) el.textContent = this.selectedDate;
+    const todayISO = getLocalDateISO();
+    const isToday = this.selectedDate === todayISO;
+    const plainEl = document.getElementById('today-label-plain');
+    const btnEl = document.getElementById('today-nav-btn');
+    if (plainEl && btnEl) {
+        plainEl.style.display = isToday ? 'inline-block' : 'none';
+        btnEl.style.display = isToday ? 'none' : 'inline-flex';
+    }
 },
 
 goToToday() {
