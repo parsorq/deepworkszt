@@ -493,8 +493,9 @@ body.dragging .reminder-marker {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding: 2px 4px 4px;
+    padding: 2px 4px 16px 4px;
     width: 100%;
     align-items: start;
     align-content: start;
@@ -2982,7 +2983,7 @@ updatePanelContext() {
                 <span style="font-size:14px;">←</span> Back to session
             </button>
         </div>
-        <div id="widget-notes" style="grid-column: span 2; pointer-events: all; margin-bottom: ${showTimeblockDetails ? '14px' : '0'};">
+        <div id="widget-notes" style="grid-column: span 2; pointer-events: all; margin-bottom: ${showTimeblockDetails ? '8px' : '0'};">
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('notes')" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; cursor: pointer;">
                     <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
@@ -3006,7 +3007,7 @@ updatePanelContext() {
     // --- 3. MEETING URL / LOCATION (full width when Stakeholders off) + STAKEHOLDERS ---
     if (showTimeblockDetails) {
         html += `
-        <div id="widget-url-row" style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 12px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '14px' : '0'}; margin-top: 0; align-items: stretch;">
+        <div id="widget-url-row" style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 12px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '8px' : '0'}; margin-top: 0; align-items: stretch;">
             <div id="widget-url" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'height: 104px; min-height: 104px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
                 <div style="min-height: 22px; display: flex; align-items: center; gap: 10px; width: 100%;">
                     <button type="button" onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
@@ -3023,7 +3024,7 @@ updatePanelContext() {
                 </div>
             </div>
             ${showStakeholders ? `
-            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); height: 104px; min-height: 104px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
+            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px 20px 14px; border: 1px solid rgba(255,255,255,0.03); height: 104px; min-height: 104px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer; min-height: 22px;">
                     <span style="display:flex; align-items:center; gap:10px;">
                         Stakeholders
@@ -3050,7 +3051,7 @@ updatePanelContext() {
     // --- 4. SESSION AGENDA (widget, top-aligned) ---
     if (showAgenda) {
         html += `
-            <div id="widget-agenda" class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: ${showTimeblockExpenses ? '14px' : '0'};">
+            <div id="widget-agenda" class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: ${showTimeblockExpenses ? '8px' : '0'};">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('agenda')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; cursor: pointer;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Session Agenda
@@ -3174,11 +3175,9 @@ updatePanelContext() {
             if (inner) {
                 const atTop = inner.scrollTop <= 0;
                 const atBottom = inner.scrollTop + inner.clientHeight >= inner.scrollHeight - 1;
-                if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
-                    return;
-                }
+                if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
+                e.preventDefault();
             }
-            e.preventDefault();
         }, { passive: false });
     }
     const applyTimeChanges = () => {
