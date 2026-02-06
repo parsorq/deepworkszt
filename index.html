@@ -1484,7 +1484,7 @@ async function handleLogin(promptMode = 'consent') {
                     ENGINE.userEmail = profile.email;
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
-                    document.body.classList.remove('logged-out');
+                    finalizeLoginSuccess();
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1528,7 +1528,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
                     ENGINE.userEmail = profile.email;
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
-                    document.body.classList.remove('logged-out');
+                    finalizeLoginSuccess();
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1579,9 +1579,7 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             ENGINE.userEmail = profile.email;
             localStorage.setItem('ENGINE_LAST_USER', profile.email);
             await ENGINE.init();
-            document.body.classList.remove('logged-out');
-            document.getElementById('login-fallback')?.remove();
-            if (loginOverlay && loginOverlay.parentNode) loginOverlay.remove();
+            finalizeLoginSuccess();
             onSuccess();
         } catch (err) {
             console.error('Login failed:', err);
@@ -1606,6 +1604,22 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
     tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
+function finalizeLoginSuccess() {
+    document.body.classList.remove('logged-out');
+    document.getElementById('login-fallback')?.remove();
+    if (loginOverlay && loginOverlay.parentNode) loginOverlay.remove();
+}
+
+function tryAutoLogin() {
+    if (!document.body.classList.contains('logged-out')) return;
+    if (sessionStorage.getItem('ENGINE_AUTO_LOGIN_TRIED')) return;
+    if (!localStorage.getItem('ENGINE_LAST_USER')) return;
+    sessionStorage.setItem('ENGINE_AUTO_LOGIN_TRIED', '1');
+    setLoginStatus('Attempting automatic sign-in...');
+    handleLogin('none').catch((err) => {
+        setLoginStatus(err?.message || 'Sign in to sync with your Sheets ledger.');
+    });
+}
 function showLoginUI() {
     if (document.getElementById('engine-login-overlay')) return;
     document.body.classList.add('logged-out');
@@ -5678,8 +5692,11 @@ function initLoginUI() {
             return false;
         };
     }
-    if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay') && typeof showLoginUI === 'function') {
-        showLoginUI();
+    if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay')) {
+        tryAutoLogin();
+        if (!localStorage.getItem('ENGINE_LAST_USER') && typeof showLoginUI === 'function') {
+            showLoginUI();
+        }
     }
 }
 if (document.readyState === 'loading') {
