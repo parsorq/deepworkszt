@@ -2956,7 +2956,7 @@ updatePanelContext() {
                         ${isRemote ? '🌐' : '📍'}
                     </button>
                 </div>
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
                     <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.75;">${isRemote ? 'Meeting URL' : 'Location'}</label>
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <input type="text" id="modal-location" value="${isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A'}" 
@@ -2974,10 +2974,10 @@ updatePanelContext() {
                     </span>
                     <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
                 </div>
-                <div style="display:flex; justify-content:flex-end; margin-top: 6px;">
+                <div style="display:flex; justify-content:flex-end; margin-top: 8px;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; margin-top: 6px; flex:1 1 auto; min-height: 0; height: 42px;">
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:8px; margin-top: 8px; flex:1 1 auto; min-height: 0; height: 42px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="color:${activeColor};">●</span>
@@ -3060,13 +3060,13 @@ updatePanelContext() {
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
                     <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
-                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 6px; height: 56px; overflow-y: auto; margin-top: 8px;">
-                    ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
+                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 6px; min-height: 32px; max-height: 120px; overflow-y: auto; margin-top: 8px;">
+                    ${expenseDisplayItems.length ? expenseDisplayItems.slice(0, 3).map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
                             : '';
                         return `
-                        <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px;">
+                        <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 6px 10px; border-radius: 8px;">
                             <div>
                                 <div style="font-size: 11px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
                                 <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
@@ -3077,28 +3077,6 @@ updatePanelContext() {
                         </div>
                     `;
                     }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses.</div>'}
-                </div>
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-top: 10px;">
-                    <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700; letter-spacing:1px;">SESSION TRANSACTIONS</span>
-                    <span style="font-size:9px; color: rgba(255,255,255,0.35); font-weight:700;">All</span>
-                </div>
-                <div id="timeblock-transaction-ledger" class="internal-scroll" style="display:flex; flex-direction:column; gap: 4px; height: 48px; overflow-y: auto;">
-                    ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
-                        const categoryLabel = (tx.category || tx.subcategory)
-                            ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
-                            : '';
-                        return `
-                        <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 6px 8px; border-radius: 8px;">
-                            <div>
-                                <div style="font-size: 10px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
-                                <div style="font-family:'SF Mono'; font-size: 8px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
-                            </div>
-                            <div style="font-family:'SF Mono'; font-size: 10px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
-                                ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
-                            </div>
-                        </div>
-                    `;
-                    }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 10px;">No transactions yet.</div>'}
                 </div>
             </div>
         `;
@@ -4820,48 +4798,27 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
 
     renderPanelExpenses() {
         const list = document.getElementById('timeblock-expense-list');
-        const ledger = document.getElementById('timeblock-transaction-ledger');
-        const budgetDiffEl = document.getElementById('timeblock-budget-diff');
-        if (!list && !ledger) return;
+        if (!list) return;
         const events = this.db[this.selectedDate] || [];
         const event = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
         const expenseItems = event ? this.getEventExpenses(event.id) : [];
-        if (list) {
-            list.innerHTML = expenseItems.length ? expenseItems.map(tx => {
-                const categoryLabel = (tx.category || tx.subcategory)
-                    ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
-                    : '';
-                return `
-                <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px;">
-                    <div>
-                        <div style="font-size: 11px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
-                        <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
-                    </div>
-                    <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
-                        ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
-                    </div>
+        const latestThree = expenseItems.length ? expenseItems.slice(-3).reverse() : [];
+        list.innerHTML = latestThree.length ? latestThree.map(tx => {
+            const categoryLabel = (tx.category || tx.subcategory)
+                ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
+                : '';
+            return `
+            <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 6px 10px; border-radius: 8px;">
+                <div>
+                    <div style="font-size: 11px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
+                    <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
                 </div>
-            `;
-            }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses yet.</div>';
-        }
-        if (ledger) {
-            ledger.innerHTML = expenseItems.length ? expenseItems.map(tx => {
-                const categoryLabel = (tx.category || tx.subcategory)
-                    ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
-                    : '';
-                return `
-                <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 6px 8px; border-radius: 8px;">
-                    <div>
-                        <div style="font-size: 10px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
-                        <div style="font-family:'SF Mono'; font-size: 8px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
-                    </div>
-                    <div style="font-family:'SF Mono'; font-size: 10px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
-                        ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
-                    </div>
+                <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
+                    ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
                 </div>
-            `;
-            }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 10px;">No transactions yet.</div>';
-        }
+            </div>
+        `;
+        }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses.</div>';
         const budgetDiffValueEl = document.getElementById('timeblock-budget-diff-value');
         if (budgetDiffValueEl) {
             const budgetInput = document.getElementById('timeblock-budget');
