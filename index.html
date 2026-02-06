@@ -3024,7 +3024,7 @@ updatePanelContext() {
                 </div>
             </div>
             ${showStakeholders ? `
-            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px 20px 14px; border: 1px solid rgba(255,255,255,0.03); height: 104px; min-height: 104px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
+            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px 28px 14px; border: 1px solid rgba(255,255,255,0.03); height: 104px; min-height: 104px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer; min-height: 22px;">
                     <span style="display:flex; align-items:center; gap:10px;">
                         Stakeholders
@@ -3035,7 +3035,7 @@ updatePanelContext() {
                 <div style="display:flex; justify-content:flex-end; align-items:center; min-height: 22px;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 52px; padding-bottom: 12px;">
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 52px; padding-bottom: 16px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
