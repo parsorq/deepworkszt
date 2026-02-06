@@ -4238,6 +4238,15 @@ updateTimeline(shouldScroll = false) {
         if (overlay) overlay.style.display = 'none';
     },
 
+    logOut() {
+        this.closeSettings();
+        this.userEmail = null;
+        if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
+            gapi.client.setToken(null);
+        }
+        if (typeof showLoginUI === 'function') showLoginUI();
+    },
+
     renderSettings() {
         const renderList = (items, type) => items.map((item) => `
             <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-radius: 8px; gap: 10px;">
@@ -5195,6 +5204,10 @@ document.addEventListener('mousedown', (e) => {
                     <input id="settings-subcategories-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
                 <div id="settings-subcategory-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
+
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06);">
+                <button onclick="ENGINE.logOut()" style="width: 100%; padding: 12px 16px; background: transparent; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer;">Log Out</button>
             </div>
         </div>
     </div>
