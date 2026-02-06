@@ -1745,7 +1745,8 @@ const ENGINE = {
         institutions: 'Institutions',
         projects: 'Projects',
         categories: 'Categories',
-        subcategories: 'Subcategories'
+        subcategories: 'Subcategories',
+        logs: LOG_SHEET_NAME
     },
 
     isDragging: false,
@@ -4039,7 +4040,8 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.categories, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt'])
+        this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.logs, ['timestamp', 'user', 'action', 'section', 'entity_id', 'details'])
     ]);
 },
 
