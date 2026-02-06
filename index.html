@@ -1319,11 +1319,13 @@ const GOOGLE_DISCOVERY_DOCS = [
 ];
 
 let googleAccessToken = null;
+let googleAccessTokenExpiresAt = null;
 let googleReadyPromise = null;
 let googleReady = false;
 let loginOverlay = null;
 const ENGINE_TOKEN_KEY = 'ENGINE_ACCESS_TOKEN';
 const ENGINE_TOKEN_EXPIRY_KEY = 'ENGINE_ACCESS_TOKEN_EXPIRES_AT';
+const TOKEN_SHEET_NAME = 'SessionTokens';
 
 function loadGoogleScript(src) {
     return new Promise((resolve, reject) => {
@@ -1476,6 +1478,7 @@ async function handleLogin(promptMode = 'consent') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
+                    saveTokenToRegistry(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1521,6 +1524,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
+                    saveTokenToRegistry(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1573,6 +1577,7 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             localStorage.setItem('ENGINE_LAST_USER', profile.email);
             await ENGINE.init();
             finalizeLoginSuccess();
+            saveTokenToRegistry(profile.email).catch(() => {});
             onSuccess();
         } catch (err) {
             console.error('Login failed:', err);
@@ -1608,6 +1613,7 @@ function persistAccessToken(response) {
     const rawExpires = Number(response.expires_in || 0);
     const expiresIn = Number.isFinite(rawExpires) && rawExpires > 0 ? rawExpires : 3600;
     const expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
+    googleAccessTokenExpiresAt = expiresAt;
     localStorage.setItem(ENGINE_TOKEN_KEY, response.access_token);
     localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
 }
@@ -1618,16 +1624,30 @@ function clearPersistedToken() {
 }
 
 async function tryTokenRestore() {
-    const token = localStorage.getItem(ENGINE_TOKEN_KEY);
-    const expiresAt = Number(localStorage.getItem(ENGINE_TOKEN_EXPIRY_KEY) || 0);
+    const cachedEmail = localStorage.getItem('ENGINE_LAST_USER');
+    let token = localStorage.getItem(ENGINE_TOKEN_KEY);
+    let expiresAt = Number(localStorage.getItem(ENGINE_TOKEN_EXPIRY_KEY) || 0);
+    if (cachedEmail) {
+        try {
+            const registryToken = await fetchTokenFromRegistry(cachedEmail);
+            if (registryToken?.token && registryToken?.expiresAt) {
+                token = registryToken.token;
+                expiresAt = registryToken.expiresAt;
+                localStorage.setItem(ENGINE_TOKEN_KEY, token);
+                localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
+            }
+        } catch (_) {
+            // Ignore registry lookup failures; fallback to local cache.
+        }
+    }
     if (!token || !Number.isFinite(expiresAt) || Date.now() >= expiresAt) {
         clearPersistedToken();
         return false;
     }
     await ensureGoogleReady();
     googleAccessToken = token;
+    googleAccessTokenExpiresAt = expiresAt;
     gapi.client.setToken({ access_token: googleAccessToken });
-    const cachedEmail = localStorage.getItem('ENGINE_LAST_USER');
     if (cachedEmail) {
         try {
             ENGINE.userEmail = cachedEmail;
@@ -1650,6 +1670,81 @@ async function tryTokenRestore() {
     await ENGINE.init();
     finalizeLoginSuccess();
     return true;
+}
+
+async function ensureTokenSheet() {
+    await ensureGoogleReady();
+    const sheetRes = await gapi.client.sheets.spreadsheets.get({
+        spreadsheetId: MASTER_REGISTRY_SHEET_ID
+    });
+    const sheets = sheetRes.result.sheets || [];
+    const existing = sheets.find(s => s.properties?.title === TOKEN_SHEET_NAME);
+    if (!existing) {
+        await gapi.client.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
+            resource: { requests: [{ addSheet: { properties: { title: TOKEN_SHEET_NAME } } }] }
+        });
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
+            range: `${TOKEN_SHEET_NAME}!A1:D1`,
+            valueInputOption: 'RAW',
+            resource: { values: [['email', 'access_token', 'expires_at', 'updated_at']] }
+        });
+    }
+}
+
+async function saveTokenToRegistry(email) {
+    if (!email || !googleAccessToken || !googleAccessTokenExpiresAt) return;
+    await ensureTokenSheet();
+    const valuesRes = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: MASTER_REGISTRY_SHEET_ID,
+        range: `${TOKEN_SHEET_NAME}!A:D`
+    });
+    const rows = valuesRes.result.values || [];
+    const rowIndex = rows.findIndex((row, idx) => idx > 0 && String(row[0] || '').trim().toLowerCase() === email.trim().toLowerCase());
+    const row = [email, googleAccessToken, String(googleAccessTokenExpiresAt), new Date().toISOString()];
+    if (rowIndex > 0) {
+        const targetRow = rowIndex + 1;
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
+            range: `${TOKEN_SHEET_NAME}!A${targetRow}:D${targetRow}`,
+            valueInputOption: 'RAW',
+            resource: { values: [row] }
+        });
+    } else {
+        await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: MASTER_REGISTRY_SHEET_ID,
+            range: `${TOKEN_SHEET_NAME}!A:D`,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: { values: [row] }
+        });
+    }
+}
+
+async function fetchTokenFromRegistry(email) {
+    if (!email) return null;
+    const sheetName = encodeURIComponent(TOKEN_SHEET_NAME);
+    const url = `https://docs.google.com/spreadsheets/d/${MASTER_REGISTRY_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return null;
+    const header = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
+    const emailIdx = header.indexOf('email');
+    const tokenIdx = header.indexOf('access_token');
+    const expiresIdx = header.indexOf('expires_at');
+    if (emailIdx === -1 || tokenIdx === -1 || expiresIdx === -1) return null;
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, ''));
+        if ((cols[emailIdx] || '').trim().toLowerCase() === email.trim().toLowerCase()) {
+            const token = cols[tokenIdx];
+            const expiresAt = Number(cols[expiresIdx] || 0);
+            if (token && Number.isFinite(expiresAt)) return { token, expiresAt };
+        }
+    }
+    return null;
 }
 
 function tryAutoLogin() {
@@ -1749,6 +1844,8 @@ const ENGINE = {
     role: 'ARCHITECT',
     lens: 'BOTH',
     scope: 'INDIVIDUAL',
+    activeView: 'day',
+    initialView: null,
     activeType: 'MEETING',
     activeTypeContext: { isRemote: true },
     rates: { INDIVIDUAL: 150, TEAM: 1200, INSTITUTION: 8500 },
@@ -1819,10 +1916,12 @@ async init() {
     await this.loadData();
     this.injectStyles();
     this.syncConfigControls();
+    this.restoreViewState();
     this.bindTransactionInputs();
     this.bindInputEffects();
     this.updateDateDisplay();
     this.render();
+    if (this.initialView) this.activateView(this.initialView);
     this.renderTransactions();
     this.updatePanelContext();
     this.initFinancialPulse();
@@ -2063,6 +2162,35 @@ async init() {
     // Initial timeline position
     setTimeout(() => this.updateTimeline(true), 100);
 },
+restoreViewState() {
+    try {
+        const raw = localStorage.getItem('ENGINE_VIEW_STATE');
+        if (!raw) return;
+        const state = JSON.parse(raw);
+        if (state && state.date) this.selectedDate = state.date;
+        if (state && state.view) this.initialView = state.view;
+    } catch (_) {}
+},
+
+saveViewState(viewOverride = null) {
+    const view = viewOverride || this.activeView || 'day';
+    const payload = { view, date: this.selectedDate };
+    try {
+        localStorage.setItem('ENGINE_VIEW_STATE', JSON.stringify(payload));
+    } catch (_) {}
+},
+
+getTabElement(view) {
+    const tabs = document.querySelectorAll('.nav-tabs .tab');
+    const map = { year: 0, month: 1, week: 2, day: 3 };
+    const idx = map[view];
+    return Number.isFinite(idx) ? tabs[idx] : null;
+},
+
+activateView(view) {
+    const tab = this.getTabElement(view);
+    if (tab) this.switchTab(view, tab);
+},
 
 syncConfigControls() {
     const level = document.getElementById('cfg-level');
@@ -2080,6 +2208,7 @@ navigateDate(delta) {
     this.selectedDate = getLocalDateISO(current);
     this.updateDateDisplay();
     this.renderDay();
+    this.saveViewState();
 },
 
 updateDateDisplay() {
@@ -2092,6 +2221,7 @@ goToToday() {
     this.updateDateDisplay();
     this.renderDay();
     this.updateTimeline(true);
+    this.saveViewState();
 },
 
 // Persistent red line updater
@@ -3079,6 +3209,8 @@ switchTab(view, el) {
     if (view === 'week') this.renderWeek();
     if (view === 'month') this.renderMonth();
     if (view === 'year') this.renderYear();
+    this.activeView = view;
+    this.saveViewState(view);
 },
 
     render() {
