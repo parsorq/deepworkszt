@@ -4241,6 +4241,10 @@ updateTimeline(shouldScroll = false) {
     logOut() {
         this.closeSettings();
         this.userEmail = null;
+        this.userSheetId = null;
+        try {
+            localStorage.removeItem('ENGINE_LAST_USER');
+        } catch (_) {}
         if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
             gapi.client.setToken(null);
         }
