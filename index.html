@@ -501,18 +501,21 @@ body.dragging .reminder-marker {
     align-content: start;
 }
 
-/* Single widget expanded: use full panel, inner list scrolls so panel doesn't move */
+/* Single widget expanded: body fills down to where footer was, widget border goes to bottom (with breathing room), inner list scrolls */
 .meeting-panel--editor .meeting-panel-body.widget-single-view {
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
     overflow: hidden;
     align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-bottom: 20px;
 }
 .meeting-panel--editor .meeting-panel-body.widget-single-view > div {
     flex: 0 0 auto;
 }
 .meeting-panel--editor .meeting-panel-body.widget-single-view > div.widget-expanded {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -524,7 +527,7 @@ body.dragging .reminder-marker {
     min-height: 0;
 }
 #widget-url-row.widget-expanded #widget-stakeholders {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -541,7 +544,7 @@ body.dragging .reminder-marker {
     max-height: none !important;
 }
 .widget-expanded .panel-section {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -552,7 +555,7 @@ body.dragging .reminder-marker {
 .widget-expanded #agenda-items-list,
 .widget-expanded #timeblock-expense-list { flex: 1; min-height: 0; }
 #widget-notes.widget-expanded > .panel-section {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -562,7 +565,7 @@ body.dragging .reminder-marker {
 #widget-timeblockExpenses.widget-expanded {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-height: 0;
     overflow: hidden;
 }
