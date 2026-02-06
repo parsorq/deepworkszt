@@ -1411,11 +1411,6 @@ function setLoginStatus(message, isError = false) {
         overlayStatus.textContent = message;
         overlayStatus.style.color = color;
     }
-    const fallbackStatus = document.getElementById('login-fallback-status');
-    if (fallbackStatus) {
-        fallbackStatus.textContent = message;
-        fallbackStatus.style.color = color;
-    }
 }
 
 async function fetchUserProfile() {
@@ -5704,10 +5699,8 @@ setInterval(() => {
 // Show login as soon as DOM is ready so user never sees a black screen
 function initLoginUI() {
     if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay')) {
+        if (typeof showLoginUI === 'function') showLoginUI();
         tryAutoLogin();
-        if (!localStorage.getItem('ENGINE_LAST_USER') && typeof showLoginUI === 'function') {
-            showLoginUI();
-        }
     }
 }
 if (document.readyState === 'loading') {
