@@ -1075,7 +1075,7 @@ body:not(.logged-out) #login-fallback {
         <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
         <div style="font-size: 22px; font-weight: 700; margin-bottom: 16px;">Authenticate with Google</div>
         <p id="login-fallback-status" style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</p>
-        <button type="button" id="login-fallback-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.2); border: 1px solid rgba(0,255,135,0.4); border-radius: 10px; color: rgba(255,255,255,0.9); font-weight: 700; cursor: pointer; font-size: 14px;">Sign in with Google</button>
+        <button type="button" id="login-fallback-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer; font-size: 14px;">Sign in with Google</button>
     </div>
 </div>
 <div id="tablet-shell">
@@ -1475,7 +1475,7 @@ function showLoginUI() {
                 <input id="engine-google-client-id" placeholder="Google Client ID" style="width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline: none; margin-bottom: 8px;">
                 <button id="engine-login-save-config" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: white; font-weight: 700; font-size: 10px; cursor: pointer;">Save client ID</button>
             </div>
-            <button id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 10px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">Sign in</button>
+            <button id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer;">Sign in</button>
         </div>
     `;
     document.body.appendChild(loginOverlay);
@@ -1494,21 +1494,8 @@ function showLoginUI() {
     btn.disabled = true;
     btn.style.opacity = '0.6';
     setLoginStatus('Loading Google services...');
-    ensureGoogleReady().then(async () => {
-        const lastUser = localStorage.getItem('ENGINE_LAST_USER');
-        if (lastUser) {
-            setLoginStatus('Checking existing session...');
-            try {
-                await handleLogin('');
-                document.getElementById('login-fallback')?.remove();
-                loginOverlay.remove();
-                return;
-            } catch (err) {
-                setLoginStatus('Sign in to sync with your Sheets ledger.');
-            }
-        } else {
-            setLoginStatus('Sign in to sync with your Sheets ledger.');
-        }
+    ensureGoogleReady().then(() => {
+        setLoginStatus('Sign in to sync with your Sheets ledger.');
         btn.disabled = false;
         btn.style.opacity = '1';
     }).catch((err) => {
@@ -1528,31 +1515,58 @@ function showLoginUI() {
             window.location.reload();
         });
     }
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => {
         btn.disabled = true;
         btn.style.opacity = '0.6';
         setLoginStatus('Connecting to Google...');
-        try {
-            if (!googleReady || !googleTokenClient) {
-                setLoginStatus('Loading Google services... click Log in again.', false);
-                ensureGoogleReady().catch((err) => {
-                    setLoginStatus(err?.message || 'Unable to load Google services. Check blockers or network.', true);
-                });
+        if (!googleReady || !googleTokenClient) {
+            setLoginStatus('Loading Google services... click Log in again.', false);
+            ensureGoogleReady().catch((err) => {
+                setLoginStatus(err?.message || 'Unable to load Google services. Check blockers or network.', true);
+            });
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            return;
+        }
+        const timeoutId = setTimeout(() => {
+            setLoginStatus('Google sign-in timed out. Check popup blockers or privacy settings.', true);
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }, 15000);
+        googleTokenClient.callback = async (response) => {
+            clearTimeout(timeoutId);
+            if (response.error) {
+                const details = response.error_description || response.error || 'Unknown error';
+                setLoginStatus(`Google sign-in failed: ${details}`, true);
                 btn.disabled = false;
                 btn.style.opacity = '1';
                 return;
             }
-            await handleLoginInteractive('select_account');
-            document.body.classList.remove('logged-out');
-            document.getElementById('login-fallback')?.remove();
-            loginOverlay.remove();
-        } catch (err) {
-            console.error('Login failed:', err);
-            const message = err && err.message ? err.message : 'Unknown error. Check console.';
-            setLoginStatus(`Login failed: ${message}`, true);
-            btn.disabled = false;
-            btn.style.opacity = '1';
-        }
+            googleAccessToken = response.access_token;
+            gapi.client.setToken({ access_token: googleAccessToken });
+            try {
+                const profile = await fetchUserProfile();
+                const allowed = await validateMasterRegistry(profile.email);
+                if (!allowed) {
+                    setLoginStatus('Access denied by Master Registry. Add your email to the registry sheet.', true);
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    return;
+                }
+                ENGINE.userEmail = profile.email;
+                localStorage.setItem('ENGINE_LAST_USER', profile.email);
+                await ENGINE.init();
+                document.body.classList.remove('logged-out');
+                document.getElementById('login-fallback')?.remove();
+                loginOverlay.remove();
+            } catch (err) {
+                console.error('Login failed:', err);
+                setLoginStatus(err?.message || 'Login failed.', true);
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        };
+        googleTokenClient.requestAccessToken({ prompt: 'select_account' });
     });
 }
 
