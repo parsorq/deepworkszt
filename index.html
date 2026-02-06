@@ -2870,12 +2870,12 @@ updatePanelContext() {
             </div>
             ${showTimeblockDetails ? `
             <div class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.03); height: 96px; display:flex; flex-direction:column; overflow:hidden;">
-                <div style="display:flex; align-items:flex-start; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto;">
-                    <span>Stakeholders</span>
-                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto;">
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        Stakeholders
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
-                        <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
-                    </div>
+                    </span>
+                    <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
                 <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; margin-top: 6px; flex:1 1 auto; min-height: 0; height: 52px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
@@ -2922,7 +2922,7 @@ updatePanelContext() {
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         const expenseDisplayItems = [...expenseItems].reverse();
         html += `
-            <div class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 10px 16px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 8px;">
+            <div class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 10px 16px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 10px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Timeblock Expenses
@@ -2947,7 +2947,7 @@ updatePanelContext() {
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
                     <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
-                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 8px; height: 86px; overflow-y: auto; margin-top: 10px;">
+                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 8px; height: 96px; overflow-y: auto; margin-top: 10px;">
                     ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
