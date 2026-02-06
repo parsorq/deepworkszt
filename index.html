@@ -2940,15 +2940,15 @@ updatePanelContext() {
                     </span>
                     <div></div>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 4px; align-items:center;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
-                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Type</div>
-                            <div id="timeblock-expense-type" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding:6px 8px; border-radius: 8px; font-size: 11px; font-family:'SF Mono';">Expense</div>
-                        </div>
-                        <div id="timeblock-expense-sign" data-sign="-1" style="display:flex; gap:6px; align-items:center; margin-top: 16px;">
-                            <button onclick="ENGINE.setTimeblockExpenseSign(-1)" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); font-size:10px; font-weight:800; width: 26px; height: 26px; border-radius:6px; cursor:pointer;">-</button>
-                            <button onclick="ENGINE.setTimeblockExpenseSign(1)" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-size:10px; font-weight:800; width: 26px; height: 26px; border-radius:6px; cursor:pointer;">+</button>
+                <div style="display:grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin-top: 4px; align-items: start;">
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Type</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div id="timeblock-expense-sign" data-sign="-1" style="display:flex; gap:6px; align-items:center;">
+                                <button onclick="ENGINE.setTimeblockExpenseSign(-1)" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); font-size:11px; font-weight:800; width: 40px; height: 28px; border-radius:6px; cursor:pointer;">−</button>
+                                <button onclick="ENGINE.setTimeblockExpenseSign(1)" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-size:11px; font-weight:800; width: 40px; height: 28px; border-radius:6px; cursor:pointer;">+</button>
+                            </div>
+                            <span id="timeblock-expense-type" style="color: rgba(255,255,255,0.7); font-size: 11px; font-family:'SF Mono';">Expense</span>
                         </div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
