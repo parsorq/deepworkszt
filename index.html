@@ -2949,7 +2949,7 @@ updatePanelContext() {
     if (showTimeblockDetails) {
         html += `
         <div id="widget-url-row" style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 12px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '14px' : '0'}; margin-top: 0; align-items: stretch;">
-            <div id="widget-url" style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'min-height: 84px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
+            <div id="widget-url" style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'height: 84px; min-height: 84px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
                 <div style="flex-shrink: 0; display: flex; align-items: center;">
                     <button type="button" onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
                             style="background: transparent; border: none; cursor: pointer; padding: 2px; font-size: 20px; color: rgba(255,255,255,0.6); transition: color 0.15s;">
@@ -2966,7 +2966,7 @@ updatePanelContext() {
                 </div>
             </div>
             ${showStakeholders ? `
-            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); min-height: 84px; display:flex; flex-direction:column; overflow:hidden; box-sizing: border-box;">
+            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); height: 84px; min-height: 84px; display:flex; flex-direction:column; overflow:hidden; box-sizing: border-box;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer;">
                     <span style="display:flex; align-items:center; gap:10px;">
                         Stakeholders
