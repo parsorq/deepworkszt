@@ -566,6 +566,8 @@ body.dragging .reminder-marker {
 
 .meeting-panel--editor .meeting-panel-footer {
     flex: 0 0 auto;
+    margin-top: 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
 }
 
 @keyframes modalSlideIn {
@@ -670,6 +672,10 @@ body.dragging .reminder-marker {
     #timeblock-notes-input:focus {
         box-shadow: none !important;
         border-color: transparent !important;
+    }
+    #widget-notes.widget-expanded .active-input-row,
+    #widget-notes.widget-expanded #timeblock-notes-input {
+        box-shadow: none !important;
     }
 
     .reminder-marker {
@@ -3057,6 +3063,7 @@ openMeetingUrl() {
 
 applyExpandedWidget() {
     const container = document.getElementById('dynamic-fields-container');
+    const footer = document.querySelector('.meeting-panel--editor .meeting-panel-footer');
     const backBar = document.getElementById('widget-back-bar');
     const notes = document.getElementById('widget-notes');
     const urlRow = document.getElementById('widget-url-row');
@@ -3070,11 +3077,13 @@ applyExpandedWidget() {
 
     if (!this.expandedWidget) {
         if (container) container.classList.remove('widget-single-view');
+        if (footer) footer.style.display = 'flex';
         show(backBar, 'none');
         show(notes); show(urlRow, 'grid'); show(url); show(stakeholders); show(agenda); show(timeblockExpenses);
         return;
     }
     if (container) container.classList.add('widget-single-view');
+    if (footer) footer.style.display = 'none';
     show(backBar, 'flex');
     const exp = this.expandedWidget;
     if (exp === 'notes') {
@@ -3236,7 +3245,7 @@ updatePanelContext() {
                 <div style="display:flex; justify-content:flex-end; align-items:center; min-height: 22px;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 72px; padding-bottom: 14px;">
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 56px; padding-bottom: 14px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map((name, i) => `
                         <div class="modal-panel-row" data-stakeholder-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 2px 0; border: 1px solid transparent; border-radius: 6px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
@@ -5492,7 +5501,7 @@ document.addEventListener('mousedown', (e) => {
         </div>
         <div id="fixed-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px;"></div>
         <div id="dynamic-fields-container" class="meeting-panel-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; align-items: start; align-content: start;"></div>
-        <div class="meeting-panel-footer" style="display: flex; gap: 12px; margin-top: 16px;">
+        <div class="meeting-panel-footer" style="display: flex; gap: 12px; margin-top: 0; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
             <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; color: rgba(255,255,255,0.45); font-weight: 600; cursor: pointer;">CANCEL</button>
             <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
