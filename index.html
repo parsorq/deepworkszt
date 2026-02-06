@@ -1454,6 +1454,8 @@ const ENGINE = {
     GRID_TOP_OFFSET: 0,
     HOUR_HEIGHT: 100,
     nextEventId: 100, // For generating unique IDs
+    editMeetingWidgets: { stakeholders: true, agenda: true, timeblockExpenses: true },
+    editMeetingDraftWidgets: {},
 
 
 async init() {
@@ -1986,7 +1988,8 @@ handleMouseUp() {
             stakeholders: '',
             notes: '',
             budget: '',
-            allDay: false
+            allDay: false,
+            widgets: {}
         };
         this.db[this.selectedDate].push(newEvent);
         this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
@@ -2563,7 +2566,8 @@ createQuickEvent(type) {
         stakeholders: '',
         notes: '',
         budget: '',
-        allDay: false
+        allDay: false,
+        widgets: {}
     };
     this.db[this.selectedDate].push(event);
     this.recordUndo({ type: 'addEvent', event: { ...event } });
@@ -2748,6 +2752,7 @@ renderAuditGraph() {
 closeModal() {
     this.isMeetingActive = false;
     this.currentEventIdx = null;
+    this.closeEditMeetingSettings();
     const modal = document.getElementById('modal-overlay');
     if (modal) modal.style.display = 'none';
 
@@ -2838,6 +2843,9 @@ updatePanelContext() {
     `;
 
     const showTimeblockDetails = this.activeType !== 'REMINDER';
+    const showStakeholders = showTimeblockDetails && this.getWidgetVisible('stakeholders', activeEvent);
+    const showAgenda = showTimeblockDetails && this.getWidgetVisible('agenda', activeEvent);
+    const showTimeblockExpenses = showTimeblockDetails && this.getWidgetVisible('timeblockExpenses', activeEvent);
     // --- 2. QUICK NOTES ---
     html += `
         <div style="grid-column: span 2; pointer-events: all; margin-bottom: 6px;">
@@ -2861,7 +2869,7 @@ updatePanelContext() {
     // --- 3. LOCATION / URL + STAKEHOLDERS ---
     if (showTimeblockDetails) {
         html += `
-        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 10px; margin-bottom: 6px; margin-top: 0;">
+        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 10px; margin-bottom: 6px; margin-top: 0;">
             <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.015); padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03); height: 84px;">
                 <div style="display: flex; background: rgba(0,0,0,0.15); padding: 4px; border-radius: 8px;">
                     <button onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
@@ -2875,7 +2883,7 @@ updatePanelContext() {
                            style="background: transparent; border: none; color: white; font-size: 12px; width: 100%; outline: none; font-family: 'SF Mono';">
                 </div>
             </div>
-            ${showTimeblockDetails ? `
+            ${showStakeholders ? `
             <div class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.03); height: 84px; display:flex; flex-direction:column; overflow:hidden;">
                 <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto;">
                     <span style="display:flex; align-items:center; gap:8px;">
@@ -2895,13 +2903,13 @@ updatePanelContext() {
                         </div>
                     `).join('')}
                 </div>
-            </div>` : '<div></div>'}
+            </div>` : ''}
         </div>
     `;
     }
 
     // --- 4. SESSION AGENDA (Advanced) ---
-    if (showTimeblockDetails) {
+    if (showAgenda) {
         html += `
             <div class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 6px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
@@ -2927,7 +2935,7 @@ updatePanelContext() {
         `;
     }
 
-    if (showTimeblockDetails) {
+    if (showTimeblockExpenses) {
         // --- 6. TIMEBLOCK EXPENSES (Advanced) ---
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         const expenseDisplayItems = [...expenseItems].reverse();
@@ -3204,14 +3212,14 @@ saveSession() {
     } else {
         event.start = startDec;
         event.end = endDec;
-        event.agenda = agenda;
-        event.stakeholders = stakeholders;
+        event.agenda = this.getWidgetVisible('agenda', event) ? agenda : (event.agenda || '');
+        event.stakeholders = this.getWidgetVisible('stakeholders', event) ? stakeholders : (event.stakeholders || '');
     }
     const existingNotes = event.notes ? event.notes.split('|').filter(Boolean) : [];
     const newNote = notesInput ? notesInput.value.trim() : '';
     if (newNote) existingNotes.push(newNote);
     event.notes = existingNotes.join('|');
-    event.budget = this.activeType === 'REMINDER' ? '' : (budgetInput ? budgetInput.value.trim() : '');
+    event.budget = this.activeType === 'REMINDER' ? '' : (this.getWidgetVisible('timeblockExpenses', event) && budgetInput ? budgetInput.value.trim() : (event.budget || ''));
     event.allDay = isAllDay;
 
     if (targetDate !== this.selectedDate) {
@@ -3314,7 +3322,7 @@ async ensureSheetStructure() {
     this.sheetInfo = sheetInfo;
 
     await Promise.all([
-        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget', 'allDay']),
+        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget', 'allDay', 'widgets']),
         this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'item', 'description', 'amount', 'category', 'subcategory', 'eventId']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
@@ -3341,7 +3349,7 @@ async loadData() {
     const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes, categoriesRes, subcategoriesRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:K`
+            range: `${this.sheetNames.events}!A:L`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -3390,10 +3398,14 @@ async loadData() {
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
         if (row.length < 6) return;
-        const [id, date, start, end, label, type, agenda, stakeholders, notes, budget, allDay] = row;
+        const [id, date, start, end, label, type, agenda, stakeholders, notes, budget, allDay, widgetsRaw] = row;
         if (!date) return;
+        let widgets = {};
+        if (widgetsRaw && typeof widgetsRaw === 'string') {
+            try { widgets = JSON.parse(widgetsRaw) || {}; } catch (_) {}
+        }
         if (!this.db[date]) this.db[date] = [];
-        this.db[date].push({
+        const ev = {
             id,
             date,
             start: parseFloat(start),
@@ -3404,8 +3416,10 @@ async loadData() {
             stakeholders: stakeholders || '',
             notes: notes || '',
             budget: budget || '',
-            allDay: allDay === '1' || allDay === 'true'
-        });
+            allDay: allDay === '1' || allDay === 'true',
+            widgets
+        };
+        this.db[date].push(ev);
     });
 
     this.transactions = txRows.slice(1).map((row) => {
@@ -3450,6 +3464,12 @@ async loadData() {
         if (key) meta[key] = value;
     });
     if (meta.currentNet) this.currentNet = parseFloat(meta.currentNet);
+    if (meta.editMeetingWidgets) {
+        try { this.editMeetingWidgets = JSON.parse(meta.editMeetingWidgets); } catch (_) {}
+    }
+    if (!this.editMeetingWidgets || typeof this.editMeetingWidgets !== 'object') {
+        this.editMeetingWidgets = { stakeholders: true, agenda: true, timeblockExpenses: true };
+    }
 
     this.projects = this.parseProjects(projectRows);
     this.teams = this.parseTeams(teamRows);
@@ -3585,6 +3605,7 @@ async saveEvent(event) {
     if (!event || !event.id) return;
     await this.ensureUserStorage();
     const date = event.date || this.selectedDate;
+    const widgets = event.widgets && typeof event.widgets === 'object' ? event.widgets : {};
     const row = [
         event.id,
         date,
@@ -3596,20 +3617,21 @@ async saveEvent(event) {
         event.stakeholders || '',
         event.notes || '',
         event.budget || '',
-        event.allDay ? '1' : '0'
+        event.allDay ? '1' : '0',
+        JSON.stringify(widgets)
     ];
     const rowIndex = await this.findRowById(this.sheetNames.events, event.id);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A${rowIndex}:K${rowIndex}`,
+            range: `${this.sheetNames.events}!A${rowIndex}:L${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:K`,
+            range: `${this.sheetNames.events}!A:L`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -3682,6 +3704,102 @@ async saveMeta() {
         range: `${this.sheetNames.meta}!A2:B2`,
         valueInputOption: 'RAW',
         resource: { values: [['currentNet', this.currentNet.toString()]] }
+    });
+},
+
+async saveEditMeetingWidgets() {
+    if (!this.userSheetId) return;
+    await this.ensureUserStorage();
+    const key = 'editMeetingWidgets';
+    const rowIndex = await this.findRowById(this.sheetNames.meta, key);
+    const row = [key, JSON.stringify(this.editMeetingWidgets)];
+    if (rowIndex) {
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.meta}!A${rowIndex}:B${rowIndex}`,
+            valueInputOption: 'RAW',
+            resource: { values: [row] }
+        });
+    } else {
+        await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.meta}!A:B`,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: { values: [row] }
+        });
+    }
+},
+
+getWidgetVisible(key, event) {
+    const def = this.editMeetingWidgets && this.editMeetingWidgets[key];
+    const override = event && event.widgets && event.widgets[key];
+    if (override !== undefined && override !== null) return !!override;
+    return def !== undefined && def !== null ? !!def : true;
+},
+
+openEditMeetingSettings() {
+    const overlay = document.getElementById('edit-meeting-settings-overlay');
+    if (!overlay) return;
+    this.renderEditMeetingWidgets();
+    overlay.style.display = 'flex';
+},
+
+closeEditMeetingSettings() {
+    const overlay = document.getElementById('edit-meeting-settings-overlay');
+    if (overlay) overlay.style.display = 'none';
+    this.updatePanelContext();
+},
+
+renderEditMeetingWidgets() {
+    const list = document.getElementById('edit-meeting-widgets-list');
+    if (!list) return;
+    const events = this.db[this.selectedDate] || [];
+    const activeEvent = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+    const widgets = [
+        { key: 'stakeholders', label: 'Stakeholders' },
+        { key: 'agenda', label: 'Session Agenda' },
+        { key: 'timeblockExpenses', label: 'Timeblock Expenses' }
+    ];
+    list.innerHTML = widgets.map(({ key, label }) => {
+        const def = this.editMeetingWidgets[key] !== false;
+        const override = activeEvent && activeEvent.widgets && activeEvent.widgets[key];
+        const effective = this.getWidgetVisible(key, activeEvent);
+        const meetingChecked = override !== undefined ? !!override : effective;
+        return `
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 16px; padding: 12px 14px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                <span style="color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600;">${label}</span>
+                <div style="display:flex; align-items:center; gap: 16px;">
+                    <label style="display:flex; align-items:center; gap: 6px; color: rgba(255,255,255,0.5); font-size: 10px; cursor: pointer;">
+                        <input type="checkbox" data-widget="${key}" data-scope="default" ${def ? 'checked' : ''}>
+                        Default
+                    </label>
+                    <label style="display:flex; align-items:center; gap: 6px; color: rgba(255,255,255,0.5); font-size: 10px; cursor: pointer;">
+                        <input type="checkbox" data-widget="${key}" data-scope="meeting" ${meetingChecked ? 'checked' : ''}>
+                        This meeting
+                    </label>
+                </div>
+            </div>
+        `;
+    }).join('');
+    list.querySelectorAll('input[data-widget]').forEach((input) => {
+        input.addEventListener('change', () => {
+            const key = input.dataset.widget;
+            const scope = input.dataset.scope;
+            const checked = input.checked;
+            if (scope === 'default') {
+                this.editMeetingWidgets[key] = checked;
+                void this.saveEditMeetingWidgets();
+            } else {
+                const events = this.db[this.selectedDate] || [];
+                const activeEvent = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+                if (activeEvent) {
+                    if (!activeEvent.widgets) activeEvent.widgets = {};
+                    activeEvent.widgets[key] = checked;
+                }
+            }
+            this.updatePanelContext();
+        });
     });
 },
 
@@ -4943,6 +5061,7 @@ document.addEventListener('mousedown', (e) => {
         <div class="meeting-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
             <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="edit-meeting-widgets-btn" onclick="ENGINE.openEditMeetingSettings()" aria-label="Edit Meeting widgets" style="background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); width: 32px; height: 32px; border-radius: 8px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">⚙</button>
                 <button id="delete-event-btn" onclick="ENGINE.deleteCurrentEvent()" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
                 <button onclick="ENGINE.closeModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
             </div>
@@ -4953,6 +5072,18 @@ document.addEventListener('mousedown', (e) => {
             <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; color: rgba(255,255,255,0.45); font-weight: 600; cursor: pointer;">CANCEL</button>
             <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
+    </div>
+</div>
+
+<!-- Edit Meeting Widgets Settings Overlay -->
+<div id="edit-meeting-settings-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); z-index: 1300; padding: 24px; flex-direction: column; justify-content: center; align-items: center;">
+    <div class="meeting-panel" style="max-width: 480px; width: 100%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2 style="margin:0; color:white; font-size: 18px; font-weight: 600;">Edit Meeting – Widgets</h2>
+            <button onclick="ENGINE.closeEditMeetingSettings()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+        <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin-bottom: 16px;">Default applies to new meetings. This meeting overrides when set.</p>
+        <div id="edit-meeting-widgets-list" style="display:flex; flex-direction:column; gap: 12px;"></div>
     </div>
 </div>
 
