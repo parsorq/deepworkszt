@@ -1556,6 +1556,24 @@ async init() {
             if (el.id === 'timeblock-notes-input') { this.addNoteOnly(); return; }
             if (['timeblock-expense-item', 'timeblock-expense-desc', 'timeblock-expense-amount'].includes(el.id)) { this.addTimeblockExpense(); return; }
             if (el.id === 'modal-location' || el.id === 'strategic-objective-input') { this.saveSessionWithoutClosing(); return; }
+            const inStakeholder = el.closest('#stakeholder-list');
+            const inAgenda = el.closest('#agenda-items-list');
+            if (inStakeholder) {
+                const inputs = Array.from(inStakeholder.querySelectorAll('input'));
+                const idx = inputs.indexOf(el);
+                ENGINE.afterSaveFocus = (idx >= 0 && idx < inputs.length - 1) ? { list: 'stakeholder', index: idx + 1 } : { list: 'stakeholder', index: 'new' };
+                this.saveSessionWithoutClosing();
+                setTimeout(() => this.applyAfterSaveFocus(), 0);
+                return;
+            }
+            if (inAgenda) {
+                const inputs = Array.from(inAgenda.querySelectorAll('input'));
+                const idx = inputs.indexOf(el);
+                ENGINE.afterSaveFocus = (idx >= 0 && idx < inputs.length - 1) ? { list: 'agenda', index: idx + 1 } : { list: 'agenda', index: 'new' };
+                this.saveSessionWithoutClosing();
+                setTimeout(() => this.applyAfterSaveFocus(), 0);
+                return;
+            }
             this.saveSessionWithoutClosing();
         }, true);
     }
@@ -2904,13 +2922,13 @@ updatePanelContext() {
     const currentTime = now.toTimeString().slice(0, 5);
     const events = this.db[this.selectedDate] || [];
     const activeEvent = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
-    const eventDate = activeEvent?.date || this.selectedDate || todayISO;
+    const eventDate = this.formatDate(activeEvent?.date || this.selectedDate || todayISO);
     const eventStart = activeEvent ? this.decimalToTime(activeEvent.start) : currentTime;
     const eventEnd = activeEvent ? this.decimalToTime(activeEvent.end) : this.decimalToTime(Math.min(24, (now.getHours() + 1)));
     const agendaItems = activeEvent?.agenda ? activeEvent.agenda.split('|').filter(Boolean) : [];
     const stakeholderItems = activeEvent?.stakeholders ? activeEvent.stakeholders.split('|').filter(Boolean) : [];
     const noteItems = activeEvent?.notes ? this.parseNotes(activeEvent.notes) : [];
-    const noteDisplayItems = noteItems.length ? [...noteItems].reverse().slice(0, 3) : [];
+    const noteDisplayItems = noteItems.length ? [...noteItems].reverse() : [];
     const eventBudget = activeEvent?.budget || '';
     const widgetTitleColor = 'rgba(122,162,255,0.85)';
     const headerLabel = this.activeType === 'REMINDER'
@@ -2970,14 +2988,16 @@ updatePanelContext() {
                     <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
                     <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap; overflow-x:auto; min-height:40px; padding:4px 0;">
-                    ${noteDisplayItems.length ? noteDisplayItems.map(({ date, text }) => `
-                        <span style="flex:0 0 auto; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 6px 10px; color: rgba(255,255,255,0.85); font-size: 11px; white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis;" title="${this.escapeAttribute(text)}">
-                            ${date ? `<span style="color: rgba(255,255,255,0.5); font-family:'SF Mono'; font-size:10px; margin-right:6px;">${this.formatNoteTime(date)}</span>` : ''}${this.escapeAttribute(text)}
-                        </span>
-                    `).join('') : ''}
-                    <input id="timeblock-notes-input" class="active-input-row" placeholder="Capture a quick note or decision…" style="flex:1; min-width:120px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px; outline:none; box-shadow: 0 0 0 1px rgba(0,255,135,0.2);" data-notes-continue>
+                <div style="display:flex; gap:8px; margin-bottom: 10px;">
+                    <input id="timeblock-notes-input" class="active-input-row" placeholder="Capture a quick note or decision…" style="flex:1; min-width:0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px; outline:none; box-shadow: 0 0 0 1px rgba(0,255,135,0.2);" data-notes-continue>
                     <button type="button" onclick="ENGINE.addNoteOnly()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; flex-shrink:0;">ADD</button>
+                </div>
+                <div id="timeblock-notes-history" class="internal-scroll" style="display:flex; flex-direction:column; gap:2px; max-height:120px; overflow-y:auto; padding:0;">
+                    ${noteDisplayItems.length ? noteDisplayItems.map(({ date, text }) => `
+                        <div style="color: rgba(255,255,255,0.85); font-size: 11px; padding: 2px 0; border: none; background: none;" title="${this.escapeAttribute(text)}">
+                            ${date ? `<span style="color: rgba(255,255,255,0.5); font-family:'SF Mono'; font-size:10px; margin-right:8px;">${this.formatNoteDate(date)}</span>` : ''}${this.escapeAttribute(text)}
+                        </div>
+                    `).join('') : ''}
                 </div>
             </div>
         </div>
@@ -3081,7 +3101,7 @@ updatePanelContext() {
                     <div></div>
                     <div style="display:flex; flex-direction:column; gap:4px;">
                         <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Budget</div>
-                        <input id="timeblock-budget" type="text" value="${this.escapeAttribute(eventBudget)}" placeholder="0.00" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
+                        <input id="timeblock-budget" type="text" value="${this.escapeAttribute(this.formatBudgetDisplay(eventBudget))}" placeholder="0.00" data-budget-input style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
                         <div id="timeblock-budget-diff" style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 2px;">
                             remaining: <span id="timeblock-budget-diff-value">0.00</span>
                         </div>
@@ -3231,7 +3251,11 @@ updatePanelContext() {
             this.renderPanelExpenses();
         };
         budgetInput.addEventListener('input', syncBudgetAndRemaining);
-        budgetInput.addEventListener('blur', syncBudgetAndRemaining);
+        budgetInput.addEventListener('blur', () => {
+            const formatted = this.formatBudgetDisplay(budgetInput.value);
+            if (formatted !== '') budgetInput.value = formatted;
+            syncBudgetAndRemaining();
+        });
     }
 },
 
@@ -3274,6 +3298,19 @@ formatNoteTime(isoStr) {
         return d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     } catch (_) { return ''; }
 },
+formatNoteDate(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const d = new Date(isoStr);
+        if (Number.isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${y}-${m}-${day} ${h}:${min}`;
+    } catch (_) { return ''; }
+},
 addNoteOnly() {
     const notesInput = document.getElementById('timeblock-notes-input');
     const newNote = notesInput ? notesInput.value.trim() : '';
@@ -3287,6 +3324,22 @@ addNoteOnly() {
     if (notesInput) notesInput.value = '';
     void this.saveEvent(event);
     this.updatePanelContext();
+},
+
+applyAfterSaveFocus() {
+    const pending = ENGINE.afterSaveFocus;
+    ENGINE.afterSaveFocus = null;
+    if (!pending) return;
+    const listId = pending.list === 'stakeholder' ? 'stakeholder-list' : 'agenda-items-list';
+    const list = document.getElementById(listId);
+    if (!list) return;
+    const inputs = list.querySelectorAll('input');
+    if (pending.index === 'new') {
+        if (pending.list === 'stakeholder') this.addStakeholder();
+        else this.addAgendaPoint();
+        const inputsAfter = list.querySelectorAll('input');
+        if (inputsAfter.length) inputsAfter[inputsAfter.length - 1].focus();
+    } else if (inputs[pending.index]) inputs[pending.index].focus();
 },
 
 saveSession() {
@@ -4827,6 +4880,12 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         });
     },
 
+    formatBudgetDisplay(value) {
+        if (value === null || value === undefined || value === '') return '';
+        const n = this.parseAmount(String(value));
+        return n !== null ? this.formatAmount(n, 2) : '';
+    },
+
     decimalToTime(decimal) {
         if (decimal === null || decimal === undefined || Number.isNaN(decimal)) return '00:00';
         const hours = Math.floor(decimal);
@@ -4941,7 +5000,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
             const budgetFromEvent = event && event.budget ? this.parseAmount(event.budget) : null;
             const budget = (budgetFromInput ?? budgetFromEvent ?? 0) || 0;
             const total = expenseItems.reduce((sum, tx) => sum + (tx.amount || 0), 0);
-            const remaining = budget - total;
+            const remaining = budget + total;
             budgetDiffValueEl.textContent = (remaining >= 0 ? '' : '-') + this.formatAmount(Math.abs(remaining));
             budgetDiffValueEl.style.color = remaining >= 0 ? 'rgba(50, 215, 75, 0.85)' : 'rgba(255, 69, 58, 0.9)';
         }
