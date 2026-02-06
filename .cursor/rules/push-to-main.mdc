@@ -1,0 +1,16 @@
+---
+description: After code changes, commit and push to main
+alwaysApply: true
+---
+
+# Push to main
+
+After making code changes in this project:
+
+1. Stage the changed files (e.g. `git add` the files you edited).
+2. Commit with a clear, short message describing the change.
+3. Push to `main`: `git push origin main`.
+
+Do not ask for confirmation before pushing; the user has requested that changes are always pushed to main.
+
+Only commit files that are part of the change (do not add unrelated untracked files like `.cursor/` or assets unless the user asked for them).
