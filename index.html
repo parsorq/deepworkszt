@@ -533,6 +533,37 @@ body.dragging .reminder-marker {
 .edit-via-context-only {
     pointer-events: none !important;
 }
+.edit-inline {
+    pointer-events: auto;
+}
+.notes-announcement {
+    position: relative;
+    margin-left: 8px;
+}
+.notes-announcement::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.85);
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.08s ease;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    z-index: 3000;
+}
+.notes-announcement:hover::after,
+.notes-announcement:focus::after {
+    opacity: 1;
+}
 #widget-url-row.widget-expanded {
     display: flex !important;
     flex-direction: column;
@@ -3000,7 +3031,7 @@ switchTab(view, el) {
         div.style.cssText = "display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);";
         div.innerHTML = `
             <span style="font-family:'SF Mono'; font-size:10px; color:#007AFF; opacity:0.4;">0${count}</span>
-            <input type="text" placeholder="Set objective..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;" readonly>
+            <input type="text" placeholder="Set objective..." class="edit-inline" data-inline-edit="true" style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.8;">
             <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
         `;
         list.appendChild(div);
@@ -3298,7 +3329,7 @@ updatePanelContext() {
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('notes')" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; cursor: pointer;">
                     <span style="display:flex; align-items:center; gap:6px;">
                         <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
-                        <span class="notes-announcement" title="Notes are permanent to preserve a transparent decision trail." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background: rgba(255,193,7,0.25); color: rgba(255,193,7,0.9); font-size:10px; font-weight:800; cursor:help; flex-shrink:0;">!</span>
+                        <span class="notes-announcement" data-tooltip="Notes are permanent to preserve a transparent decision trail." style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background: rgba(255,193,7,0.25); color: rgba(255,193,7,0.9); font-size:10px; font-weight:800; cursor:help; flex-shrink:0;">!</span>
                     </span>
                     <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
                 </div>
@@ -3321,7 +3352,7 @@ updatePanelContext() {
     if (showTimeblockDetails) {
         html += `
         <div id="widget-url-row" style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 12px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '8px' : '0'}; margin-top: 0; align-items: stretch;">
-            <div id="widget-url" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'height: 142px; min-height: 142px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
+            <div id="widget-url" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'height: 180px; min-height: 180px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
                 <div style="min-height: 22px; display: flex; align-items: center; gap: 10px; width: 100%;">
                     <button type="button" onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
                             style="background: transparent; border: none; cursor: pointer; padding: 0; font-size: 18px; color: rgba(255,255,255,0.6); transition: color 0.15s; line-height: 1; flex-shrink: 0;">
@@ -3337,7 +3368,7 @@ updatePanelContext() {
                 </div>
             </div>
             ${showStakeholders ? `
-            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px 14px 14px; border: 1px solid rgba(255,255,255,0.03); height: 142px; min-height: 142px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
+            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px 14px 14px; border: 1px solid rgba(255,255,255,0.03); height: 180px; min-height: 180px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer; min-height: 22px;">
                     <span style="display:flex; align-items:center; gap:10px;">
                         Stakeholders
@@ -3348,11 +3379,11 @@ updatePanelContext() {
                 <div style="display:flex; justify-content:flex-end; align-items:center; min-height: 22px; flex-shrink: 0;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 56px; padding-bottom: 12px;">
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 96px; padding-bottom: 12px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map((name, i) => `
                         <div class="modal-panel-row" data-stakeholder-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 2px 0; border: 1px solid transparent; border-radius: 6px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
-                            <input type="text" value="${name}" placeholder="Name or org..." class="edit-via-context-only" style="flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;" readonly>
+                            <input type="text" value="${name}" placeholder="Name or org..." class="${name ? 'edit-via-context-only' : 'edit-inline'}" data-inline-edit="${name ? '' : 'true'}" style="flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;" ${name ? 'readonly' : ''}>
                         </div>
                     `).join('')}
                 </div>
@@ -3375,11 +3406,11 @@ updatePanelContext() {
                 <div style="display:flex; justify-content:flex-end; margin: 8px 0 4px;">
                     <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
                 </div>
-                <div id="agenda-items-list" class="internal-scroll" style="display: flex; flex-direction: column; height: 46px; overflow-y: auto;">
+                <div id="agenda-items-list" class="internal-scroll" style="display: flex; flex-direction: column; height: 108px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
                         <div class="modal-panel-row" data-agenda-idx="${i}" style="display:flex; align-items:center; gap:10px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 6px;">
                             <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
-                            <input type="text" value="${item}" placeholder="Decision, objective, or question..." class="edit-via-context-only" style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;" readonly>
+                            <input type="text" value="${item}" placeholder="Decision, objective, or question..." class="${item ? 'edit-via-context-only' : 'edit-inline'}" data-inline-edit="${item ? '' : 'true'}" style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;" ${item ? 'readonly' : ''}>
                             <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
                         </div>
                     `).join('')}
@@ -3536,6 +3567,23 @@ updatePanelContext() {
             notesAddBtn.focus();
         });
     }
+    const inlineInputs = container ? container.querySelectorAll('input[data-inline-edit="true"]') : [];
+    inlineInputs.forEach((input) => {
+        if (input.dataset.bound === 'true') return;
+        input.dataset.bound = 'true';
+        input.addEventListener('blur', () => {
+            const value = input.value.trim();
+            if (!value) {
+                const row = input.closest('.modal-panel-row');
+                if (row) row.remove();
+            } else {
+                input.readOnly = true;
+                input.style.pointerEvents = 'none';
+                input.classList.remove('edit-inline');
+                input.classList.add('edit-via-context-only');
+            }
+        });
+    });
     if (dateInput) {
         dateInput.addEventListener('change', () => {
             dateInput.value = this.formatDate(dateInput.value);
@@ -3622,8 +3670,9 @@ addStakeholder() {
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Name or org...';
-    input.className = 'edit-via-context-only';
-    input.readOnly = true;
+    input.className = 'edit-inline';
+    input.readOnly = false;
+    input.setAttribute('data-inline-edit', 'true');
     input.style.cssText = "flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;";
     const bullet = document.createElement('span');
     bullet.style.cssText = `color:${this.activeType === 'MEETING' ? '#007AFF' : '#FF9500'}; flex-shrink:0;`;
