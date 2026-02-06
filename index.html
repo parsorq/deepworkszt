@@ -5860,6 +5860,33 @@ document.addEventListener('mousedown', (e) => {
                 <div id="settings-subcategory-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">LOGS</div>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
+                        <input type="checkbox" id="logs-toggle-add">
+                        Add actions
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
+                        <input type="checkbox" id="logs-toggle-edit">
+                        Edit actions
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
+                        <input type="checkbox" id="logs-toggle-delete">
+                        Delete actions
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
+                        <input type="checkbox" id="logs-toggle-settings">
+                        Settings changes
+                    </label>
+                </div>
+                <div style="font-size: 11px; color: rgba(255,255,255,0.5); line-height: 1.5;">
+                    Enabling logs will write additional entries to your personal sheet. This may increase Google API usage and any related charges on your account. We don’t control Google billing or your data. In most cases, normal usage stays within free limits, but heavy logging can exceed them.
+                </div>
+            </div>
+
             <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06);">
                 <button onclick="ENGINE.logOut()" style="width: 100%; padding: 12px 16px; background: transparent; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer;">Log Out</button>
             </div>
