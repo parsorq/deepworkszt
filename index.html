@@ -501,6 +501,69 @@ body.dragging .reminder-marker {
     align-content: start;
 }
 
+/* Single widget expanded: use full panel, inner list scrolls so panel doesn't move */
+.meeting-panel--editor .meeting-panel-body.widget-single-view {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    align-items: stretch;
+}
+.meeting-panel--editor .meeting-panel-body.widget-single-view > div {
+    flex: 0 0 auto;
+}
+.meeting-panel--editor .meeting-panel-body.widget-single-view > div.widget-expanded {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+#widget-url-row.widget-expanded {
+    display: flex !important;
+    flex-direction: column;
+    min-height: 0;
+}
+#widget-url-row.widget-expanded #widget-stakeholders {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.widget-expanded #timeblock-notes-history,
+.widget-expanded #stakeholder-list,
+.widget-expanded #agenda-items-list,
+.widget-expanded #timeblock-expense-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    max-height: none;
+}
+.widget-expanded .panel-section {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.widget-expanded #timeblock-notes-history,
+.widget-expanded #stakeholder-list,
+.widget-expanded #agenda-items-list,
+.widget-expanded #timeblock-expense-list { flex: 1; min-height: 0; }
+#widget-notes.widget-expanded > .panel-section {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+#widget-agenda.widget-expanded #agenda-items-list { flex: 1; min-height: 0; height: auto !important; }
+#widget-timeblockExpenses.widget-expanded {
+    display: flex;
+    flex-direction: column;
+}
+#widget-timeblockExpenses.widget-expanded #timeblock-expense-list { flex: 1; min-height: 0; margin-top: auto; }
+
 .meeting-panel--editor .meeting-panel-footer {
     flex: 0 0 auto;
 }
@@ -602,6 +665,11 @@ body.dragging .reminder-marker {
     .modal-panel-row:hover {
         background: rgba(255,255,255,0.04) !important;
         border-color: rgba(255,255,255,0.08) !important;
+    }
+
+    #timeblock-notes-input:focus {
+        box-shadow: none !important;
+        border-color: transparent !important;
     }
 
     .reminder-marker {
@@ -1592,7 +1660,19 @@ async init() {
             if (!el || !el.matches || !el.matches('input, textarea, select')) return;
             e.preventDefault();
             if (el.id === 'timeblock-notes-input') { this.addNoteOnly(); return; }
-            if (['timeblock-expense-item', 'timeblock-expense-desc', 'timeblock-expense-amount'].includes(el.id)) { this.addTimeblockExpense(); return; }
+            if (el.id === 'timeblock-expense-subcategory') {
+                const itemIn = document.getElementById('timeblock-expense-item');
+                const catSel = document.getElementById('timeblock-expense-category');
+                const amtIn = document.getElementById('timeblock-expense-amount');
+                const hasItem = itemIn && itemIn.value.trim() !== '';
+                const hasCategory = catSel && catSel.value;
+                const hasAmount = amtIn && this.parseAmount(amtIn.value) !== null;
+                if (hasItem && hasCategory && hasAmount) {
+                    this.addTimeblockExpense();
+                    setTimeout(() => document.getElementById('timeblock-expense-item')?.focus(), 0);
+                }
+                return;
+            }
             if (el.id === 'modal-location' || el.id === 'strategic-objective-input') { this.saveSessionWithoutClosing(); return; }
             const inStakeholder = el.closest('#stakeholder-list');
             const inAgenda = el.closest('#agenda-items-list');
@@ -2976,6 +3056,7 @@ openMeetingUrl() {
 },
 
 applyExpandedWidget() {
+    const container = document.getElementById('dynamic-fields-container');
     const backBar = document.getElementById('widget-back-bar');
     const notes = document.getElementById('widget-notes');
     const urlRow = document.getElementById('widget-url-row');
@@ -2985,22 +3066,29 @@ applyExpandedWidget() {
     const timeblockExpenses = document.getElementById('widget-timeblockExpenses');
     const show = (el, display = '') => { if (el) el.style.display = display || ''; };
     const hide = (el) => { if (el) el.style.display = 'none'; };
+    [notes, urlRow, stakeholders, agenda, timeblockExpenses].forEach(el => { if (el) el.classList.remove('widget-expanded'); });
 
     if (!this.expandedWidget) {
+        if (container) container.classList.remove('widget-single-view');
         show(backBar, 'none');
         show(notes); show(urlRow, 'grid'); show(url); show(stakeholders); show(agenda); show(timeblockExpenses);
         return;
     }
+    if (container) container.classList.add('widget-single-view');
     show(backBar, 'flex');
     const exp = this.expandedWidget;
     if (exp === 'notes') {
         show(notes); hide(urlRow); hide(agenda); hide(timeblockExpenses);
+        if (notes) notes.classList.add('widget-expanded');
     } else if (exp === 'stakeholders') {
         hide(notes); show(urlRow, 'grid'); hide(url); show(stakeholders); hide(agenda); hide(timeblockExpenses);
+        if (urlRow) urlRow.classList.add('widget-expanded');
     } else if (exp === 'agenda') {
         hide(notes); hide(urlRow); show(agenda); hide(timeblockExpenses);
+        if (agenda) agenda.classList.add('widget-expanded');
     } else if (exp === 'timeblockExpenses') {
         hide(notes); hide(urlRow); hide(agenda); show(timeblockExpenses);
+        if (timeblockExpenses) timeblockExpenses.classList.add('widget-expanded');
     }
 },
 
