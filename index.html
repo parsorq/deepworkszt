@@ -2950,34 +2950,32 @@ updatePanelContext() {
         html += `
         <div id="widget-url-row" style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 12px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '14px' : '0'}; margin-top: 0; align-items: stretch;">
             <div id="widget-url" style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'min-height: 84px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
-                <div style="flex-shrink: 0; line-height: 1; display: flex; align-items: center;">
+                <div style="flex-shrink: 0; display: flex; align-items: center;">
                     <button type="button" onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
                             style="background: transparent; border: none; cursor: pointer; padding: 2px; font-size: 20px; color: rgba(255,255,255,0.6); transition: color 0.15s;">
                         ${isRemote ? '🌐' : '📍'}
                     </button>
                 </div>
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; justify-content: center;">
-                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.75;">${isRemote ? 'Meeting URL' : 'Location'}</label>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <input type="text" id="modal-location" value="${isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A'}" 
-                               style="flex: 1; min-width: 0; background: transparent; border: none; color: ${isRemote ? 'rgba(88, 166, 255, 0.9)' : 'rgba(255,255,255,0.85)'}; font-size: 12px; outline: none; font-family: 'SF Mono', monospace; box-sizing: border-box; ${isRemote ? 'text-decoration: underline; text-underline-offset: 2px;' : ''}">
-                        ${isRemote ? `<a href="#" id="modal-location-open" onclick="ENGINE.openMeetingUrl(); return false;" style="font-size: 10px; font-weight: 600; color: rgba(88, 166, 255, 0.85); text-decoration: none; white-space: nowrap; flex-shrink: 0;">Open ↗</a>` : ''}
-                    </div>
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.75; flex-shrink: 0;">${isRemote ? 'Meeting URL' : 'Location'}</label>
+                    <input type="text" id="modal-location" value="${isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A'}" 
+                           style="flex: 1; min-width: 120px; background: transparent; border: none; color: ${isRemote ? 'rgba(88, 166, 255, 0.9)' : 'rgba(255,255,255,0.85)'}; font-size: 12px; outline: none; font-family: 'SF Mono', monospace; box-sizing: border-box; ${isRemote ? 'text-decoration: underline; text-underline-offset: 2px;' : ''}">
+                    ${isRemote ? `<a href="#" id="modal-location-open" onclick="ENGINE.openMeetingUrl(); return false;" style="font-size: 10px; font-weight: 600; color: rgba(88, 166, 255, 0.85); text-decoration: none; white-space: nowrap; flex-shrink: 0;">Open ↗</a>` : ''}
                 </div>
             </div>
             ${showStakeholders ? `
-            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.03); min-height: 84px; display:flex; flex-direction:column; overflow:hidden; box-sizing: border-box;">
+            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); min-height: 84px; display:flex; flex-direction:column; overflow:hidden; box-sizing: border-box;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer;">
-                    <span style="display:flex; align-items:center; gap:8px;">
+                    <span style="display:flex; align-items:center; gap:10px;">
                         Stakeholders
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <span style="display:flex; align-items:center; gap:8px;">
-                        <span onclick="event.stopPropagation(); ENGINE.addStakeholder();" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
-                        <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
-                    </span>
+                    <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; margin-top: 6px; flex:1 1 auto; min-height: 36px;">
+                <div style="display:flex; justify-content:flex-end; margin-top: 8px;">
+                    <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
+                </div>
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; margin-top: 8px; flex:1 1 auto; min-height: 36px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map(name => `
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
