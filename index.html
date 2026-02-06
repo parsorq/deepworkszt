@@ -2942,14 +2942,17 @@ updatePanelContext() {
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 4px; align-items:center;">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <div id="timeblock-expense-type" style="flex:1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); padding:6px 8px; border-radius: 8px; font-size: 11px; font-family:'SF Mono';">Expense</div>
-                        <div id="timeblock-expense-sign" data-sign="-1" style="display:flex; gap:6px; align-items:center;">
+                        <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                            <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Type</div>
+                            <div id="timeblock-expense-type" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding:6px 8px; border-radius: 8px; font-size: 11px; font-family:'SF Mono';">Expense</div>
+                        </div>
+                        <div id="timeblock-expense-sign" data-sign="-1" style="display:flex; gap:6px; align-items:center; margin-top: 16px;">
                             <button onclick="ENGINE.setTimeblockExpenseSign(-1)" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); font-size:10px; font-weight:800; width: 26px; height: 26px; border-radius:6px; cursor:pointer;">-</button>
                             <button onclick="ENGINE.setTimeblockExpenseSign(1)" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-size:10px; font-weight:800; width: 26px; height: 26px; border-radius:6px; cursor:pointer;">+</button>
                         </div>
                     </div>
-                    <div style="display:flex; gap: 8px; align-items:center;">
-                        <span style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">Budget</span>
+                    <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                        <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Budget</div>
                         <input id="timeblock-budget" type="text" value="${this.escapeAttribute(eventBudget)}" placeholder="0.00" style="width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
                     </div>
                 </div>
@@ -2980,6 +2983,10 @@ updatePanelContext() {
                         </div>
                     `;
                     }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No expenses.</div>'}
+                </div>
+                <div id="timeblock-budget-diff" style="display:flex; justify-content:space-between; align-items:center; margin-top: 6px; font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5);">
+                    <span>Budget remaining</span>
+                    <span>0.00</span>
                 </div>
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-top: 6px;">
                     <span style="font-size:9px; color: rgba(255,255,255,0.45); font-weight:700; letter-spacing:1px;">SESSION TRANSACTIONS</span>
@@ -4589,6 +4596,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
     renderPanelExpenses() {
         const list = document.getElementById('timeblock-expense-list');
         const ledger = document.getElementById('timeblock-transaction-ledger');
+        const budgetDiffEl = document.getElementById('timeblock-budget-diff');
         if (!list && !ledger) return;
         const events = this.db[this.selectedDate] || [];
         const event = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
@@ -4628,6 +4636,18 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 </div>
             `;
             }).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 10px;">No transactions yet.</div>';
+        }
+        if (budgetDiffEl) {
+            const budgetVal = event && event.budget ? this.parseAmount(event.budget) : null;
+            const budget = budgetVal === null ? 0 : budgetVal;
+            const total = expenseItems.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+            const remaining = budget - total;
+            budgetDiffEl.innerHTML = `
+                <span>Budget remaining</span>
+                <span style="color: ${remaining >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
+                    ${remaining >= 0 ? '' : '-'}${this.formatAmount(Math.abs(remaining))}
+                </span>
+            `;
         }
     },
 
