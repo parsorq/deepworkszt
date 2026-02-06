@@ -2879,10 +2879,10 @@ updatePanelContext() {
     const modalTitle = document.getElementById('modal-main-title');
     const activeColor = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', EVENT: '#FF9500' }[this.activeType];
     
-    // --- 0. INTERACTION LAYER FIX ---
-    // Ensure the modal layer doesn't intercept drag events meant for the ledger
-    container.style.pointerEvents = "none"; 
-    container.style.zIndex = "100"; // High visual priority
+    // --- 0. INTERACTION LAYER ---
+    // Allow pointer events so inputs (notes, url, stakeholders, agenda, expenses) are clickable in both full and expanded widget view
+    container.style.pointerEvents = "auto";
+    container.style.zIndex = "100";
     
     const now = new Date();
     const todayISO = now.toISOString().split('T')[0];
@@ -2985,7 +2985,7 @@ updatePanelContext() {
                 <div style="min-height: 22px; display: flex; align-items: center; gap: 8px; min-width: 0; width: 100%;">
                     <div style="width: 28px; flex-shrink: 0;"></div>
                     <input type="text" id="modal-location" value="${this.escapeAttribute(eventLocation)}" placeholder="${isRemote ? 'Meeting URL' : 'Location'}" 
-                           style="flex: 1; min-width: 0; background: transparent; border: none; color: ${isRemote ? 'rgba(88, 166, 255, 0.9)' : 'rgba(255,255,255,0.85)'}; font-size: 12px; outline: none; font-family: 'SF Mono', monospace; box-sizing: border-box; padding: 0; ${isRemote ? 'text-decoration: underline; text-underline-offset: 2px;' : ''}">
+                           style="flex: 1; min-width: 0; background: transparent; border: none; color: ${isRemote ? 'rgba(88, 166, 255, 0.9)' : 'rgba(255,255,255,0.85)'}; font-size: 12px; outline: none; font-family: 'SF Mono', monospace; box-sizing: border-box; padding: 0; cursor: text; ${isRemote ? 'text-decoration: underline; text-underline-offset: 2px;' : ''}">
                     ${isRemote ? `<a href="#" id="modal-location-open" onclick="ENGINE.openMeetingUrl(); return false;" style="font-size: 10px; font-weight: 600; color: rgba(88, 166, 255, 0.85); text-decoration: none; white-space: nowrap; flex-shrink: 0;">Open ↗</a>` : ''}
                 </div>
             </div>
