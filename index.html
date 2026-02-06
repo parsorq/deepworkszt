@@ -1168,6 +1168,9 @@ body:not(.logged-out) #login-fallback {
             </div>
             <div id="graph-stage" style="height: 180px; flex-shrink: 0;">
                 <span>Audit Lens Stage</span>
+                <div id="net-remaining-display" style="position: absolute; top: 10px; right: 12px; font-family: 'SF Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.55);">
+                    $0.00
+                </div>
             </div>
         </div>
     </div>
@@ -1205,6 +1208,14 @@ body:not(.logged-out) #login-fallback {
         <div id="clock-display" style="font-size: 42px; font-weight: 200; color: white; letter-spacing: -1px; opacity: 0.9;">16:07:22</div>
         <div id="date-display" style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 5px; letter-spacing: 1px;">
             03 FEB 2026 // SYSTEM_ACTIVE
+        </div>
+        <div style="margin-top: 10px; display:flex; flex-direction:column; gap: 6px; align-items:center;">
+            <div id="sidebar-burn" style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.55); letter-spacing: 0.5px;">
+                BURN: $0.0000/SEC
+            </div>
+            <div id="sidebar-net-total" style="font-family: 'SF Mono'; font-size: 12px; color: rgba(0,255,135,0.7); letter-spacing: 0.5px;">
+                $0.00
+            </div>
         </div>
     </div>
 
@@ -1357,8 +1368,22 @@ function ensureGoogleReady() {
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Google sign-in is taking too long. Click Sign in below to try again.')), GOOGLE_READY_TIMEOUT_MS);
     });
-    googleReadyPromise = Promise.race([loadPromise, timeoutPromise]);
+    googleReadyPromise = Promise.race([loadPromise, timeoutPromise])
+        .then(() => true)
+        .catch((err) => {
+            googleReadyPromise = null;
+            googleReady = false;
+            throw err;
+        });
     return googleReadyPromise;
+}
+
+function getLocalDateISO(date = new Date()) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function setLoginStatus(message, isError = false) {
@@ -1632,7 +1657,7 @@ const ENGINE = {
     activeType: 'MEETING',
     activeTypeContext: { isRemote: true },
     rates: { INDIVIDUAL: 150, TEAM: 1200, INSTITUTION: 8500 },
-    selectedDate: new Date().toISOString().split('T')[0],
+    selectedDate: getLocalDateISO(),
     currentEventIdx: null, // Track which event is being edited
     quickCreateStartH: null,
     dragHasMoved: false,
@@ -1957,7 +1982,7 @@ syncConfigControls() {
 navigateDate(delta) {
     const current = new Date(this.selectedDate);
     current.setDate(current.getDate() + delta);
-    this.selectedDate = current.toISOString().split('T')[0];
+    this.selectedDate = getLocalDateISO(current);
     this.updateDateDisplay();
     this.renderDay();
 },
@@ -1968,7 +1993,7 @@ updateDateDisplay() {
 },
 
 goToToday() {
-    this.selectedDate = new Date().toISOString().split('T')[0];
+    this.selectedDate = getLocalDateISO();
     this.updateDateDisplay();
     this.renderDay();
     this.updateTimeline(true);
@@ -2036,7 +2061,7 @@ renderTransactions() {
 // Add a new transaction
 addTransaction(desc, amount, category = 'General', subcategory = '', date = null, time = null, eventId = '', item = '', description = '') {
     const now = new Date();
-    const txDate = date || this.formatDate(now.toISOString().split('T')[0]);
+    const txDate = date || this.formatDate(getLocalDateISO(now));
     const txTime = time || now.toTimeString().slice(0, 5);
     const parsedAmount = this.parseAmount(amount);
     if (parsedAmount === null) return;
@@ -2074,35 +2099,6 @@ quickTx(sign) {
     this.openTransactionModal(sign);
 },
 
-updateLifeClock() {
-    const now = new Date();
-    const blocks = this.db[this.selectedDate] || [];
-    
-    // Sum allocated time from blocks (ms)
-    const allocatedMs = blocks.reduce((acc, b) => acc + (b.end - b.start) * 3600000, 0);
-    
-    // Current time in ms since start of day
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const currentTimeMs = now.getTime() - dayStart;
-    
-    // Available Life = Current Time - Used Time
-    const lifeClockMs = Math.max(0, currentTimeMs - allocatedMs);
-    
-    // Formatting
-    const hrs = Math.floor(lifeClockMs / 3600000).toString().padStart(2, '0');
-    const mins = Math.floor((lifeClockMs % 3600000) / 60000).toString().padStart(2, '0');
-    const secs = Math.floor((lifeClockMs % 60000) / 1000).toString().padStart(2, '0');
-
-    const clockEl = document.getElementById('clock-display');
-    if (clockEl) {
-        // Toggle breathing class on colons if session is active
-        const colonClass = this.isMeetingActive ? 'class="colon-breathe"' : '';
-        clockEl.innerHTML = `${hrs}<span ${colonClass}>:</span>${mins}<span ${colonClass}>:</span>${secs}`;
-    }
-},
-
-    
-    
 initFinancialPulse() {
     // 1. Prevent multiple intervals from running simultaneously
     if (this.fiscalInterval) clearInterval(this.fiscalInterval);
@@ -2267,14 +2263,6 @@ handleMouseMove(e) {
     // Use requestAnimationFrame for smooth updates
     requestAnimationFrame(() => this.updateGhost());
 },
-
-    handleMouseOver(h, isHalf) {
-        if (!this.isDragging) return;
-        const val = isHalf ? h + 0.5 : h;
-        if (this.dragEndH === val) return;
-        this.dragEndH = val;
-        this.renderDay();
-    },
 
 handleMouseUp() {
     if (this.moveTxIdx !== null) {
@@ -2525,17 +2513,6 @@ clearBlockHover() {
     document.body.classList.remove('block-hover');
 },
 
-startMoveEvent(idx, blockEl) {
-    this.clearMoveState();
-    const events = this.db[this.selectedDate] || [];
-    const ev = events[idx];
-    if (!ev || ev.type === 'REMINDER') return;
-    this.moveEventIdx = idx;
-    this.moveDurationH = Math.max(0.25, (ev.end - ev.start));
-    this.moveBlockEl = blockEl || null;
-    if (this.moveBlockEl) this.moveBlockEl.classList.add('block-moving');
-},
-
 clearMoveState() {
     if (this.moveBlockEl) this.moveBlockEl.classList.remove('block-moving');
     this.moveEventIdx = null;
@@ -2666,44 +2643,6 @@ finishMoveTransaction() {
     this.moveTxPointerId = null;
     this.moveTxTempH = null;
     document.body.classList.remove('dragging');
-},
-
-applyMoveToTime(clientY) {
-    const events = this.db[this.selectedDate] || [];
-    const idx = this.moveEventIdx;
-    if (idx === null || !events[idx]) {
-        this.clearMoveState();
-        return;
-    }
-    const startH = this.getHourAtClientY(clientY);
-    if (startH === null) {
-        this.clearMoveState();
-        return;
-    }
-    const step = 0.25;
-    const duration = this.moveDurationH || 0.25;
-    let start = Math.round(startH / step) * step;
-    let end = Math.min(24, start + duration);
-    if (end - start < 0.25) end = Math.min(24, start + 0.25);
-    if (end > 24) {
-        end = 24;
-        start = Math.max(0, end - duration);
-    }
-    const overlap = this.moveType === 'reminder'
-        ? false
-        : events.some((ev, i) => {
-            if (i === idx || ev.type === 'REMINDER') return false;
-            return start < ev.end && end > ev.start;
-        });
-    if (overlap) {
-        this.clearMoveState();
-        return;
-    }
-    events[idx].start = start;
-    events[idx].end = end;
-    this.clearMoveState();
-    void this.saveEvent(events[idx]);
-    this.renderDay();
 },
 
 startMoveDrag(idx, blockEl, e, mode = 'block') {
@@ -2997,21 +2936,6 @@ createQuickEvent(type) {
     this.openMeeting(this.db[this.selectedDate].length - 1);
 },
     
-    cycle(prop) {
-        const options = {
-            scope: ['INDIVIDUAL', 'TEAM', 'INSTITUTION'],
-            role: ['ARCHITECT', 'SUPERVISOR'],
-            lens: ['PROD', 'FINANCE', 'BOTH']
-        };
-        let current = this[prop];
-        let idx = (options[prop].indexOf(current) + 1) % options[prop].length;
-        let next = options[prop][idx];
-        
-        if(prop === 'scope') this.setLevel(next);
-        if(prop === 'role') this.setRole(next);
-        if(prop === 'lens') this.setLens(next);
-    },
-
 setLevel(level) {
     this.scope = level;
     this.activeBurnRate = this.rates[level]; // THIS LINE IS VITAL
@@ -3033,7 +2957,13 @@ setLevel(level) {
         this.lens = lens;
         const select = document.getElementById('cfg-lens');
         if (select) select.value = lens;
-        document.body.className = `mode-${this.role.toLowerCase()} lens-${lens.toLowerCase()}`;
+        const body = document.body;
+        if (body) {
+            Array.from(body.classList).forEach((cls) => {
+                if (cls.startsWith('mode-') || cls.startsWith('lens-')) body.classList.remove(cls);
+            });
+            body.classList.add(`mode-${this.role.toLowerCase()}`, `lens-${lens.toLowerCase()}`);
+        }
         this.render();
     },
 
@@ -3054,64 +2984,10 @@ switchTab(view, el) {
     if (view === 'year') this.renderYear();
 },
 
-renderAuditGraph() {
-    const stage = document.getElementById('graph-stage');
-    if (!stage) return;
-    
-    const total = 25000;
-    const percent = Math.max(0, (this.currentNet / total) * 100);
-    
-    // Clear and redraw with z-index protection
-    stage.style.position = "relative";
-    stage.innerHTML = `
-        <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.05);">
-        </div>
-        
-        <div style="position:absolute; bottom:0; left:0; width:${percent}%; height:4px; background: var(--btn-accent-bg-strong); box-shadow: 0 0 12px rgba(0,255,135,0.35); transition: width 0.5s ease; z-index: 2;">
-        </div>
-
-    `;
-},
-    
     render() {
         this.renderDay();
         this.renderMonth();
         this.renderYear();
-    },
-
-    toggleTypeMenu() {
-      const menu = document.getElementById('type-selector-expanded');
-      if (!menu) return;
-      
-      const isHidden = menu.style.display === 'none' || menu.style.display === '';
-      
-      if (isHidden) {
-          menu.style.display = 'flex';
-          menu.animate([
-              { opacity: 0, transform: 'translateY(-10px)' },
-              { opacity: 1, transform: 'translateY(0)' }
-          ], { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
-      } else {
-          menu.style.display = 'none';
-      }
-    },
-
-    setType(type) {
-        this.activeType = type;
-        const avatar = document.getElementById('avatar-main-initial');
-        const trigger = document.getElementById('type-avatar-trigger');
-        const colors = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', EVENT: '#FF9500' };
-        const typeDisplay = document.getElementById('active-type-text');
-        if (typeDisplay) typeDisplay.innerText = type;
-        
-        if (avatar) avatar.innerText = type.charAt(0);
-        if (trigger) {
-            trigger.style.color = colors[type];
-            trigger.style.borderColor = colors[type];
-        }
-
-        document.getElementById('type-selector-expanded').style.display = 'none';
-        this.updatePanelContext();
     },
 
     // Helper to add new agenda items dynamically
@@ -3128,10 +3004,6 @@ renderAuditGraph() {
         list.appendChild(div);
     },
 
-    // Financial Actions
-    addExpense() { this.openTransactionModal(-1); },
-    addIncome() { this.openTransactionModal(1); },
-    audit() { alert("Strategic Audit Log: 24h cycle verified."); },
     openAudit() {
         const overlay = document.getElementById('audit-overlay');
         if (!overlay) return;
@@ -3163,12 +3035,12 @@ renderAuditGraph() {
     getRecordsContextForChat() {
         const lines = [];
         const now = new Date();
-        const today = now.toISOString().split('T')[0];
+    const today = getLocalDateISO(now);
         const daysBack = 60;
         for (let d = 0; d < daysBack; d++) {
             const date = new Date(now);
             date.setDate(date.getDate() - d);
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = getLocalDateISO(date);
             const events = this.db[dateStr];
             if (!events || !events.length) continue;
             lines.push(`\n## Events ${dateStr}`);
@@ -3355,7 +3227,7 @@ updatePanelContext() {
     container.style.zIndex = "100";
     
     const now = new Date();
-    const todayISO = now.toISOString().split('T')[0];
+    const todayISO = getLocalDateISO(now);
     const currentTime = now.toTimeString().slice(0, 5);
     const events = this.db[this.selectedDate] || [];
     const activeEvent = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
@@ -3708,7 +3580,6 @@ updatePanelContext() {
             syncBudgetAndRemaining();
         });
     }
-    const expenseAmountInput = document.getElementById('timeblock-expense-amount');
     if (expenseAmountInput) {
         expenseAmountInput.addEventListener('input', () => {
             const raw = expenseAmountInput.value.trim();
@@ -3727,13 +3598,6 @@ updatePanelContext() {
 
     
 // --- Restored Helper Methods ---
-
-setLocMode(mode) {
-    const input = document.getElementById('modal-location');
-    if (!input) return;
-    ENGINE.activeTypeContext.isRemote = (mode === 'web');
-    this.updatePanelContext();
-},
 
 addStakeholder() {
     const list = document.getElementById('stakeholder-list');
@@ -4585,20 +4449,6 @@ togglePreRead(el) {
     }
 },
 
-    startMeetingTicker(hourlyRate) {
-        const ticker = document.getElementById('burn-ticker');
-        if(!ticker) return;
-        const ratePerSec = hourlyRate / 3600;
-        let elapsedSec = 0;
-        
-        if(this.tickerInterval) clearInterval(this.tickerInterval);
-        
-        this.tickerInterval = setInterval(() => {
-            elapsedSec++;
-            ticker.innerText = `$${(elapsedSec * ratePerSec).toFixed(2)} LIVE`;
-        }, 1000);
-    },
-
 renderDay() {
     const events = this.db[this.selectedDate] || [];
     const container = document.getElementById('ledger-container');
@@ -4862,7 +4712,7 @@ updateTimeline(shouldScroll = false) {
     if (!line) return;
 
     // Only show line for today
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateISO();
     if (this.selectedDate !== today) {
         line.style.display = 'none';
         return;
@@ -5503,7 +5353,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         if (itemInput) itemInput.value = '';
         if (descInput) descInput.value = '';
         const now = new Date();
-        if (dateInput) dateInput.value = this.formatDate(now.toISOString().split('T')[0]);
+        if (dateInput) dateInput.value = this.formatDate(getLocalDateISO(now));
         if (timeInput) timeInput.value = now.toTimeString().slice(0, 5);
         if (categoryInput && subcategoryInput) {
             this.initCategoryDropdowns(categoryInput, subcategoryInput, '', '');
@@ -5685,7 +5535,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const item = itemInput && itemInput.value.trim() ? itemInput.value.trim() : '';
         const description = descInput && descInput.value.trim() ? descInput.value.trim() : '';
         const desc = item || description || (sign > 0 ? 'Income' : 'Expense');
-        const date = dateInput ? this.formatDate(dateInput.value) : this.formatDate(new Date().toISOString().split('T')[0]);
+        const date = dateInput ? this.formatDate(dateInput.value) : this.formatDate(getLocalDateISO());
         const time = timeInput ? timeInput.value : new Date().toTimeString().slice(0, 5);
         const category = categoryInput && categoryInput.value.trim() ? categoryInput.value.trim() : 'General';
         const subcategory = subcategoryInput && subcategoryInput.value.trim() ? subcategoryInput.value.trim() : '';
