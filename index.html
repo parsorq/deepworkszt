@@ -4121,15 +4121,16 @@ async loadData() {
     eventsRows.slice(1).forEach((row) => {
         if (row.length < 6) return;
         const [id, date, start, end, label, type, agenda, stakeholders, notes, budget, allDay, widgetsRaw] = row;
-        if (!date) return;
+        const dateKey = this.normalizeDateKey(date);
+        if (!dateKey) return;
         let widgets = {};
         if (widgetsRaw && typeof widgetsRaw === 'string') {
             try { widgets = JSON.parse(widgetsRaw) || {}; } catch (_) {}
         }
-        if (!this.db[date]) this.db[date] = [];
+        if (!this.db[dateKey]) this.db[dateKey] = [];
         const ev = {
             id,
-            date,
+            date: dateKey,
             start: parseFloat(start),
             end: parseFloat(end),
             label,
@@ -4141,15 +4142,16 @@ async loadData() {
             allDay: allDay === '1' || allDay === 'true',
             widgets
         };
-        this.db[date].push(ev);
+        this.db[dateKey].push(ev);
     });
 
     this.transactions = txRows.slice(1).map((row) => {
         if (row.length >= 9) {
             const [id, date, time, item, description, amount, category, subcategory, eventId] = row;
+            const dateKey = this.normalizeDateKey(date) || date;
             return {
                 id,
-                date,
+                date: dateKey,
                 time,
                 desc: item || description || '',
                 item: item || '',
@@ -4161,9 +4163,10 @@ async loadData() {
             };
         }
         const [id, date, time, desc, amount, category, subcategory, eventId] = row;
+        const dateKey = this.normalizeDateKey(date) || date;
         return {
             id,
-            date,
+            date: dateKey,
             time,
             desc: desc || '',
             item: '',
@@ -4355,7 +4358,7 @@ async deleteEntity(type, id) {
 async saveEvent(event, skipLog = false) {
     if (!event || !event.id) return;
     await this.ensureUserStorage();
-    const date = event.date || this.selectedDate;
+    const date = this.formatDate(event.date || this.selectedDate);
     const widgets = event.widgets && typeof event.widgets === 'object' ? event.widgets : {};
     const row = [
         event.id,
@@ -5551,6 +5554,19 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    },
+
+    /** Normalize any sheet date value to YYYY-MM-DD so daily ledger keys match selectedDate. */
+    normalizeDateKey(value) {
+        if (value == null || value === '') return '';
+        const s = String(value).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s.slice(0, 10))) return s.slice(0, 10);
+        const num = Number(value);
+        if (Number.isFinite(num) && num >= 1000 && num <= 1000000) {
+            const ms = (num - 25569) * 86400 * 1000;
+            return getLocalDateISO(new Date(ms));
+        }
+        return this.formatDate(value);
     },
 
     formatAmount(amount, decimals = 2) {
