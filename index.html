@@ -1466,6 +1466,7 @@ const ENGINE = {
     nextEventId: 100, // For generating unique IDs
     editMeetingWidgets: { stakeholders: true, agenda: true, timeblockExpenses: true },
     editMeetingDraftWidgets: {},
+    expandedWidget: null,
 
 
 async init() {
@@ -2771,6 +2772,7 @@ renderAuditGraph() {
 closeModal() {
     this.isMeetingActive = false;
     this.currentEventIdx = null;
+    this.expandedWidget = null;
     this.closeEditMeetingSettings();
     const modal = document.getElementById('modal-overlay');
     if (modal) modal.style.display = 'none';
@@ -2781,6 +2783,46 @@ closeModal() {
         btn.innerText = "START";
         btn.style.background = "white";
         btn.style.color = "black";
+    }
+},
+
+expandWidget(id) {
+    if (!['notes', 'stakeholders', 'agenda', 'timeblockExpenses'].includes(id)) return;
+    this.expandedWidget = id;
+    this.applyExpandedWidget();
+},
+
+collapseWidget() {
+    this.expandedWidget = null;
+    this.applyExpandedWidget();
+},
+
+applyExpandedWidget() {
+    const backBar = document.getElementById('widget-back-bar');
+    const notes = document.getElementById('widget-notes');
+    const urlRow = document.getElementById('widget-url-row');
+    const url = document.getElementById('widget-url');
+    const stakeholders = document.getElementById('widget-stakeholders');
+    const agenda = document.getElementById('widget-agenda');
+    const timeblockExpenses = document.getElementById('widget-timeblockExpenses');
+    const show = (el, display = '') => { if (el) el.style.display = display || ''; };
+    const hide = (el) => { if (el) el.style.display = 'none'; };
+
+    if (!this.expandedWidget) {
+        show(backBar, 'none');
+        show(notes); show(urlRow, 'grid'); show(url); show(stakeholders); show(agenda); show(timeblockExpenses);
+        return;
+    }
+    show(backBar, 'flex');
+    const exp = this.expandedWidget;
+    if (exp === 'notes') {
+        show(notes); hide(urlRow); hide(agenda); hide(timeblockExpenses);
+    } else if (exp === 'stakeholders') {
+        hide(notes); show(urlRow, 'grid'); hide(url); show(stakeholders); hide(agenda); hide(timeblockExpenses);
+    } else if (exp === 'agenda') {
+        hide(notes); hide(urlRow); show(agenda); hide(timeblockExpenses);
+    } else if (exp === 'timeblockExpenses') {
+        hide(notes); hide(urlRow); hide(agenda); show(timeblockExpenses);
     }
 },
 
@@ -2865,11 +2907,18 @@ updatePanelContext() {
     const showStakeholders = showTimeblockDetails && this.getWidgetVisible('stakeholders', activeEvent);
     const showAgenda = showTimeblockDetails && this.getWidgetVisible('agenda', activeEvent);
     const showTimeblockExpenses = showTimeblockDetails && this.getWidgetVisible('timeblockExpenses', activeEvent);
-    // --- 2. QUICK NOTES (fixed) ---
     html += `
-        <div style="grid-column: span 2; pointer-events: all; margin-bottom: ${showTimeblockDetails ? '6px' : '0'};">
+        <div id="widget-back-bar" style="display:none; grid-column: span 2; pointer-events: all; margin-bottom: 8px;">
+            <button type="button" onclick="ENGINE.collapseWidget()" style="display:flex; align-items:center; gap:6px; background: transparent; border: none; color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 0;">
+                <span style="font-size:14px;">←</span> Back to session
+            </button>
+        </div>
+        <div id="widget-notes" style="grid-column: span 2; pointer-events: all; margin-bottom: ${showTimeblockDetails ? '6px' : '0'};">
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
-                <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; margin-bottom:6px; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
+                    <button type="button" onclick="ENGINE.expandWidget('notes')" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer;">Expand</button>
+                </div>
                 <div style="display:flex; gap:8px; margin-bottom:8px;">
                     <input id="timeblock-notes-input" placeholder="Capture a quick note or decision..." style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px; outline:none;">
                     <button onclick="ENGINE.saveSession()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
@@ -2888,8 +2937,8 @@ updatePanelContext() {
     // --- 3. MEETING URL / LOCATION (full width when Stakeholders off) + STAKEHOLDERS ---
     if (showTimeblockDetails) {
         html += `
-        <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 10px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '4px' : '0'}; margin-top: 0; align-items: start;">
-            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.015); padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03); height: 84px; min-width: 0; ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
+        <div id="widget-url-row" style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 10px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '4px' : '0'}; margin-top: 0; align-items: start;">
+            <div id="widget-url" style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.015); padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03); height: 84px; min-width: 0; ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
                 <div style="display: flex; background: rgba(0,0,0,0.15); padding: 4px; border-radius: 8px; flex-shrink: 0;">
                     <button onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
                             style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 13px; color: rgba(255,255,255,0.65); transition: all 0.15s;">
@@ -2903,13 +2952,13 @@ updatePanelContext() {
                 </div>
             </div>
             ${showStakeholders ? `
-            <div class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.03); height: 84px; display:flex; flex-direction:column; overflow:hidden;">
+            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.03); height: 84px; display:flex; flex-direction:column; overflow:hidden;">
                 <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Stakeholders
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <div></div>
+                    <button type="button" onclick="ENGINE.expandWidget('stakeholders')" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer;">Expand</button>
                 </div>
                 <div style="display:flex; justify-content:flex-end; margin-top: 2px;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
@@ -2930,13 +2979,13 @@ updatePanelContext() {
     // --- 4. SESSION AGENDA (widget, top-aligned) ---
     if (showAgenda) {
         html += `
-            <div class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: ${showTimeblockExpenses ? '4px' : '0'};">
+            <div id="widget-agenda" class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: ${showTimeblockExpenses ? '4px' : '0'};">
                 <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Session Agenda
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <div></div>
+                    <button type="button" onclick="ENGINE.expandWidget('agenda')" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer;">Expand</button>
                 </div>
                 <div style="display:flex; justify-content:flex-end; margin: 4px 0 2px;">
                     <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
@@ -2959,13 +3008,13 @@ updatePanelContext() {
         const expenseItems = activeEvent ? this.getEventExpenses(activeEvent.id) : [];
         const expenseDisplayItems = [...expenseItems].reverse();
         html += `
-            <div class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 4px; margin-bottom: 0;">
+            <div id="widget-timeblockExpenses" class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 4px; margin-bottom: 0;">
                 <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Timeblock Expenses
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <div></div>
+                    <button type="button" onclick="ENGINE.expandWidget('timeblockExpenses')" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 6px; cursor: pointer;">Expand</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px; margin-top: 2px; align-items: start;">
                     <div style="display:flex; flex-direction:column; gap:4px;">
@@ -3043,6 +3092,7 @@ updatePanelContext() {
     
     if (fixedContainer) fixedContainer.innerHTML = headerHtml;
     container.innerHTML = html;
+    this.applyExpandedWidget();
     const dateInput = document.getElementById('timeblock-date');
     const startInput = document.getElementById('timeblock-start');
     const endInput = document.getElementById('timeblock-end');
