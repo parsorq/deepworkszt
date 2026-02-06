@@ -1002,29 +1002,22 @@ body.dragging .reminder-marker {
 body.logged-out #tablet-shell {
     display: none;
 }
-body:not(.logged-out) #login-fallback {
-    display: none !important;
-}
-#login-fallback,
 #engine-login-overlay {
     pointer-events: auto;
 }
-#login-fallback button,
 #engine-login-overlay button {
     pointer-events: auto !important;
     cursor: pointer !important;
 }
-#login-fallback-btn:hover,
 #engine-login-btn:hover {
-    background: rgba(0,255,135,0.14) !important;
-    border-color: rgba(0,255,135,0.28) !important;
-    color: rgba(255,255,255,0.85) !important;
+    background: rgba(79,172,254,0.16) !important;
+    border-color: rgba(79,172,254,0.3) !important;
+    color: rgba(255,255,255,0.9) !important;
 }
 @keyframes login-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,135,0.15); }
-    50% { box-shadow: 0 0 0 6px rgba(0,255,135,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(79,172,254,0.16); }
+    50% { box-shadow: 0 0 0 6px rgba(79,172,254,0); }
 }
-#login-fallback-btn,
 #engine-login-btn {
     animation: login-pulse 2.5s ease-in-out infinite;
 }
@@ -1127,14 +1120,6 @@ body:not(.logged-out) #login-fallback {
 </head>
 
 <body class="mode-architect lens-both logged-out">
-<div id="login-fallback" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0B0E14; z-index: 1999; padding: 20px; box-sizing: border-box;">
-    <div style="max-width: 420px; text-align: center; color: rgba(255,255,255,0.9);">
-        <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
-        <div style="font-size: 22px; font-weight: 700; margin-bottom: 16px;">Authenticate with Google</div>
-        <p id="login-fallback-status" style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</p>
-        <button type="button" id="login-fallback-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer; font-size: 14px; animation: login-pulse 2.5s ease-in-out infinite;">Sign in with Google</button>
-    </div>
-</div>
 <div id="tablet-shell">
     <div id="content-area">
         <div class="header-top">
@@ -1693,7 +1678,7 @@ function showLoginUI() {
                 <input id="engine-google-client-id" placeholder="Google Client ID" style="width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline: none; margin-bottom: 8px;">
                 <button id="engine-login-save-config" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: white; font-weight: 700; font-size: 10px; cursor: pointer;">Save client ID</button>
             </div>
-            <button type="button" id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer; animation: login-pulse 2.5s ease-in-out infinite;">Sign in</button>
+            <button type="button" id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: rgba(79,172,254,0.14); border: 1px solid rgba(79,172,254,0.28); border-radius: 10px; color: rgba(255,255,255,0.85); font-weight: 700; cursor: pointer; animation: login-pulse 2.5s ease-in-out infinite;">Sign in</button>
         </div>
     `;
     document.body.appendChild(loginOverlay);
@@ -5718,26 +5703,6 @@ setInterval(() => {
 
 // Show login as soon as DOM is ready so user never sees a black screen
 function initLoginUI() {
-    const fallbackBtn = document.getElementById('login-fallback-btn');
-    if (fallbackBtn && !fallbackBtn.dataset.wired) {
-        fallbackBtn.dataset.wired = '1';
-        fallbackBtn.onclick = function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (typeof runGoogleSignIn !== 'function' || !GOOGLE_CLIENT_ID) {
-                if (typeof showLoginUI === 'function') showLoginUI();
-                return;
-            }
-            if (googleReady && window.google && window.google.accounts && window.google.accounts.oauth2) {
-                const setBusy = () => { fallbackBtn.style.opacity = '0.7'; setLoginStatus('Opening sign-in...'); };
-                const setIdle = () => { fallbackBtn.style.opacity = '1'; };
-                runGoogleSignIn(setBusy, setIdle, function () {});
-            } else {
-                if (typeof showLoginUI === 'function') showLoginUI();
-            }
-            return false;
-        };
-    }
     if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay')) {
         tryAutoLogin();
         if (!localStorage.getItem('ENGINE_LAST_USER') && typeof showLoginUI === 'function') {
