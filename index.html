@@ -1323,13 +1323,9 @@ const GOOGLE_DISCOVERY_DOCS = [
 ];
 
 let googleAccessToken = null;
-let googleAccessTokenExpiresAt = null;
 let googleReadyPromise = null;
 let googleReady = false;
 let loginOverlay = null;
-const ENGINE_TOKEN_KEY = 'ENGINE_ACCESS_TOKEN';
-const ENGINE_TOKEN_EXPIRY_KEY = 'ENGINE_ACCESS_TOKEN_EXPIRES_AT';
-const USER_TOKEN_SHEET_NAME = 'SessionTokens';
 
 function loadGoogleScript(src) {
     return new Promise((resolve, reject) => {
@@ -1469,7 +1465,6 @@ async function handleLogin(promptMode = 'consent') {
                     return;
                 }
                 googleAccessToken = response.access_token;
-                persistAccessToken(response);
                 gapi.client.setToken({ access_token: googleAccessToken });
                 try {
                     const profile = await fetchUserProfile();
@@ -1482,7 +1477,6 @@ async function handleLogin(promptMode = 'consent') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
-                    await saveTokenToUserSheet(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1515,7 +1509,6 @@ function handleLoginInteractive(promptMode = 'select_account') {
                     return;
                 }
                 googleAccessToken = response.access_token;
-                persistAccessToken(response);
                 gapi.client.setToken({ access_token: googleAccessToken });
                 try {
                     const profile = await fetchUserProfile();
@@ -1528,7 +1521,6 @@ function handleLoginInteractive(promptMode = 'select_account') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
-                    await saveTokenToUserSheet(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1567,7 +1559,6 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             return;
         }
         googleAccessToken = response.access_token;
-        persistAccessToken(response);
         gapi.client.setToken({ access_token: googleAccessToken });
         try {
             const profile = await fetchUserProfile();
@@ -1581,7 +1572,6 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             localStorage.setItem('ENGINE_LAST_USER', profile.email);
             await ENGINE.init();
             finalizeLoginSuccess();
-            await saveTokenToUserSheet(profile.email).catch(() => {});
             onSuccess();
         } catch (err) {
             console.error('Login failed:', err);
@@ -1612,176 +1602,6 @@ function finalizeLoginSuccess() {
     if (loginOverlay && loginOverlay.parentNode) loginOverlay.remove();
 }
 
-function persistAccessToken(response) {
-    if (!response || !response.access_token) return;
-    const rawExpires = Number(response.expires_in || 0);
-    const expiresIn = Number.isFinite(rawExpires) && rawExpires > 0 ? rawExpires : 3600;
-    const expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
-    googleAccessTokenExpiresAt = expiresAt;
-    localStorage.setItem(ENGINE_TOKEN_KEY, response.access_token);
-    localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
-}
-
-function clearPersistedToken() {
-    localStorage.removeItem(ENGINE_TOKEN_KEY);
-    localStorage.removeItem(ENGINE_TOKEN_EXPIRY_KEY);
-}
-
-async function tryTokenRestore() {
-    const cachedEmail = localStorage.getItem('ENGINE_LAST_USER');
-    let token = localStorage.getItem(ENGINE_TOKEN_KEY);
-    let expiresAt = Number(localStorage.getItem(ENGINE_TOKEN_EXPIRY_KEY) || 0);
-    if (!cachedEmail || !token) return false;
-    await ensureGoogleReady();
-    googleAccessToken = token;
-    googleAccessTokenExpiresAt = Number.isFinite(expiresAt) ? expiresAt : (Date.now() + 5 * 60 * 1000);
-    gapi.client.setToken({ access_token: googleAccessToken });
-    if (cachedEmail) {
-        try {
-            const userSheetId = getUserSheetIdFromCache(cachedEmail);
-            if (userSheetId) {
-                const storedToken = await fetchTokenFromUserSheet(userSheetId, cachedEmail);
-                if (storedToken?.token && storedToken?.expiresAt) {
-                    token = storedToken.token;
-                    expiresAt = storedToken.expiresAt;
-                    googleAccessToken = token;
-                    googleAccessTokenExpiresAt = expiresAt;
-                    gapi.client.setToken({ access_token: googleAccessToken });
-                    localStorage.setItem(ENGINE_TOKEN_KEY, token);
-                    localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
-                }
-            }
-        } catch (_) {
-            // Ignore user-sheet lookup failures; fallback to local cache.
-        }
-        try {
-            ENGINE.userEmail = cachedEmail;
-            await ENGINE.init();
-            finalizeLoginSuccess();
-            return true;
-        } catch (err) {
-            clearPersistedToken();
-            throw err;
-        }
-    }
-    const profile = await fetchUserProfile();
-    const allowed = await validateMasterRegistry(profile.email);
-    if (!allowed) {
-        clearPersistedToken();
-        throw new Error('Access denied by Master Registry. Add your email to the registry sheet.');
-    }
-    ENGINE.userEmail = profile.email;
-    localStorage.setItem('ENGINE_LAST_USER', profile.email);
-    await ENGINE.init();
-    finalizeLoginSuccess();
-    return true;
-}
-
-function normalizeEmail(email) {
-    return String(email || '').trim().toLowerCase();
-}
-
-function getUserSheetIdFromCache(email) {
-    const key = `ENGINE_USER_FILE_ID_${normalizeEmail(email)}`;
-    return localStorage.getItem(key);
-}
-
-async function ensureUserTokenSheet(userSheetId) {
-    await ensureGoogleReady();
-    const sheetRes = await gapi.client.sheets.spreadsheets.get({
-        spreadsheetId: userSheetId
-    });
-    const sheets = sheetRes.result.sheets || [];
-    const existing = sheets.find(s => s.properties?.title === USER_TOKEN_SHEET_NAME);
-    if (!existing) {
-        await gapi.client.sheets.spreadsheets.batchUpdate({
-            spreadsheetId: userSheetId,
-            resource: { requests: [{ addSheet: { properties: { title: USER_TOKEN_SHEET_NAME } } }] }
-        });
-        await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: userSheetId,
-            range: `${USER_TOKEN_SHEET_NAME}!A1:D1`,
-            valueInputOption: 'RAW',
-            resource: { values: [['email', 'access_token', 'expires_at', 'updated_at']] }
-        });
-    }
-}
-
-async function saveTokenToUserSheet(email) {
-    if (!email || !googleAccessToken || !googleAccessTokenExpiresAt) return;
-    if (!ENGINE.userSheetId) {
-        try { await ENGINE.ensureUserStorage(); } catch (_) {}
-    }
-    const userSheetId = ENGINE.userSheetId || getUserSheetIdFromCache(email);
-    if (!userSheetId) return;
-    await ensureUserTokenSheet(userSheetId);
-    const valuesRes = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: userSheetId,
-        range: `${USER_TOKEN_SHEET_NAME}!A:D`
-    });
-    const rows = valuesRes.result.values || [];
-    const rowIndex = rows.findIndex((row, idx) => idx > 0 && normalizeEmail(row[0]) === normalizeEmail(email));
-    const row = [email, googleAccessToken, String(googleAccessTokenExpiresAt), new Date().toISOString()];
-    if (rowIndex > 0) {
-        const targetRow = rowIndex + 1;
-        await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: userSheetId,
-            range: `${USER_TOKEN_SHEET_NAME}!A${targetRow}:D${targetRow}`,
-            valueInputOption: 'RAW',
-            resource: { values: [row] }
-        });
-    } else {
-        await gapi.client.sheets.spreadsheets.values.append({
-            spreadsheetId: userSheetId,
-            range: `${USER_TOKEN_SHEET_NAME}!A:D`,
-            valueInputOption: 'RAW',
-            insertDataOption: 'INSERT_ROWS',
-            resource: { values: [row] }
-        });
-    }
-}
-
-async function fetchTokenFromUserSheet(userSheetId, email) {
-    if (!userSheetId || !email) return null;
-    const valuesRes = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: userSheetId,
-        range: `${USER_TOKEN_SHEET_NAME}!A:D`
-    });
-    const rows = valuesRes.result.values || [];
-    const row = rows.find((r, idx) => idx > 0 && normalizeEmail(r[0]) === normalizeEmail(email));
-    if (!row) return null;
-    const token = row[1];
-    const expiresAt = Number(row[2] || 0);
-    if (token && Number.isFinite(expiresAt)) return { token, expiresAt };
-    return null;
-}
-
-function tryAutoLogin() {
-    if (!document.body.classList.contains('logged-out')) return;
-    if (sessionStorage.getItem('ENGINE_AUTO_LOGIN_TRIED')) return;
-    if (!localStorage.getItem('ENGINE_LAST_USER')) return;
-    sessionStorage.setItem('ENGINE_AUTO_LOGIN_TRIED', '1');
-    const btn = document.getElementById('engine-login-btn');
-    if (btn) {
-        btn.setAttribute('aria-busy', 'true');
-        btn.setAttribute('disabled', 'true');
-        btn.dataset.label = btn.dataset.label || btn.textContent;
-        btn.textContent = 'Signing in...';
-    }
-    setLoginStatus('Attempting automatic sign-in...');
-    tryTokenRestore().catch(() => false).then((restored) => {
-        if (restored) return;
-        return handleLogin('none').catch((err) => {
-            setLoginStatus(err?.message || 'Sign in to sync with your Sheets ledger.');
-        });
-    }).finally(() => {
-        if (btn) {
-            btn.removeAttribute('aria-busy');
-            btn.removeAttribute('disabled');
-            if (btn.dataset.label) btn.textContent = btn.dataset.label;
-        }
-    });
-}
 function showLoginUI() {
     if (document.getElementById('engine-login-overlay')) return;
     document.body.classList.add('logged-out');
@@ -1924,8 +1744,7 @@ const ENGINE = {
         institutions: 'Institutions',
         projects: 'Projects',
         categories: 'Categories',
-        subcategories: 'Subcategories',
-        sessionTokens: 'SessionTokens'
+        subcategories: 'Subcategories'
     },
 
     isDragging: false,
@@ -4195,8 +4014,7 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.categories, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.sessionTokens, ['email', 'access_token', 'expires_at', 'updated_at'])
+        this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt'])
     ]);
 },
 
@@ -5079,7 +4897,6 @@ updateTimeline(shouldScroll = false) {
         this.userSheetId = null;
         try {
             localStorage.removeItem('ENGINE_LAST_USER');
-            clearPersistedToken();
         } catch (_) {}
         if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
             gapi.client.setToken(null);
@@ -5892,7 +5709,6 @@ setInterval(() => {
 function initLoginUI() {
     if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay')) {
         if (typeof showLoginUI === 'function') showLoginUI();
-        tryAutoLogin();
     }
 }
 if (document.readyState === 'loading') {
