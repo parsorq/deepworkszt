@@ -474,28 +474,31 @@ body.dragging .reminder-marker {
     animation: modalSlideIn 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Edit Meeting: top and footer fixed, middle scrollable when needed */
+/* Edit Meeting: 3 areas — top fixed, middle flexible+scrollable, bottom fixed */
 .meeting-panel--editor {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    height: 85vh;
 }
 
 .meeting-panel--editor .meeting-panel-header,
-.meeting-panel--editor #fixed-fields-container,
-.meeting-panel--editor .meeting-panel-footer {
+.meeting-panel--editor #fixed-fields-container {
     flex: 0 0 auto;
 }
 
 .meeting-panel--editor .meeting-panel-body {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     min-height: 0;
-    max-height: calc(85vh - 220px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 2px 4px 4px;
     width: 100%;
     align-items: start;
+}
+
+.meeting-panel--editor .meeting-panel-footer {
+    flex: 0 0 auto;
 }
 
 @keyframes modalSlideIn {
