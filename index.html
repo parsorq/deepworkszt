@@ -472,7 +472,7 @@ body.dragging .reminder-marker {
     height: 85vh;
     overflow-y: auto;
     box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
-    animation: modalSlideIn 0.3s cubic-bezier(0.2, 0, 0, 1);
+    animation: modalSlideIn 0.2s ease-out;
     pointer-events: auto;
 }
 
@@ -505,8 +505,8 @@ body.dragging .reminder-marker {
 }
 
 @keyframes modalSlideIn {
-    from { transform: scale(0.95) translateY(20px); opacity: 0; }
-    to { transform: scale(1) translateY(0); opacity: 1; }
+    from { opacity: 0.92; }
+    to { opacity: 1; }
 }
 
 /* Date Navigation */
@@ -578,11 +578,11 @@ body.dragging .reminder-marker {
     input:focus, textarea:focus, select:focus {
         outline: none;
         border-color: var(--accent-cyan) !important;
-        box-shadow: 0 0 0 1px rgba(0, 242, 254, 0.5), 0 0 14px rgba(0, 255, 135, 0.2);
+        box-shadow: 0 0 0 1px rgba(0, 242, 254, 0.25);
     }
 
     .active-input-row {
-        box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.45), 0 0 18px rgba(0, 255, 135, 0.25);
+        box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.35);
     }
 
     .panel-section--expandable {
@@ -630,11 +630,11 @@ body.dragging .reminder-marker {
     }
 
     @keyframes savePulse {
-        0% { box-shadow: 0 0 0 0 rgba(0, 255, 135, 0.6); border-color: var(--accent-emerald); }
-        100% { box-shadow: none; border-color: var(--accent-cyan); }
+        0% { border-color: rgba(0, 200, 120, 0.5); }
+        100% { border-color: var(--accent-cyan); }
     }
     .save-pulse {
-        animation: savePulse 700ms ease-out 1;
+        animation: savePulse 400ms ease-out 1;
     }
 
     /* --- 7. UTILITIES & TYPOGRAPHY: Global Overrides --- */
@@ -1553,10 +1553,10 @@ async init() {
             if (!modalOverlay.contains(el)) return;
             if (modalOverlay.style.display === 'none') return;
             e.preventDefault();
-            if (el.id === 'timeblock-notes-input') { this.saveSession(); return; }
+            if (el.id === 'timeblock-notes-input') { this.addNoteOnly(); return; }
             if (['timeblock-expense-item', 'timeblock-expense-desc', 'timeblock-expense-amount'].includes(el.id)) { this.addTimeblockExpense(); return; }
-            if (el.id === 'modal-location') { this.saveSession(); return; }
-            this.saveSession();
+            if (el.id === 'modal-location' || el.id === 'strategic-objective-input') { this.saveSessionWithoutClosing(); return; }
+            this.saveSessionWithoutClosing();
         }, true);
     }
     window.addEventListener('resize', () => {
@@ -2909,8 +2909,8 @@ updatePanelContext() {
     const eventEnd = activeEvent ? this.decimalToTime(activeEvent.end) : this.decimalToTime(Math.min(24, (now.getHours() + 1)));
     const agendaItems = activeEvent?.agenda ? activeEvent.agenda.split('|').filter(Boolean) : [];
     const stakeholderItems = activeEvent?.stakeholders ? activeEvent.stakeholders.split('|').filter(Boolean) : [];
-    const noteItems = activeEvent?.notes ? activeEvent.notes.split('|').filter(Boolean) : [];
-    const noteDisplayItems = noteItems.length ? [...noteItems].reverse() : [];
+    const noteItems = activeEvent?.notes ? this.parseNotes(activeEvent.notes) : [];
+    const noteDisplayItems = noteItems.length ? [...noteItems].reverse().slice(0, 3) : [];
     const eventBudget = activeEvent?.budget || '';
     const widgetTitleColor = 'rgba(122,162,255,0.85)';
     const headerLabel = this.activeType === 'REMINDER'
@@ -2970,16 +2970,14 @@ updatePanelContext() {
                     <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
                     <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
                 </div>
-                <div style="display:flex; gap:8px; margin-bottom: 10px;">
-                    <input id="timeblock-notes-input" placeholder="Capture a quick note or decision..." style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px; outline:none;">
-                    <button onclick="ENGINE.saveSession()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer;">ADD</button>
-                </div>
-                <div id="timeblock-notes-history" style="display:flex; flex-direction:column; gap:4px; max-height: 48px; overflow-y:auto;">
-                    ${noteDisplayItems.length ? noteDisplayItems.map(note => `
-                        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 9px 12px; color: rgba(255,255,255,0.85); font-size: 12px;">
-                            ${note}
-                        </div>
-                    `).join('') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No notes yet.</div>'}
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap; overflow-x:auto; min-height:40px; padding:4px 0;">
+                    ${noteDisplayItems.length ? noteDisplayItems.map(({ date, text }) => `
+                        <span style="flex:0 0 auto; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 6px 10px; color: rgba(255,255,255,0.85); font-size: 11px; white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis;" title="${this.escapeAttribute(text)}">
+                            ${date ? `<span style="color: rgba(255,255,255,0.5); font-family:'SF Mono'; font-size:10px; margin-right:6px;">${this.formatNoteTime(date)}</span>` : ''}${this.escapeAttribute(text)}
+                        </span>
+                    `).join('') : ''}
+                    <input id="timeblock-notes-input" class="active-input-row" placeholder="Capture a quick note or decision…" style="flex:1; min-width:120px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px; outline:none; box-shadow: 0 0 0 1px rgba(0,255,135,0.2);" data-notes-continue>
+                    <button type="button" onclick="ENGINE.addNoteOnly()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; flex-shrink:0;">ADD</button>
                 </div>
             </div>
         </div>
@@ -3256,6 +3254,41 @@ addStakeholder() {
     list.appendChild(div);
 },
 
+parseNotes(notesStr) {
+    if (!notesStr || !notesStr.trim()) return [];
+    return notesStr.split('|').filter(Boolean).map(part => {
+        const i = part.indexOf('\t');
+        return i >= 0 ? { date: part.slice(0, i), text: part.slice(i + 1) } : { date: null, text: part };
+    });
+},
+serializeNotes(notesArr) {
+    return notesArr.map(({ date, text }) => (date ? `${date}\t${text}` : text)).join('|');
+},
+formatNoteTime(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const d = new Date(isoStr);
+        const now = new Date();
+        const today = now.toDateString() === d.toDateString();
+        if (today) return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch (_) { return ''; }
+},
+addNoteOnly() {
+    const notesInput = document.getElementById('timeblock-notes-input');
+    const newNote = notesInput ? notesInput.value.trim() : '';
+    if (!newNote) return;
+    const events = this.db[this.selectedDate] || [];
+    const event = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+    if (!event) return;
+    const existing = this.parseNotes(event.notes || '');
+    existing.push({ date: new Date().toISOString(), text: newNote });
+    event.notes = this.serializeNotes(existing);
+    if (notesInput) notesInput.value = '';
+    void this.saveEvent(event);
+    this.updatePanelContext();
+},
+
 saveSession() {
     const titleInput = document.getElementById('strategic-objective-input');
     const title = titleInput ? titleInput.value : "New Infrastructure Session";
@@ -3297,10 +3330,10 @@ saveSession() {
         event.agenda = this.getWidgetVisible('agenda', event) ? agenda : (event.agenda || '');
         event.stakeholders = this.getWidgetVisible('stakeholders', event) ? stakeholders : (event.stakeholders || '');
     }
-    const existingNotes = event.notes ? event.notes.split('|').filter(Boolean) : [];
+    const existingNotes = this.parseNotes(event.notes || '');
     const newNote = notesInput ? notesInput.value.trim() : '';
-    if (newNote) existingNotes.push(newNote);
-    event.notes = existingNotes.join('|');
+    if (newNote) existingNotes.push({ date: new Date().toISOString(), text: newNote });
+    event.notes = this.serializeNotes(existingNotes);
     event.budget = this.activeType === 'REMINDER' ? '' : (this.getWidgetVisible('timeblockExpenses', event) && budgetInput ? budgetInput.value.trim() : (event.budget || ''));
     const locationInput = document.getElementById('modal-location');
     if (locationInput) event.location = locationInput.value.trim() || (this.activeTypeContext?.isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A');
@@ -3318,6 +3351,63 @@ saveSession() {
     void this.saveEvent(event);
     document.getElementById('modal-overlay').style.display = 'none';
     this.renderDay();
+},
+
+saveSessionWithoutClosing() {
+    const titleInput = document.getElementById('strategic-objective-input');
+    const title = titleInput ? titleInput.value : "New Infrastructure Session";
+    const dateInput = document.getElementById('timeblock-date');
+    const startInput = document.getElementById('timeblock-start');
+    const endInput = document.getElementById('timeblock-end');
+    const allDayInput = document.getElementById('timeblock-all-day');
+    const notesInput = document.getElementById('timeblock-notes-input');
+    const budgetInput = document.getElementById('timeblock-budget');
+    const agendaInputs = document.querySelectorAll('#agenda-items-list input');
+    const stakeholderInputs = document.querySelectorAll('#stakeholder-list input');
+    const targetDate = this.formatDate(dateInput ? dateInput.value : this.selectedDate);
+    const isAllDay = allDayInput ? allDayInput.checked : false;
+    const startTime = startInput && !isAllDay ? startInput.value : '00:00';
+    const endTime = endInput && !isAllDay ? endInput.value : '00:00';
+    const startDec = this.timeToDecimal(startTime);
+    const endDec = this.timeToDecimal(endTime);
+    const agenda = Array.from(agendaInputs).map(input => input.value.trim()).filter(Boolean).join('|');
+    const stakeholders = Array.from(stakeholderInputs).map(input => input.value.trim()).filter(Boolean).join('|');
+    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
+    const sessions = this.db[this.selectedDate];
+    const targetIdx = this.currentEventIdx !== null ? this.currentEventIdx : (sessions.length - 1);
+    const event = sessions[targetIdx];
+    if (!event) return;
+    event.label = title;
+    event.type = this.activeType;
+    if (this.activeType === 'REMINDER') {
+        event.start = isAllDay ? 0 : startDec;
+        event.end = isAllDay ? 0 : startDec;
+        event.agenda = '';
+        event.stakeholders = '';
+    } else {
+        event.start = startDec;
+        event.end = endDec;
+        event.agenda = this.getWidgetVisible('agenda', event) ? agenda : (event.agenda || '');
+        event.stakeholders = this.getWidgetVisible('stakeholders', event) ? stakeholders : (event.stakeholders || '');
+    }
+    const existingNotes = this.parseNotes(event.notes || '');
+    const newNote = notesInput ? notesInput.value.trim() : '';
+    if (newNote) existingNotes.push({ date: new Date().toISOString(), text: newNote });
+    event.notes = this.serializeNotes(existingNotes);
+    event.budget = this.activeType === 'REMINDER' ? '' : (this.getWidgetVisible('timeblockExpenses', event) && budgetInput ? budgetInput.value.trim() : (event.budget || ''));
+    const locationInput = document.getElementById('modal-location');
+    if (locationInput) event.location = locationInput.value.trim() || (this.activeTypeContext?.isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A');
+    event.allDay = isAllDay;
+    if (targetDate !== this.selectedDate) {
+        sessions.splice(targetIdx, 1);
+        if (!this.db[targetDate]) this.db[targetDate] = [];
+        this.db[targetDate].push(event);
+        event.date = targetDate;
+        this.selectedDate = targetDate;
+        this.updateDateDisplay();
+    }
+    void this.saveEvent(event);
+    this.updatePanelContext();
 },
 
 async ensureUserStorage() {
