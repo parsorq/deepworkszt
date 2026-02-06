@@ -1627,6 +1627,18 @@ async function tryTokenRestore() {
     await ensureGoogleReady();
     googleAccessToken = token;
     gapi.client.setToken({ access_token: googleAccessToken });
+    const cachedEmail = localStorage.getItem('ENGINE_LAST_USER');
+    if (cachedEmail) {
+        try {
+            ENGINE.userEmail = cachedEmail;
+            await ENGINE.init();
+            finalizeLoginSuccess();
+            return true;
+        } catch (err) {
+            clearPersistedToken();
+            throw err;
+        }
+    }
     const profile = await fetchUserProfile();
     const allowed = await validateMasterRegistry(profile.email);
     if (!allowed) {
