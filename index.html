@@ -2958,7 +2958,7 @@ updatePanelContext() {
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                 <div style="display: flex; gap: 8px; align-items:center;">
-                    <input id="timeblock-date" type="date" value="${this.formatDate(eventDate)}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 140px;">
+                    <input id="timeblock-date" type="text" value="${this.formatDate(eventDate)}" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 140px;">
                     ${this.activeType === 'REMINDER' ? `<label style="display:flex; align-items:center; gap:6px; font-size:10px; color: rgba(255,255,255,0.6);">
                         <input id="timeblock-all-day" type="checkbox" ${activeEvent?.allDay ? 'checked' : ''} />
                         All day
@@ -3000,7 +3000,6 @@ updatePanelContext() {
                         </div>
                     `).join('') : ''}
                 </div>
-                <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 6px;">Saved with this session${ENGINE.userSheetId ? ' • Synced to Google Sheet' : ''}</div>
             </div>
         </div>
     `;
@@ -3119,19 +3118,17 @@ updatePanelContext() {
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
                     <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
-                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 6px; min-height: 32px; max-height: 120px; overflow-y: auto; margin-top: 8px;">
-                    ${expenseDisplayItems.length ? expenseDisplayItems.slice(0, 3).map(tx => {
+                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 4px; min-height: 28px; max-height: 100px; overflow-y: auto; margin-top: 8px;">
+                    ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
                             : '';
+                        const lineText = `${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')} • ${this.escapeHTML(tx.item || tx.desc || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}`;
                         return `
-                        <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 6px 10px; border-radius: 8px;">
-                            <div>
-                                <div style="font-size: 11px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
-                                <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
-                            </div>
-                            <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
-                                ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
+                        <div onclick="ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}')" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                            <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${lineText}</div>
+                            <div style="font-family:'SF Mono'; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-left: 8px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
+                                ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
                             </div>
                         </div>
                     `;
@@ -4773,9 +4770,9 @@ populateSelectOptions(select, items, selectedValue, placeholder, includeManage =
         .concat(normalizedItems.map(item => `<option value="${item}">${item}</option>`));
     if (includeManage) {
         options.push('<option value="__divider__" disabled>────────</option>');
-        options.push('<option value="__create__">+ Create</option>');
-        options.push('<option value="__edit__">✎ Edit selected</option>');
-        options.push('<option value="__delete__">🗑 Delete selected</option>');
+        options.push('<option value="__create__">Create</option>');
+        options.push('<option value="__edit__">Edit selected</option>');
+        options.push('<option value="__delete__">Delete selected</option>');
     }
     select.innerHTML = options.join('');
     select.value = selectedValue || '';
@@ -4977,19 +4974,17 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         const events = this.db[this.selectedDate] || [];
         const event = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
         const expenseItems = event ? this.getEventExpenses(event.id) : [];
-        const latestThree = expenseItems.length ? expenseItems.slice(-3).reverse() : [];
-        list.innerHTML = latestThree.length ? latestThree.map(tx => {
+        const displayItems = expenseItems.length ? [...expenseItems].reverse() : [];
+        list.innerHTML = displayItems.length ? displayItems.map(tx => {
             const categoryLabel = (tx.category || tx.subcategory)
                 ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
                 : '';
+            const lineText = `${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')} • ${this.escapeHTML(tx.item || tx.desc || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}`;
             return `
-            <div class="data-row" style="display:flex; justify-content:space-between; align-items:center; padding: 6px 10px; border-radius: 8px;">
-                <div>
-                    <div style="font-size: 11px; color:white; font-weight:600;">${this.escapeHTML(tx.item || tx.desc)}</div>
-                    <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4);">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
-                </div>
-                <div style="font-family:'SF Mono'; font-size: 11px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
-                    ${tx.amount >= 0 ? '+' : '-'}${this.formatAmount(Math.abs(tx.amount))}
+            <div onclick="ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}')" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${lineText}</div>
+                <div style="font-family:'SF Mono'; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-left: 8px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
+                    ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
                 </div>
             </div>
         `;
