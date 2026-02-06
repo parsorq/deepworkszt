@@ -1523,6 +1523,22 @@ async init() {
     document.addEventListener('keydown', () => {
         this.hideAllMenus();
     }, true);
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) {
+        modalOverlay.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); }, true);
+        modalOverlay.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            const el = e.target;
+            if (!el || !el.matches || !el.matches('input, textarea, select')) return;
+            if (!modalOverlay.contains(el)) return;
+            if (modalOverlay.style.display === 'none') return;
+            e.preventDefault();
+            if (el.id === 'timeblock-notes-input') { this.saveSession(); return; }
+            if (['timeblock-expense-item', 'timeblock-expense-desc', 'timeblock-expense-amount'].includes(el.id)) { this.addTimeblockExpense(); return; }
+            if (el.id === 'modal-location') { this.saveSession(); return; }
+            this.saveSession();
+        }, true);
+    }
     window.addEventListener('resize', () => {
         this.hideAllMenus();
     });
@@ -2885,6 +2901,7 @@ updatePanelContext() {
 
     if (ENGINE.activeTypeContext.isRemote === undefined) ENGINE.activeTypeContext.isRemote = true;
     const isRemote = ENGINE.activeTypeContext.isRemote;
+    const eventLocation = activeEvent?.location != null ? activeEvent.location : (isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A');
 
     let headerHtml = '';
     let html = '';
@@ -2958,7 +2975,7 @@ updatePanelContext() {
                 </div>
                 <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.75; min-height: 22px; display: flex; align-items: center; width: 100%;">${isRemote ? 'Meeting URL' : 'Location'}</label>
                 <div style="display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 22px; width: 100%;">
-                    <input type="text" id="modal-location" value="${isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A'}" 
+                    <input type="text" id="modal-location" value="${this.escapeAttribute(eventLocation)}" placeholder="${isRemote ? 'Meeting URL' : 'Location'}" 
                            style="flex: 1; min-width: 0; background: transparent; border: none; color: ${isRemote ? 'rgba(88, 166, 255, 0.9)' : 'rgba(255,255,255,0.85)'}; font-size: 12px; outline: none; font-family: 'SF Mono', monospace; box-sizing: border-box; padding: 0; ${isRemote ? 'text-decoration: underline; text-underline-offset: 2px;' : ''}">
                     ${isRemote ? `<a href="#" id="modal-location-open" onclick="ENGINE.openMeetingUrl(); return false;" style="font-size: 10px; font-weight: 600; color: rgba(88, 166, 255, 0.85); text-decoration: none; white-space: nowrap; flex-shrink: 0;">Open ↗</a>` : ''}
                 </div>
@@ -3183,24 +3200,6 @@ updatePanelContext() {
             applyTimeChanges();
         });
     }
-    const modalInputs = container ? container.querySelectorAll('input, textarea') : [];
-    modalInputs.forEach((input) => {
-        input.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter') return;
-            if (input.id === 'timeblock-expense-item' || input.id === 'timeblock-expense-desc' || input.id === 'timeblock-expense-amount') {
-                e.preventDefault();
-                this.addTimeblockExpense();
-                return;
-            }
-            if (input.id === 'timeblock-notes-input') {
-                e.preventDefault();
-                this.saveSession();
-                return;
-            }
-            e.preventDefault();
-            this.saveSession();
-        });
-    });
     const budgetInput = document.getElementById('timeblock-budget');
     if (budgetInput) {
         const syncBudgetAndRemaining = () => {
@@ -3279,6 +3278,8 @@ saveSession() {
     if (newNote) existingNotes.push(newNote);
     event.notes = existingNotes.join('|');
     event.budget = this.activeType === 'REMINDER' ? '' : (this.getWidgetVisible('timeblockExpenses', event) && budgetInput ? budgetInput.value.trim() : (event.budget || ''));
+    const locationInput = document.getElementById('modal-location');
+    if (locationInput) event.location = locationInput.value.trim() || (this.activeTypeContext?.isRemote ? 'deepworkszt.vercel.app' : 'Conference Room A');
     event.allDay = isAllDay;
 
     if (targetDate !== this.selectedDate) {
