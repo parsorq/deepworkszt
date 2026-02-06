@@ -974,6 +974,24 @@ body.logged-out #tablet-shell {
 body:not(.logged-out) #login-fallback {
     display: none !important;
 }
+#login-fallback,
+#engine-login-overlay {
+    pointer-events: auto;
+}
+#login-fallback button,
+#engine-login-overlay button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+#login-fallback-btn:hover,
+#engine-login-btn:hover {
+    background: rgba(0,255,135,0.14) !important;
+    border-color: rgba(0,255,135,0.28) !important;
+    color: rgba(255,255,255,0.85) !important;
+}
+#engine-login-btn[aria-busy="true"] {
+    opacity: 0.7;
+}
     
 
 /* Ensure only the active tab is visible and takes up the full viewport space */
@@ -1491,16 +1509,16 @@ function showLoginUI() {
         configPanel.style.display = 'block';
         if (clientIdInput && GOOGLE_CLIENT_ID) clientIdInput.value = GOOGLE_CLIENT_ID;
     }
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
+    btn.setAttribute('aria-busy', 'true');
+    btn.style.opacity = '0.7';
     setLoginStatus('Loading Google services...');
     ensureGoogleReady().then(() => {
         setLoginStatus('Sign in to sync with your Sheets ledger.');
-        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
         btn.style.opacity = '1';
     }).catch((err) => {
         setLoginStatus(err?.message || 'Unable to load Google services. Check blockers or network.', true);
-        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
         btn.style.opacity = '1';
     });
     if (saveConfigBtn) {
@@ -1516,21 +1534,21 @@ function showLoginUI() {
         });
     }
     btn.addEventListener('click', () => {
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
+        btn.setAttribute('aria-busy', 'true');
+        btn.style.opacity = '0.7';
         setLoginStatus('Connecting to Google...');
         if (!googleReady || !googleTokenClient) {
-            setLoginStatus('Loading Google services... click Log in again.', false);
+            setLoginStatus('Loading Google services... click Sign in again in a moment.', false);
             ensureGoogleReady().catch((err) => {
                 setLoginStatus(err?.message || 'Unable to load Google services. Check blockers or network.', true);
             });
-            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
             btn.style.opacity = '1';
             return;
         }
         const timeoutId = setTimeout(() => {
             setLoginStatus('Google sign-in timed out. Check popup blockers or privacy settings.', true);
-            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
             btn.style.opacity = '1';
         }, 15000);
         googleTokenClient.callback = async (response) => {
@@ -1538,7 +1556,7 @@ function showLoginUI() {
             if (response.error) {
                 const details = response.error_description || response.error || 'Unknown error';
                 setLoginStatus(`Google sign-in failed: ${details}`, true);
-                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
                 btn.style.opacity = '1';
                 return;
             }
@@ -1549,7 +1567,7 @@ function showLoginUI() {
                 const allowed = await validateMasterRegistry(profile.email);
                 if (!allowed) {
                     setLoginStatus('Access denied by Master Registry. Add your email to the registry sheet.', true);
-                    btn.disabled = false;
+                    btn.removeAttribute('aria-busy');
                     btn.style.opacity = '1';
                     return;
                 }
@@ -1562,7 +1580,7 @@ function showLoginUI() {
             } catch (err) {
                 console.error('Login failed:', err);
                 setLoginStatus(err?.message || 'Login failed.', true);
-                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
                 btn.style.opacity = '1';
             }
         };
