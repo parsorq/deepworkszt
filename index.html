@@ -1482,7 +1482,7 @@ async function handleLogin(promptMode = 'consent') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
-                    saveTokenToUserSheet(profile.email).catch(() => {});
+                    await saveTokenToUserSheet(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1528,7 +1528,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
                     finalizeLoginSuccess();
-                    saveTokenToUserSheet(profile.email).catch(() => {});
+                    await saveTokenToUserSheet(profile.email).catch(() => {});
                     resolve();
                 } catch (err) {
                     reject(err);
@@ -1581,7 +1581,7 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             localStorage.setItem('ENGINE_LAST_USER', profile.email);
             await ENGINE.init();
             finalizeLoginSuccess();
-            saveTokenToUserSheet(profile.email).catch(() => {});
+            await saveTokenToUserSheet(profile.email).catch(() => {});
             onSuccess();
         } catch (err) {
             console.error('Login failed:', err);
@@ -1924,7 +1924,8 @@ const ENGINE = {
         institutions: 'Institutions',
         projects: 'Projects',
         categories: 'Categories',
-        subcategories: 'Subcategories'
+        subcategories: 'Subcategories',
+        sessionTokens: 'SessionTokens'
     },
 
     isDragging: false,
@@ -4194,7 +4195,8 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.categories, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt'])
+        this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.sessionTokens, ['email', 'access_token', 'expires_at', 'updated_at'])
     ]);
 },
 
