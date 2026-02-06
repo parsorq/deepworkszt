@@ -1329,6 +1329,8 @@ let googleAccessToken = null;
 let googleReadyPromise = null;
 let googleReady = false;
 let loginOverlay = null;
+const ENGINE_TOKEN_KEY = 'ENGINE_ACCESS_TOKEN';
+const ENGINE_TOKEN_EXPIRY_KEY = 'ENGINE_ACCESS_TOKEN_EXPIRES_AT';
 
 function loadGoogleScript(src) {
     return new Promise((resolve, reject) => {
@@ -1473,6 +1475,7 @@ async function handleLogin(promptMode = 'consent') {
                     return;
                 }
                 googleAccessToken = response.access_token;
+                persistAccessToken(response);
                 gapi.client.setToken({ access_token: googleAccessToken });
                 try {
                     const profile = await fetchUserProfile();
@@ -1517,6 +1520,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
                     return;
                 }
                 googleAccessToken = response.access_token;
+                persistAccessToken(response);
                 gapi.client.setToken({ access_token: googleAccessToken });
                 try {
                     const profile = await fetchUserProfile();
@@ -1567,6 +1571,7 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             return;
         }
         googleAccessToken = response.access_token;
+        persistAccessToken(response);
         gapi.client.setToken({ access_token: googleAccessToken });
         try {
             const profile = await fetchUserProfile();
@@ -1610,14 +1615,54 @@ function finalizeLoginSuccess() {
     if (loginOverlay && loginOverlay.parentNode) loginOverlay.remove();
 }
 
+function persistAccessToken(response) {
+    if (!response || !response.access_token) return;
+    const expiresIn = Number(response.expires_in || 0);
+    if (!Number.isFinite(expiresIn) || expiresIn <= 0) return;
+    const expiresAt = Date.now() + Math.max(0, expiresIn - 60) * 1000;
+    localStorage.setItem(ENGINE_TOKEN_KEY, response.access_token);
+    localStorage.setItem(ENGINE_TOKEN_EXPIRY_KEY, String(expiresAt));
+}
+
+function clearPersistedToken() {
+    localStorage.removeItem(ENGINE_TOKEN_KEY);
+    localStorage.removeItem(ENGINE_TOKEN_EXPIRY_KEY);
+}
+
+async function tryTokenRestore() {
+    const token = localStorage.getItem(ENGINE_TOKEN_KEY);
+    const expiresAt = Number(localStorage.getItem(ENGINE_TOKEN_EXPIRY_KEY) || 0);
+    if (!token || !Number.isFinite(expiresAt) || Date.now() >= expiresAt) {
+        clearPersistedToken();
+        return false;
+    }
+    await ensureGoogleReady();
+    googleAccessToken = token;
+    gapi.client.setToken({ access_token: googleAccessToken });
+    const profile = await fetchUserProfile();
+    const allowed = await validateMasterRegistry(profile.email);
+    if (!allowed) {
+        clearPersistedToken();
+        throw new Error('Access denied by Master Registry. Add your email to the registry sheet.');
+    }
+    ENGINE.userEmail = profile.email;
+    localStorage.setItem('ENGINE_LAST_USER', profile.email);
+    await ENGINE.init();
+    finalizeLoginSuccess();
+    return true;
+}
+
 function tryAutoLogin() {
     if (!document.body.classList.contains('logged-out')) return;
     if (sessionStorage.getItem('ENGINE_AUTO_LOGIN_TRIED')) return;
     if (!localStorage.getItem('ENGINE_LAST_USER')) return;
     sessionStorage.setItem('ENGINE_AUTO_LOGIN_TRIED', '1');
     setLoginStatus('Attempting automatic sign-in...');
-    handleLogin('none').catch((err) => {
-        setLoginStatus(err?.message || 'Sign in to sync with your Sheets ledger.');
+    tryTokenRestore().catch(() => false).then((restored) => {
+        if (restored) return;
+        return handleLogin('none').catch((err) => {
+            setLoginStatus(err?.message || 'Sign in to sync with your Sheets ledger.');
+        });
     });
 }
 function showLoginUI() {
@@ -4862,6 +4907,7 @@ updateTimeline(shouldScroll = false) {
         this.userSheetId = null;
         try {
             localStorage.removeItem('ENGINE_LAST_USER');
+            clearPersistedToken();
         } catch (_) {}
         if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
             gapi.client.setToken(null);
