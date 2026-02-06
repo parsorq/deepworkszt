@@ -509,7 +509,11 @@ body.dragging .reminder-marker {
     align-items: stretch;
     flex: 1 1 auto;
     min-height: 0;
+    width: 100%;
     padding-bottom: 20px;
+    padding-left: 4px;
+    padding-right: 4px;
+    box-sizing: border-box;
 }
 .meeting-panel--editor .meeting-panel-body.widget-single-view > div {
     flex: 0 0 auto;
@@ -517,6 +521,8 @@ body.dragging .reminder-marker {
 .meeting-panel--editor .meeting-panel-body.widget-single-view > div.widget-expanded {
     flex: 1 1 0%;
     min-height: 0;
+    width: 100%;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -525,10 +531,14 @@ body.dragging .reminder-marker {
     display: flex !important;
     flex-direction: column;
     min-height: 0;
+    width: 100%;
+    min-width: 0;
 }
 #widget-url-row.widget-expanded #widget-stakeholders {
     flex: 1 1 0%;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -546,6 +556,8 @@ body.dragging .reminder-marker {
 .widget-expanded .panel-section {
     flex: 1 1 0%;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -557,9 +569,15 @@ body.dragging .reminder-marker {
 #widget-notes.widget-expanded > .panel-section {
     flex: 1 1 0%;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+#widget-agenda.widget-expanded {
+    width: 100%;
+    min-width: 0;
 }
 #widget-agenda.widget-expanded #agenda-items-list { flex: 1; min-height: 0; height: auto !important; max-height: none !important; }
 #widget-timeblockExpenses.widget-expanded {
@@ -567,6 +585,8 @@ body.dragging .reminder-marker {
     flex-direction: column;
     flex: 1 1 0%;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
     overflow: hidden;
 }
 #widget-timeblockExpenses.widget-expanded #timeblock-expense-list {
