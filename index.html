@@ -2843,6 +2843,7 @@ injectStyles() {
         @keyframes breathe { ... }
         .breathing-roi { ... }
         #agenda-items-list::-webkit-scrollbar { ... }
+        .widget-header-row:hover .widget-header-symbol { color: rgba(255,255,255,0.95); opacity: 1; }
     `;
     document.head.appendChild(style);
 },
@@ -2924,9 +2925,9 @@ updatePanelContext() {
         </div>
         <div id="widget-notes" style="grid-column: span 2; pointer-events: all; margin-bottom: ${showTimeblockDetails ? '6px' : '0'};">
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
-                <div role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('notes')" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; cursor: pointer;">
+                <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('notes')" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; cursor: pointer;">
                     <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
-                    <span style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; padding: 4px 8px; border-radius: 6px; line-height: 1;">⤢</span>
+                    <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1; transition: color 0.15s, opacity 0.15s;">⤢</span>
                 </div>
                 <div style="display:flex; gap:8px; margin-bottom:8px;">
                     <input id="timeblock-notes-input" placeholder="Capture a quick note or decision..." style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px; outline:none;">
@@ -2965,12 +2966,12 @@ updatePanelContext() {
             </div>
             ${showStakeholders ? `
             <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.03); height: 84px; display:flex; flex-direction:column; overflow:hidden;">
-                <div role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer;">
+                <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Stakeholders
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <span style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; padding: 4px 8px; border-radius: 6px; line-height: 1;">⤢</span>
+                    <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1; transition: color 0.15s, opacity 0.15s;">⤢</span>
                 </div>
                 <div style="display:flex; justify-content:flex-end; margin-top: 2px;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
@@ -2992,12 +2993,12 @@ updatePanelContext() {
     if (showAgenda) {
         html += `
             <div id="widget-agenda" class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: ${showTimeblockExpenses ? '4px' : '0'};">
-                <div role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('agenda')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; cursor: pointer;">
+                <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('agenda')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; cursor: pointer;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Session Agenda
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <span style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; padding: 4px 8px; border-radius: 6px; line-height: 1;">⤢</span>
+                    <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1; transition: color 0.15s, opacity 0.15s;">⤢</span>
                 </div>
                 <div style="display:flex; justify-content:flex-end; margin: 4px 0 2px;">
                     <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
@@ -3021,12 +3022,12 @@ updatePanelContext() {
         const expenseDisplayItems = [...expenseItems].reverse();
         html += `
             <div id="widget-timeblockExpenses" class="panel-section panel-section--expandable" style="grid-column: span 2; pointer-events: all; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 4px; margin-bottom: 0;">
-                <div role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('timeblockExpenses')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; cursor: pointer;">
+                <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('timeblockExpenses')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; cursor: pointer;">
                     <span style="display:flex; align-items:center; gap:8px;">
                         Timeblock Expenses
                         <span style="font-size:9px; color: rgba(255,255,255,0.4); font-weight:700;">Optional</span>
                     </span>
-                    <span style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; padding: 4px 8px; border-radius: 6px; line-height: 1;">⤢</span>
+                    <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1; transition: color 0.15s, opacity 0.15s;">⤢</span>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px; margin-top: 2px; align-items: start;">
                     <div style="display:flex; flex-direction:column; gap:4px;">
