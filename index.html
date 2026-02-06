@@ -530,6 +530,9 @@ body.dragging .reminder-marker {
 .widget-expanded .widget-header-symbol {
     display: none;
 }
+.edit-via-context-only {
+    pointer-events: none;
+}
 #widget-url-row.widget-expanded {
     display: flex !important;
     flex-direction: column;
@@ -1925,7 +1928,7 @@ renderTransactions() {
             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
             : '';
         return `
-        <div onclick="ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}', ${idx})" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: pointer;">
+        <div class="data-row" data-tx-id="${this.escapeAttribute(tx.id)}" data-tx-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: default;">
             <div>
                 <div style="font-size: 11px; color: white; font-weight: 500;">${this.escapeHTML(tx.item || tx.desc)}</div>
                 <div style="font-size: 9px; color: rgba(255,255,255,0.4); font-family: 'SF Mono';">${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}</div>
@@ -2763,10 +2766,18 @@ showModalRowMenu(x, y, type, index) {
                 setTimeout(() => {
                     const list = typ === 'stakeholder' ? document.getElementById('stakeholder-list') : document.getElementById('agenda-items-list');
                     if (list) {
-                        const row = list.querySelectorAll('div')[idx];
+                        const row = typ === 'stakeholder' ? list.querySelector(`[data-stakeholder-idx="${idx}"]`) : list.querySelector(`[data-agenda-idx="${idx}"]`);
                         if (row) {
                             const input = row.querySelector('input');
-                            if (input) input.focus();
+                            if (input) {
+                                input.style.pointerEvents = 'auto';
+                                input.focus();
+                                const onBlur = () => {
+                                    input.style.pointerEvents = 'none';
+                                    input.removeEventListener('blur', onBlur);
+                                };
+                                input.addEventListener('blur', onBlur, { once: true });
+                            }
                         }
                     }
                 }, 0);
@@ -3319,7 +3330,10 @@ updatePanelContext() {
         <div id="widget-notes" style="grid-column: span 2; pointer-events: all; margin-bottom: ${showTimeblockDetails ? '8px' : '0'};">
             <div class="panel-section" style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('notes')" style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; cursor: pointer;">
-                    <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <label style="color: ${widgetTitleColor}; font-size: 9px; font-weight: 800; text-transform:uppercase; opacity: 0.85;">${this.activeType === 'REMINDER' ? 'Reminder Notes' : 'Quick Notes'}</label>
+                        <span class="notes-announcement" title="Notes cannot be deleted. The intention is transparency on your thought process." style="display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; background: rgba(255,193,7,0.25); color: rgba(255,193,7,0.9); font-size:10px; font-weight:800; cursor:help; flex-shrink:0;">!</span>
+                    </span>
                     <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
                 </div>
                 <div style="display:flex; gap:8px; margin-bottom: 10px;">
@@ -3372,7 +3386,7 @@ updatePanelContext() {
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map((name, i) => `
                         <div class="modal-panel-row" data-stakeholder-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 2px 0; border: 1px solid transparent; border-radius: 6px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
-                            <input type="text" value="${name}" placeholder="Name or org..." style="flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;">
+                            <input type="text" value="${name}" placeholder="Name or org..." class="edit-via-context-only" style="flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;">
                         </div>
                     `).join('')}
                 </div>
@@ -3399,7 +3413,7 @@ updatePanelContext() {
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
                         <div class="modal-panel-row" data-agenda-idx="${i}" style="display:flex; align-items:center; gap:10px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 6px;">
                             <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
-                            <input type="text" value="${item}" placeholder="Decision, objective, or question..." style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;">
+                            <input type="text" value="${item}" placeholder="Decision, objective, or question..." class="edit-via-context-only" style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;">
                             <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
                         </div>
                     `).join('')}
@@ -3458,7 +3472,7 @@ updatePanelContext() {
                             : '';
                         const lineText = `${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')} • ${this.escapeHTML(tx.item || tx.desc || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}`;
                         return `
-                        <div onclick="ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}')" class="data-row modal-panel-row" data-tx-id="${this.escapeAttribute(tx.id)}" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                        <div class="data-row modal-panel-row" data-tx-id="${this.escapeAttribute(tx.id)}" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: default; font-size: 11px;">
                             <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${lineText}</div>
                             <div style="font-family:'SF Mono'; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-left: 8px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
                                 ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
@@ -3580,11 +3594,41 @@ updatePanelContext() {
             if (event) event.budget = budgetInput.value.trim();
             this.renderPanelExpenses();
         };
-        budgetInput.addEventListener('input', syncBudgetAndRemaining);
+        budgetInput.addEventListener('input', () => {
+            const raw = budgetInput.value.trim();
+            if (raw.endsWith('.') || raw.endsWith('.0') || raw === '') {
+                syncBudgetAndRemaining();
+                return;
+            }
+            const parsed = this.parseAmount(budgetInput.value);
+            if (parsed !== null) {
+                const formatted = this.formatAmount(parsed, 2);
+                if (budgetInput.value !== formatted) {
+                    budgetInput.value = formatted;
+                    budgetInput.setSelectionRange(formatted.length, formatted.length);
+                }
+            }
+            syncBudgetAndRemaining();
+        });
         budgetInput.addEventListener('blur', () => {
             const formatted = this.formatBudgetDisplay(budgetInput.value);
             if (formatted !== '') budgetInput.value = formatted;
             syncBudgetAndRemaining();
+        });
+    }
+    const expenseAmountInput = document.getElementById('timeblock-expense-amount');
+    if (expenseAmountInput) {
+        expenseAmountInput.addEventListener('input', () => {
+            const raw = expenseAmountInput.value.trim();
+            if (raw.endsWith('.') || raw.endsWith('.0') || raw === '') return;
+            const parsed = this.parseAmount(expenseAmountInput.value);
+            if (parsed !== null) {
+                const formatted = this.formatAmount(parsed, 2);
+                if (expenseAmountInput.value !== formatted) {
+                    expenseAmountInput.value = formatted;
+                    expenseAmountInput.setSelectionRange(formatted.length, formatted.length);
+                }
+            }
         });
     }
 },
@@ -3602,9 +3646,21 @@ setLocMode(mode) {
 addStakeholder() {
     const list = document.getElementById('stakeholder-list');
     if (!list) return;
+    const idx = list.querySelectorAll('div').length;
     const div = document.createElement('div');
-    div.style.cssText = "display:flex; align-items:center; gap:8px;";
-    div.innerHTML = `<span style="color:${this.activeType === 'MEETING' ? '#007AFF' : '#FF9500'};">●</span><input type="text" placeholder="Stakeholder..." style="flex:1; background:transparent; border:none; color:white; font-size:11px; outline:none;">`;
+    div.className = 'modal-panel-row';
+    div.setAttribute('data-stakeholder-idx', String(idx));
+    div.style.cssText = "display:flex; align-items:center; gap:8px; padding: 2px 0; border: 1px solid transparent; border-radius: 6px;";
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Name or org...';
+    input.className = 'edit-via-context-only';
+    input.style.cssText = "flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;";
+    const bullet = document.createElement('span');
+    bullet.style.cssText = `color:${this.activeType === 'MEETING' ? '#007AFF' : '#FF9500'}; flex-shrink:0;`;
+    bullet.textContent = '●';
+    div.appendChild(bullet);
+    div.appendChild(input);
     list.appendChild(div);
 },
 
@@ -5314,7 +5370,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 : '';
             const lineText = `${this.formatDate(tx.date)} ${this.escapeHTML(tx.time || '')} • ${this.escapeHTML(tx.item || tx.desc || '')}${categoryLabel ? ` • ${categoryLabel}` : ''}`;
             return `
-            <div onclick="ENGINE.openTransactionModalWithData('${this.escapeAttribute(tx.id)}')" class="data-row" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+            <div class="data-row modal-panel-row" data-tx-id="${this.escapeAttribute(tx.id)}" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: default; font-size: 11px;">
                 <div style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${lineText}</div>
                 <div style="font-family:'SF Mono'; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-left: 8px; color: ${tx.amount >= 0 ? 'rgba(50, 215, 75, 0.7)' : 'rgba(255, 69, 58, 0.75)'};">
                     ${tx.amount >= 0 ? '+' : ''}${this.formatAmount(tx.amount)}
