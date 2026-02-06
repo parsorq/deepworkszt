@@ -1326,6 +1326,7 @@ let googleAccessToken = null;
 let googleReadyPromise = null;
 let googleReady = false;
 let loginOverlay = null;
+const LOG_SHEET_NAME = 'Logs';
 
 function loadGoogleScript(src) {
     return new Promise((resolve, reject) => {
@@ -1763,6 +1764,9 @@ const ENGINE = {
     editMeetingDraftWidgets: {},
     chatMessages: [],
     expandedWidget: null,
+    logSettings: { add: false, edit: false, delete: false, settings: false },
+    logQueue: [],
+    logFlushTimer: null,
 
 
 async init() {
@@ -2159,8 +2163,9 @@ addTransaction(desc, amount, category = 'General', subcategory = '', date = null
     this.recordUndo({ type: 'addTransaction', txId: tx.id });
     this.sortTransactions();
     this.currentNet += tx.amount;
-    void this.saveTransaction(tx);
+    void this.saveTransaction(tx, true);
     this.renderTransactions();
+    this.logAction('add', 'transaction', tx.id, { amount: tx.amount, date: tx.date, time: tx.time, category: tx.category, subcategory: tx.subcategory });
     return tx;
 },
 
@@ -2395,7 +2400,8 @@ handleMouseUp() {
         };
         this.db[this.selectedDate].push(newEvent);
         this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
-        void this.saveEvent(newEvent);
+    void this.saveEvent(newEvent, true);
+    this.logAction('add', 'event', newEvent.id, { start, end, date: this.selectedDate, type: newEvent.type, label: newEvent.label });
     }
 
     // Clean up drag state
@@ -3778,7 +3784,7 @@ addNoteOnly() {
     existing.push({ date: new Date().toISOString(), text: newNote });
     event.notes = this.serializeNotes(existing);
     if (notesInput) notesInput.value = '';
-    void this.saveEvent(event);
+    void this.saveEvent(event, true);
     this.updatePanelContext();
     setTimeout(() => document.getElementById('timeblock-notes-input')?.focus(), 0);
 },
@@ -3916,7 +3922,7 @@ saveSessionWithoutClosing() {
         this.selectedDate = targetDate;
         this.updateDateDisplay();
     }
-    void this.saveEvent(event);
+    void this.saveEvent(event, true);
     this.updatePanelContext();
 },
 
@@ -4154,6 +4160,12 @@ async loadData() {
     if (!this.editMeetingWidgets || typeof this.editMeetingWidgets !== 'object') {
         this.editMeetingWidgets = { stakeholders: true, agenda: true, timeblockExpenses: true };
     }
+    if (meta.logSettings) {
+        try { this.logSettings = JSON.parse(meta.logSettings); } catch (_) {}
+    }
+    if (!this.logSettings || typeof this.logSettings !== 'object') {
+        this.logSettings = { add: false, edit: false, delete: false, settings: false };
+    }
 
     this.projects = this.parseProjects(projectRows);
     this.teams = this.parseTeams(teamRows);
@@ -4285,7 +4297,7 @@ async deleteEntity(type, id) {
     });
 },
 
-async saveEvent(event) {
+async saveEvent(event, skipLog = false) {
     if (!event || !event.id) return;
     await this.ensureUserStorage();
     const date = event.date || this.selectedDate;
@@ -4322,6 +4334,9 @@ async saveEvent(event) {
         });
     }
     this.pulseActiveInput();
+    if (!skipLog) {
+        this.logAction('edit', 'event', event.id, { date, type: event.type, label: event.label });
+    }
 },
 
 async deleteEventById(eventId) {
@@ -4345,9 +4360,10 @@ async deleteEventById(eventId) {
             }]
         }
     });
+    this.logAction('delete', 'event', eventId);
 },
 
-async saveTransaction(tx) {
+async saveTransaction(tx, skipLog = false) {
     if (!tx || !tx.id) return;
     await this.ensureUserStorage();
     const row = [
@@ -4379,6 +4395,9 @@ async saveTransaction(tx) {
         });
     }
     this.pulseActiveInput();
+    if (!skipLog) {
+        this.logAction('edit', 'transaction', tx.id, { amount: tx.amount, date: tx.date, time: tx.time, category: tx.category, subcategory: tx.subcategory });
+    }
 },
 
 async saveMeta() {
@@ -4389,6 +4408,30 @@ async saveMeta() {
         valueInputOption: 'RAW',
         resource: { values: [['currentNet', this.currentNet.toString()]] }
     });
+},
+
+async saveLogSettings() {
+    if (!this.userSheetId) return;
+    await this.ensureUserStorage();
+    const key = 'logSettings';
+    const rowIndex = await this.findRowById(this.sheetNames.meta, key);
+    const row = [key, JSON.stringify(this.logSettings)];
+    if (rowIndex) {
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.meta}!A${rowIndex}:B${rowIndex}`,
+            valueInputOption: 'RAW',
+            resource: { values: [row] }
+        });
+    } else {
+        await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.meta}!A:B`,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: { values: [row] }
+        });
+    }
 },
 
 async saveEditMeetingWidgets() {
@@ -4486,6 +4529,7 @@ renderEditMeetingWidgets() {
                     activeEvent.widgets[key] = checked;
                 }
             }
+            this.logAction('settings', 'edit-widgets', key, { scope, checked });
             this.updatePanelContext();
         });
     });
@@ -4823,6 +4867,7 @@ async deleteTransactionById(txId) {
             }]
         }
     });
+    this.logAction('delete', 'transaction', txId);
 },
     
 updateTimeline(shouldScroll = false) {
@@ -4864,6 +4909,63 @@ updateTimeline(shouldScroll = false) {
             html += `<div class="week-day-col"><div class="p-label" style="text-align:center;">${day}</div><div style="height:960px; position:relative; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05);"></div></div>`;
         });
         container.innerHTML = html;
+    },
+
+    async ensureLogSheet() {
+        await this.ensureUserStorage();
+        const sheetRes = await gapi.client.sheets.spreadsheets.get({
+            spreadsheetId: this.userSheetId
+        });
+        const sheets = sheetRes.result.sheets || [];
+        const existing = sheets.find(s => s.properties?.title === LOG_SHEET_NAME);
+        if (!existing) {
+            await gapi.client.sheets.spreadsheets.batchUpdate({
+                spreadsheetId: this.userSheetId,
+                resource: { requests: [{ addSheet: { properties: { title: LOG_SHEET_NAME } } }] }
+            });
+            await this.writeHeaders(LOG_SHEET_NAME, ['timestamp', 'user', 'action', 'section', 'entity_id', 'details']);
+        }
+    },
+
+    logAction(action, section, entityId = '', details = {}) {
+        const key = action === 'settings' ? 'settings' : action;
+        if (!this.logSettings || !this.logSettings[key]) return;
+        if (!this.userEmail) return;
+        const entry = [
+            new Date().toISOString(),
+            this.userEmail,
+            action,
+            section,
+            entityId || '',
+            JSON.stringify(details || {})
+        ];
+        this.logQueue.push(entry);
+        if (this.logQueue.length >= 20) {
+            this.flushLogs();
+            return;
+        }
+        if (this.logFlushTimer) return;
+        this.logFlushTimer = setTimeout(() => {
+            this.logFlushTimer = null;
+            this.flushLogs();
+        }, 5000);
+    },
+
+    async flushLogs() {
+        if (!this.logQueue.length) return;
+        const batch = this.logQueue.splice(0, 50);
+        try {
+            await this.ensureLogSheet();
+            await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: this.userSheetId,
+                range: `${LOG_SHEET_NAME}!A:F`,
+                valueInputOption: 'RAW',
+                insertDataOption: 'INSERT_ROWS',
+                resource: { values: batch }
+            });
+        } catch (_) {
+            // Keep UI frictionless; drop batch on failure.
+        }
     },
 
     renderMonth() {
@@ -4961,6 +5063,28 @@ updateTimeline(shouldScroll = false) {
                 </label>
             `).join('');
         }
+
+        const logAdd = document.getElementById('logs-toggle-add');
+        const logEdit = document.getElementById('logs-toggle-edit');
+        const logDelete = document.getElementById('logs-toggle-delete');
+        const logSettings = document.getElementById('logs-toggle-settings');
+        if (logAdd) logAdd.checked = !!this.logSettings.add;
+        if (logEdit) logEdit.checked = !!this.logSettings.edit;
+        if (logDelete) logDelete.checked = !!this.logSettings.delete;
+        if (logSettings) logSettings.checked = !!this.logSettings.settings;
+        const bindLogToggle = (input, key) => {
+            if (!input || input.dataset.bound) return;
+            input.dataset.bound = 'true';
+            input.addEventListener('change', () => {
+                this.logSettings[key] = !!input.checked;
+                void this.saveLogSettings();
+                this.logAction('settings', 'settings', 'log-settings', { ...this.logSettings });
+            });
+        };
+        bindLogToggle(logAdd, 'add');
+        bindLogToggle(logEdit, 'edit');
+        bindLogToggle(logDelete, 'delete');
+        bindLogToggle(logSettings, 'settings');
     },
 
     async addEntity(type) {
