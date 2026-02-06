@@ -1327,6 +1327,7 @@ let googleReadyPromise = null;
 let googleReady = false;
 let loginOverlay = null;
 const LOG_SHEET_NAME = 'Logs';
+const ENGINE_CUSTOM_SHEET_KEY = 'ENGINE_CUSTOM_SHEET_ID';
 
 function loadGoogleScript(src) {
     return new Promise((resolve, reject) => {
@@ -3954,9 +3955,19 @@ async ensureUserStorage() {
 
     const emailKey = this.userEmail.trim().toLowerCase();
     const storageKey = `ENGINE_USER_FILE_ID_${emailKey}`;
+    const customId = localStorage.getItem(ENGINE_CUSTOM_SHEET_KEY);
     const cachedId = localStorage.getItem(storageKey);
 
-    if (cachedId) {
+    if (customId) {
+        try {
+            await gapi.client.sheets.spreadsheets.get({ spreadsheetId: customId });
+            this.userSheetId = customId;
+        } catch (err) {
+            this.userSheetId = null;
+        }
+    }
+
+    if (!this.userSheetId && cachedId) {
         try {
             await gapi.client.sheets.spreadsheets.get({ spreadsheetId: cachedId });
             this.userSheetId = cachedId;
@@ -3993,7 +4004,7 @@ async ensureUserStorage() {
         }
     }
 
-    if (this.userSheetId) {
+    if (this.userSheetId && !customId) {
         localStorage.setItem(storageKey, this.userSheetId);
     }
 
@@ -4235,6 +4246,29 @@ parseSubcategories(rows) {
         return { id, name, category, notes, createdAt, updatedAt };
     }).filter(Boolean);
 },
+
+    parseSheetId(value) {
+        if (!value) return '';
+        const trimmed = value.trim();
+        const match = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (match && match[1]) return match[1];
+        if (/^[a-zA-Z0-9-_]{20,}$/.test(trimmed)) return trimmed;
+        return '';
+    },
+
+    async setCustomSheetId(sheetId) {
+        if (!sheetId) throw new Error('Missing sheet ID');
+        await this.ensureUserStorage();
+        await gapi.client.sheets.spreadsheets.get({ spreadsheetId: sheetId });
+        localStorage.setItem(ENGINE_CUSTOM_SHEET_KEY, sheetId);
+        this.userSheetId = sheetId;
+        await this.ensureSheetStructure();
+    },
+
+    clearCustomSheetId() {
+        localStorage.removeItem(ENGINE_CUSTOM_SHEET_KEY);
+        this.userSheetId = null;
+    },
 
 generateEntityId(prefix) {
     return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -5118,6 +5152,49 @@ updateTimeline(shouldScroll = false) {
         bindLogToggle(logEdit, 'edit');
         bindLogToggle(logDelete, 'delete');
         bindLogToggle(logSettings, 'settings');
+
+        const customSheetInput = document.getElementById('settings-custom-sheet');
+        const customSheetApply = document.getElementById('settings-custom-sheet-apply');
+        const customSheetReset = document.getElementById('settings-custom-sheet-reset');
+        const customSheetStatus = document.getElementById('settings-custom-sheet-status');
+        if (customSheetInput) {
+            const current = localStorage.getItem(ENGINE_CUSTOM_SHEET_KEY) || '';
+            if (!customSheetInput.dataset.bound) {
+                customSheetInput.value = current;
+            }
+        }
+        const setStatus = (msg, isError = false) => {
+            if (!customSheetStatus) return;
+            customSheetStatus.textContent = msg;
+            customSheetStatus.style.color = isError ? 'rgba(255, 69, 58, 0.9)' : 'rgba(255,255,255,0.6)';
+        };
+        if (customSheetApply && !customSheetApply.dataset.bound) {
+            customSheetApply.dataset.bound = 'true';
+            customSheetApply.addEventListener('click', async () => {
+                const value = customSheetInput ? customSheetInput.value.trim() : '';
+                const sheetId = this.parseSheetId(value);
+                if (!sheetId) {
+                    setStatus('Enter a valid Google Sheet URL or ID.', true);
+                    return;
+                }
+                setStatus('Checking access...');
+                try {
+                    await this.setCustomSheetId(sheetId);
+                    setStatus('Personal file updated.');
+                } catch (err) {
+                    setStatus('Unable to access that sheet. Check sharing.', true);
+                }
+            });
+        }
+        if (customSheetReset && !customSheetReset.dataset.bound) {
+            customSheetReset.dataset.bound = 'true';
+            customSheetReset.addEventListener('click', async () => {
+                this.clearCustomSheetId();
+                if (customSheetInput) customSheetInput.value = '';
+                setStatus('Personal file reset to default.');
+                await this.ensureUserStorage();
+            });
+        }
     },
 
     async addEntity(type) {
@@ -6041,6 +6118,20 @@ document.addEventListener('mousedown', (e) => {
                 </div>
                 <div style="font-size: 11px; color: rgba(255,255,255,0.5); line-height: 1.5;">
                     Enabling logs will write additional entries to your personal sheet. This may increase Google API usage and any related charges on your account. We don’t control Google billing or your data. In most cases, normal usage stays within free limits, but heavy logging can exceed them.
+                </div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PERSONAL FILE</div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 8px;">
+                    <input id="settings-custom-sheet" placeholder="Paste Google Sheet URL or ID" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <button id="settings-custom-sheet-apply" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">USE</button>
+                    <button id="settings-custom-sheet-reset" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">RESET</button>
+                </div>
+                <div id="settings-custom-sheet-status" style="font-size: 11px; color: rgba(255,255,255,0.6);">
+                    By default, Logszt creates and manages your personal file.
                 </div>
             </div>
 
