@@ -971,6 +971,9 @@ body.dragging .reminder-marker {
 body.logged-out #tablet-shell {
     display: none;
 }
+body:not(.logged-out) #login-fallback {
+    display: none !important;
+}
     
 
 /* Ensure only the active tab is visible and takes up the full viewport space */
@@ -1067,6 +1070,13 @@ body.logged-out #tablet-shell {
 </head>
 
 <body class="mode-architect lens-both logged-out">
+<div id="login-fallback" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0B0E14; z-index: 1999; padding: 20px; box-sizing: border-box;">
+    <div style="max-width: 420px; text-align: center; color: rgba(255,255,255,0.9);">
+        <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
+        <div style="font-size: 22px; font-weight: 700; margin-bottom: 16px;">Authenticate with Google</div>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger. Loading…</p>
+    </div>
+</div>
 <div id="tablet-shell">
     <div id="content-area">
         <div class="header-top">
@@ -1442,12 +1452,14 @@ function showLoginUI() {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0,0,0,0.65);
+        background: rgba(0,0,0,0.75);
         z-index: 2000;
         backdrop-filter: blur(12px);
+        padding: 20px;
+        box-sizing: border-box;
     `;
     loginOverlay.innerHTML = `
-        <div style="width: 100%; max-width: 420px; background: rgba(20,20,24,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 28px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.6);">
+        <div style="width: 100%; max-width: 420px; background: rgba(28,30,36,0.98); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 28px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;">
             <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
             <div style="font-size: 22px; color: #ffffff; font-weight: 700; margin-bottom: 10px;">Authenticate with Google</div>
             <div id="engine-login-status" style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</div>
@@ -1460,6 +1472,7 @@ function showLoginUI() {
         </div>
     `;
     document.body.appendChild(loginOverlay);
+    document.getElementById('login-fallback')?.remove();
 
     const btn = document.getElementById('engine-login-btn');
     const configPanel = document.getElementById('engine-login-config');
@@ -1480,6 +1493,7 @@ function showLoginUI() {
             setLoginStatus('Checking existing session...');
             try {
                 await handleLogin('');
+                document.getElementById('login-fallback')?.remove();
                 loginOverlay.remove();
                 return;
             } catch (err) {
@@ -1522,6 +1536,8 @@ function showLoginUI() {
                 return;
             }
             await handleLoginInteractive('select_account');
+            document.body.classList.remove('logged-out');
+            document.getElementById('login-fallback')?.remove();
             loginOverlay.remove();
         } catch (err) {
             console.error('Login failed:', err);
@@ -5649,8 +5665,18 @@ setInterval(() => {
     if (new Date().getSeconds() === 0) ENGINE.updateTimeline();
 }, 1000);
 
-// Initialize the Engine on window load
-window.onload = () => showLoginUI();
+// Show login as soon as DOM is ready so user never sees a black screen
+function initLoginUI() {
+    if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay') && typeof showLoginUI === 'function') {
+        showLoginUI();
+    }
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLoginUI);
+} else {
+    initLoginUI();
+}
+window.addEventListener('load', initLoginUI);
 
 // Add this to your script to catch the end of a drag anywhere on the screen
 window.addEventListener('mouseup', () => {
