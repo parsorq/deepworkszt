@@ -2904,7 +2904,7 @@ updatePanelContext() {
                     <div></div>
                     <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
                 </div>
-                <div id="agenda-items-list" class="internal-scroll" style="display: flex; flex-direction: column; height: 78px; overflow-y: auto;">
+                <div id="agenda-items-list" class="internal-scroll" style="display: flex; flex-direction: column; height: 56px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
                         <div style="display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
                             <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
@@ -2947,7 +2947,7 @@ updatePanelContext() {
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
                     <button onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
-                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 8px; height: 96px; overflow-y: auto; margin-top: 10px;">
+                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 8px; height: 72px; overflow-y: auto; margin-top: 8px;">
                     ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
