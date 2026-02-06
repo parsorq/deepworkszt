@@ -457,6 +457,7 @@ body.dragging .reminder-marker {
     justify-content: center;
     align-items: center;
     padding: 40px;
+    pointer-events: auto;
 }
 
 .meeting-panel {
@@ -472,6 +473,7 @@ body.dragging .reminder-marker {
     overflow-y: auto;
     box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
     animation: modalSlideIn 0.3s cubic-bezier(0.2, 0, 0, 1);
+    pointer-events: auto;
 }
 
 /* Edit Meeting: 3 areas — top fixed, middle flexible+scrollable, bottom fixed */
@@ -555,6 +557,10 @@ body.dragging .reminder-marker {
         margin-bottom: 20px;
     }
 
+    .meeting-panel input,
+    .meeting-panel textarea {
+        pointer-events: auto;
+    }
     .meeting-panel textarea {
         width: 100%; height: 120px;
         background: #161B22 !important;
@@ -1493,6 +1499,7 @@ async init() {
     // Global capture handlers for ledger interactions
     document.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
+        if (e.target.closest('#modal-overlay')) return;
         if (e.pointerType === 'mouse' && e.ctrlKey) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
@@ -1529,7 +1536,12 @@ async init() {
     document.addEventListener('wheel', () => {
         this.hideAllMenus();
     }, true);
-    document.addEventListener('keydown', () => {
+    document.addEventListener('keydown', (e) => {
+        const target = e.target;
+        const modal = document.getElementById('modal-overlay');
+        if (modal && modal.style.display === 'flex' && target && target.closest && target.closest('#modal-overlay') &&
+            (target.matches('input, textarea, select') || target.isContentEditable))
+            return;
         this.hideAllMenus();
     }, true);
     const modalOverlay = document.getElementById('modal-overlay');
@@ -1567,6 +1579,7 @@ async init() {
         if (e.button !== 0) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
+        if (e.target.closest('#modal-overlay')) return;
         const bounds = this.getEventsBounds();
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
@@ -2880,7 +2893,9 @@ updatePanelContext() {
     const activeColor = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', EVENT: '#FF9500' }[this.activeType];
     
     // --- 0. INTERACTION LAYER ---
-    // Allow pointer events so inputs (notes, url, stakeholders, agenda, expenses) are clickable in both full and expanded widget view
+    // Allow pointer events so inputs (title, notes, url, stakeholders, agenda, expenses) are clickable in both full and expanded widget view
+    fixedContainer.style.pointerEvents = "auto";
+    fixedContainer.style.zIndex = "100";
     container.style.pointerEvents = "auto";
     container.style.zIndex = "100";
     
@@ -3893,7 +3908,9 @@ async findRowById(sheetName, id) {
 openMeeting(idx) {
     this.isMeetingActive = true;
     this.currentEventIdx = idx;
-    document.getElementById('modal-overlay').style.display = 'flex';
+    const modalEl = document.getElementById('modal-overlay');
+    modalEl.style.display = 'flex';
+    modalEl.style.pointerEvents = 'auto';
 
     // Show delete button for existing events
     const deleteBtn = document.getElementById('delete-event-btn');
