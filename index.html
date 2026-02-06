@@ -1024,6 +1024,10 @@ body.logged-out #tablet-shell {
 #engine-login-btn[aria-busy="true"] {
     opacity: 0.7;
 }
+#engine-login-btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
 .login-click-pulse {
     animation: loginClickPulse 220ms ease-out 1;
 }
@@ -1630,6 +1634,7 @@ async function tryTokenRestore() {
     if (!cachedEmail || !token) return false;
     await ensureGoogleReady();
     googleAccessToken = token;
+    googleAccessTokenExpiresAt = Number.isFinite(expiresAt) ? expiresAt : (Date.now() + 5 * 60 * 1000);
     gapi.client.setToken({ access_token: googleAccessToken });
     if (cachedEmail) {
         try {
@@ -1753,12 +1758,25 @@ function tryAutoLogin() {
     if (sessionStorage.getItem('ENGINE_AUTO_LOGIN_TRIED')) return;
     if (!localStorage.getItem('ENGINE_LAST_USER')) return;
     sessionStorage.setItem('ENGINE_AUTO_LOGIN_TRIED', '1');
+    const btn = document.getElementById('engine-login-btn');
+    if (btn) {
+        btn.setAttribute('aria-busy', 'true');
+        btn.setAttribute('disabled', 'true');
+        btn.dataset.label = btn.dataset.label || btn.textContent;
+        btn.textContent = 'Signing in...';
+    }
     setLoginStatus('Attempting automatic sign-in...');
     tryTokenRestore().catch(() => false).then((restored) => {
         if (restored) return;
         return handleLogin('none').catch((err) => {
             setLoginStatus(err?.message || 'Sign in to sync with your Sheets ledger.');
         });
+    }).finally(() => {
+        if (btn) {
+            btn.removeAttribute('aria-busy');
+            btn.removeAttribute('disabled');
+            if (btn.dataset.label) btn.textContent = btn.dataset.label;
+        }
     });
 }
 function showLoginUI() {
@@ -1829,8 +1847,19 @@ function showLoginUI() {
             window.location.reload();
         });
     }
-    const setBusy = () => { btn.setAttribute('aria-busy', 'true'); btn.style.opacity = '0.7'; };
-    const setIdle = () => { btn.removeAttribute('aria-busy'); btn.style.opacity = '1'; };
+    const setBusy = () => {
+        btn.setAttribute('aria-busy', 'true');
+        btn.setAttribute('disabled', 'true');
+        btn.style.opacity = '0.7';
+        btn.dataset.label = btn.dataset.label || btn.textContent;
+        btn.textContent = 'Signing in...';
+    };
+    const setIdle = () => {
+        btn.removeAttribute('aria-busy');
+        btn.removeAttribute('disabled');
+        btn.style.opacity = '1';
+        if (btn.dataset.label) btn.textContent = btn.dataset.label;
+    };
     const onSuccess = () => {};
     const doSignIn = () => {
         btn.classList.remove('login-click-pulse');
