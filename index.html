@@ -530,14 +530,15 @@ body.dragging .reminder-marker {
     flex-direction: column;
     overflow: hidden;
 }
+/* Single widget view: widget fills panel, middle (list) area scrolls */
 .widget-expanded #timeblock-notes-history,
 .widget-expanded #stakeholder-list,
 .widget-expanded #agenda-items-list,
 .widget-expanded #timeblock-expense-list {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    max-height: none;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    max-height: none !important;
 }
 .widget-expanded .panel-section {
     flex: 1 1 auto;
@@ -557,12 +558,25 @@ body.dragging .reminder-marker {
     flex-direction: column;
     overflow: hidden;
 }
-#widget-agenda.widget-expanded #agenda-items-list { flex: 1; min-height: 0; height: auto !important; }
+#widget-agenda.widget-expanded #agenda-items-list { flex: 1; min-height: 0; height: auto !important; max-height: none !important; }
 #widget-timeblockExpenses.widget-expanded {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
 }
-#widget-timeblockExpenses.widget-expanded #timeblock-expense-list { flex: 1; min-height: 0; margin-top: auto; }
+#widget-timeblockExpenses.widget-expanded #timeblock-expense-list {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    margin-top: auto;
+    max-height: none !important;
+    overflow-y: auto !important;
+}
+/* Form/header rows in expanded expense widget don't shrink */
+#widget-timeblockExpenses.widget-expanded > div:not(#timeblock-expense-list) {
+    flex-shrink: 0;
+}
 
 .meeting-panel--editor .meeting-panel-footer {
     flex: 0 0 auto;
