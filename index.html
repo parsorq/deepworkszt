@@ -1525,7 +1525,14 @@ async init() {
     }, true);
     const modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
-        modalOverlay.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); }, true);
+        document.addEventListener('contextmenu', (e) => {
+            if (modalOverlay.style.display !== 'flex') return;
+            const rect = modalOverlay.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
         modalOverlay.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter') return;
             const el = e.target;
