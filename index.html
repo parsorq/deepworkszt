@@ -3341,7 +3341,7 @@ updatePanelContext() {
     if (showTimeblockDetails) {
         html += `
         <div id="widget-url-row" style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: ${showStakeholders ? '1.2fr 0.8fr' : '1fr'}; gap: 12px; margin-bottom: ${showAgenda || showTimeblockExpenses ? '8px' : '0'}; margin-top: 0; align-items: stretch;">
-            <div id="widget-url" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'height: 104px; min-height: 104px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
+            <div id="widget-url" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); min-width: 0; box-sizing: border-box; ${showStakeholders ? 'height: 142px; min-height: 142px;' : ''} ${!showStakeholders ? 'grid-column: 1 / -1;' : ''}">
                 <div style="min-height: 22px; display: flex; align-items: center; gap: 10px; width: 100%;">
                     <button type="button" onclick="ENGINE.activeTypeContext.isRemote = !ENGINE.activeTypeContext.isRemote; ENGINE.updatePanelContext();" 
                             style="background: transparent; border: none; cursor: pointer; padding: 0; font-size: 18px; color: rgba(255,255,255,0.6); transition: color 0.15s; line-height: 1; flex-shrink: 0;">
@@ -3357,7 +3357,7 @@ updatePanelContext() {
                 </div>
             </div>
             ${showStakeholders ? `
-            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px 28px 14px; border: 1px solid rgba(255,255,255,0.03); height: 104px; min-height: 104px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
+            <div id="widget-stakeholders" class="panel-section panel-section--expandable" style="pointer-events: all; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 12px 14px 14px 14px; border: 1px solid rgba(255,255,255,0.03); height: 142px; min-height: 142px; display:flex; flex-direction:column; gap: 8px; overflow:hidden; box-sizing: border-box;">
                 <div class="widget-header-row" role="button" tabindex="0" title="See more (focus this widget)" onclick="ENGINE.expandWidget('stakeholders')" style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; font-weight: 800; letter-spacing: 1px; color:${widgetTitleColor}; opacity:0.85; flex:0 0 auto; cursor: pointer; min-height: 22px;">
                     <span style="display:flex; align-items:center; gap:10px;">
                         Stakeholders
@@ -3365,10 +3365,10 @@ updatePanelContext() {
                     </span>
                     <span class="widget-header-symbol" style="color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700; line-height: 1;">⤢</span>
                 </div>
-                <div style="display:flex; justify-content:flex-end; align-items:center; min-height: 22px;">
+                <div style="display:flex; justify-content:flex-end; align-items:center; min-height: 22px; flex-shrink: 0;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 56px; padding-bottom: 14px;">
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 56px; padding-bottom: 12px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map((name, i) => `
                         <div class="modal-panel-row" data-stakeholder-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 2px 0; border: 1px solid transparent; border-radius: 6px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
