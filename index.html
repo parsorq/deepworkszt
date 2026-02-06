@@ -1767,6 +1767,8 @@ const ENGINE = {
     logSettings: { add: false, edit: false, delete: false, settings: false },
     logQueue: [],
     logFlushTimer: null,
+    logRetryCount: 0,
+    logRetryTimer: null,
 
 
 async init() {
@@ -1784,6 +1786,7 @@ async init() {
     this.initFinancialPulse();
     this.startTimelineUpdater();
     this.bindLedgerInteractions();
+    this.restoreLogQueue();
 
     // Global listeners for smooth drag
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -2018,6 +2021,22 @@ async init() {
 
     // Initial timeline position
     setTimeout(() => this.updateTimeline(true), 100);
+},
+restoreLogQueue() {
+    try {
+        const raw = localStorage.getItem('ENGINE_LOG_QUEUE');
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) {
+            this.logQueue = parsed.concat(this.logQueue);
+        }
+    } catch (_) {}
+},
+
+persistLogQueue() {
+    try {
+        localStorage.setItem('ENGINE_LOG_QUEUE', JSON.stringify(this.logQueue.slice(0, 200)));
+    } catch (_) {}
 },
 restoreViewState() {
     try {
@@ -4940,6 +4959,7 @@ updateTimeline(shouldScroll = false) {
             JSON.stringify(details || {})
         ];
         this.logQueue.push(entry);
+        this.persistLogQueue();
         if (this.logQueue.length >= 20) {
             this.flushLogs();
             return;
@@ -4963,8 +4983,19 @@ updateTimeline(shouldScroll = false) {
                 insertDataOption: 'INSERT_ROWS',
                 resource: { values: batch }
             });
+            this.logRetryCount = 0;
+            this.persistLogQueue();
         } catch (_) {
-            // Keep UI frictionless; drop batch on failure.
+            // Keep UI frictionless; requeue and retry with backoff.
+            this.logQueue = batch.concat(this.logQueue);
+            this.persistLogQueue();
+            if (this.logRetryTimer) return;
+            this.logRetryCount = Math.min(this.logRetryCount + 1, 5);
+            const delay = Math.min(30000, 1000 * Math.pow(2, this.logRetryCount));
+            this.logRetryTimer = setTimeout(() => {
+                this.logRetryTimer = null;
+                this.flushLogs();
+            }, delay);
         }
     },
 
