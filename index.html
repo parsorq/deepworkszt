@@ -1101,7 +1101,7 @@ body:not(.logged-out) #login-fallback {
         <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
         <div style="font-size: 22px; font-weight: 700; margin-bottom: 16px;">Authenticate with Google</div>
         <p id="login-fallback-status" style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</p>
-        <button type="button" id="login-fallback-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer; font-size: 14px;">Sign in with Google</button>
+        <button type="button" id="login-fallback-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer; font-size: 14px; animation: login-pulse 2.5s ease-in-out infinite;">Sign in with Google</button>
     </div>
 </div>
 <div id="tablet-shell">
@@ -1362,10 +1362,17 @@ function ensureGoogleReady() {
 }
 
 function setLoginStatus(message, isError = false) {
-    const status = document.getElementById('engine-login-status');
-    if (!status) return;
-    status.textContent = message;
-    status.style.color = isError ? '#ff453a' : 'rgba(255,255,255,0.7)';
+    const color = isError ? '#ff453a' : 'rgba(255,255,255,0.7)';
+    const overlayStatus = document.getElementById('engine-login-status');
+    if (overlayStatus) {
+        overlayStatus.textContent = message;
+        overlayStatus.style.color = color;
+    }
+    const fallbackStatus = document.getElementById('login-fallback-status');
+    if (fallbackStatus) {
+        fallbackStatus.textContent = message;
+        fallbackStatus.style.color = color;
+    }
 }
 
 async function fetchUserProfile() {
@@ -1480,6 +1487,69 @@ function handleLoginInteractive(promptMode = 'select_account') {
     });
 }
 
+function runGoogleSignIn(setBusy, setIdle, onSuccess) {
+    setBusy();
+    setLoginStatus('Opening sign-in...');
+    if (!googleReady || !window.google?.accounts?.oauth2) {
+        setLoginStatus('Loading... Click Sign in again in a moment.', false);
+        ensureGoogleReady().catch((err) => {
+            setLoginStatus(err?.message || 'Unable to load Google services.', true);
+        });
+        setIdle();
+        return;
+    }
+    const timeoutId = setTimeout(() => {
+        setLoginStatus('Google sign-in timed out. Check popup blockers or privacy settings.', true);
+        setIdle();
+    }, 15000);
+    const onToken = async (response) => {
+        clearTimeout(timeoutId);
+        if (response.error) {
+            const details = response.error_description || response.error || 'Unknown error';
+            setLoginStatus(`Google sign-in failed: ${details}`, true);
+            setIdle();
+            return;
+        }
+        googleAccessToken = response.access_token;
+        gapi.client.setToken({ access_token: googleAccessToken });
+        try {
+            const profile = await fetchUserProfile();
+            const allowed = await validateMasterRegistry(profile.email);
+            if (!allowed) {
+                setLoginStatus('Access denied by Master Registry. Add your email to the registry sheet.', true);
+                setIdle();
+                return;
+            }
+            ENGINE.userEmail = profile.email;
+            localStorage.setItem('ENGINE_LAST_USER', profile.email);
+            await ENGINE.init();
+            document.body.classList.remove('logged-out');
+            document.getElementById('login-fallback')?.remove();
+            if (loginOverlay && loginOverlay.parentNode) loginOverlay.remove();
+            onSuccess();
+        } catch (err) {
+            console.error('Login failed:', err);
+            setLoginStatus(err?.message || 'Login failed.', true);
+            setIdle();
+        }
+    };
+    const onError = (err) => {
+        clearTimeout(timeoutId);
+        const reason = err?.type === 'popup_failed_to_open' ? 'Popup blocked or failed to open.'
+            : err?.type === 'popup_closed' ? 'Sign-in window was closed.'
+            : err?.type || 'Unknown error.';
+        setLoginStatus(`${reason} Click Sign in to try again.`, true);
+        setIdle();
+    };
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: GOOGLE_SCOPES,
+        callback: onToken,
+        error_callback: onError
+    });
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
+}
+
 function showLoginUI() {
     if (document.getElementById('engine-login-overlay')) return;
     document.body.classList.add('logged-out');
@@ -1496,9 +1566,10 @@ function showLoginUI() {
         backdrop-filter: blur(12px);
         padding: 20px;
         box-sizing: border-box;
+        pointer-events: auto;
     `;
     loginOverlay.innerHTML = `
-        <div style="width: 100%; max-width: 420px; background: rgba(28,30,36,0.98); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 28px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;">
+        <div style="width: 100%; max-width: 420px; background: rgba(28,30,36,0.98); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 28px; text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset; pointer-events: auto;">
             <div style="font-size: 14px; letter-spacing: 2px; font-weight: 700; color: rgba(255,255,255,0.5); margin-bottom: 10px;">SECURE ACCESS</div>
             <div style="font-size: 22px; color: #ffffff; font-weight: 700; margin-bottom: 10px;">Authenticate with Google</div>
             <div id="engine-login-status" style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">Sign in to sync with your Sheets ledger.</div>
@@ -1507,7 +1578,7 @@ function showLoginUI() {
                 <input id="engine-google-client-id" placeholder="Google Client ID" style="width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline: none; margin-bottom: 8px;">
                 <button id="engine-login-save-config" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: white; font-weight: 700; font-size: 10px; cursor: pointer;">Save client ID</button>
             </div>
-            <button id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer;">Sign in</button>
+            <button type="button" id="engine-login-btn" style="width: 100%; padding: 12px 16px; background: rgba(0,255,135,0.08); border: 1px solid rgba(0,255,135,0.18); border-radius: 10px; color: rgba(255,255,255,0.65); font-weight: 700; cursor: pointer; animation: login-pulse 2.5s ease-in-out infinite;">Sign in</button>
         </div>
     `;
     document.body.appendChild(loginOverlay);
@@ -1547,74 +1618,11 @@ function showLoginUI() {
             window.location.reload();
         });
     }
-    btn.addEventListener('click', () => {
-        btn.setAttribute('aria-busy', 'true');
-        btn.style.opacity = '0.7';
-        setLoginStatus('Connecting to Google...');
-        if (!googleReady || !window.google?.accounts?.oauth2) {
-            setLoginStatus('Loading Google services... click Sign in again in a moment.', false);
-            ensureGoogleReady().catch((err) => {
-                setLoginStatus(err?.message || 'Unable to load Google services. Check blockers or network.', true);
-            });
-            btn.removeAttribute('aria-busy');
-            btn.style.opacity = '1';
-            return;
-        }
-        const timeoutId = setTimeout(() => {
-            setLoginStatus('Google sign-in timed out. Check popup blockers or privacy settings.', true);
-            btn.removeAttribute('aria-busy');
-            btn.style.opacity = '1';
-        }, 15000);
-        const onToken = async (response) => {
-            clearTimeout(timeoutId);
-            if (response.error) {
-                const details = response.error_description || response.error || 'Unknown error';
-                setLoginStatus(`Google sign-in failed: ${details}`, true);
-                btn.removeAttribute('aria-busy');
-                btn.style.opacity = '1';
-                return;
-            }
-            googleAccessToken = response.access_token;
-            gapi.client.setToken({ access_token: googleAccessToken });
-            try {
-                const profile = await fetchUserProfile();
-                const allowed = await validateMasterRegistry(profile.email);
-                if (!allowed) {
-                    setLoginStatus('Access denied by Master Registry. Add your email to the registry sheet.', true);
-                    btn.removeAttribute('aria-busy');
-                    btn.style.opacity = '1';
-                    return;
-                }
-                ENGINE.userEmail = profile.email;
-                localStorage.setItem('ENGINE_LAST_USER', profile.email);
-                await ENGINE.init();
-                document.body.classList.remove('logged-out');
-                document.getElementById('login-fallback')?.remove();
-                loginOverlay.remove();
-            } catch (err) {
-                console.error('Login failed:', err);
-                setLoginStatus(err?.message || 'Login failed.', true);
-                btn.removeAttribute('aria-busy');
-                btn.style.opacity = '1';
-            }
-        };
-        const onError = (err) => {
-            clearTimeout(timeoutId);
-            const reason = err?.type === 'popup_failed_to_open' ? 'Popup blocked or failed to open.'
-                : err?.type === 'popup_closed' ? 'Sign-in window was closed.'
-                : err?.type || 'Unknown error.';
-            setLoginStatus(`${reason} Click Sign in to try again.`, true);
-            btn.removeAttribute('aria-busy');
-            btn.style.opacity = '1';
-        };
-        const tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: GOOGLE_SCOPES,
-            callback: onToken,
-            error_callback: onError
-        });
-        tokenClient.requestAccessToken({ prompt: 'select_account' });
-    });
+    const setBusy = () => { btn.setAttribute('aria-busy', 'true'); btn.style.opacity = '0.7'; };
+    const setIdle = () => { btn.removeAttribute('aria-busy'); btn.style.opacity = '1'; };
+    const onSuccess = () => {};
+    const doSignIn = () => runGoogleSignIn(setBusy, setIdle, onSuccess);
+    btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); doSignIn(); return false; };
 }
 
 const ENGINE = {
@@ -5738,7 +5746,22 @@ function initLoginUI() {
     const fallbackBtn = document.getElementById('login-fallback-btn');
     if (fallbackBtn && !fallbackBtn.dataset.wired) {
         fallbackBtn.dataset.wired = '1';
-        fallbackBtn.addEventListener('click', () => { if (typeof showLoginUI === 'function') showLoginUI(); });
+        fallbackBtn.onclick = function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof runGoogleSignIn !== 'function' || !GOOGLE_CLIENT_ID) {
+                if (typeof showLoginUI === 'function') showLoginUI();
+                return;
+            }
+            if (googleReady && window.google && window.google.accounts && window.google.accounts.oauth2) {
+                const setBusy = () => { fallbackBtn.style.opacity = '0.7'; setLoginStatus('Opening sign-in...'); };
+                const setIdle = () => { fallbackBtn.style.opacity = '1'; };
+                runGoogleSignIn(setBusy, setIdle, function () {});
+            } else {
+                if (typeof showLoginUI === 'function') showLoginUI();
+            }
+            return false;
+        };
     }
     if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay') && typeof showLoginUI === 'function') {
         showLoginUI();
