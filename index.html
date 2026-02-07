@@ -1840,6 +1840,7 @@ async init() {
     document.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         if (e.target.closest('#modal-overlay')) return;
+        if (e.target.closest('.date-nav')) return;
         if (e.pointerType === 'mouse' && e.ctrlKey) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
@@ -1976,6 +1977,7 @@ async init() {
     }, true);
     document.addEventListener('dblclick', (e) => {
         if (e.button !== 0) return;
+        if (e.target.closest('.date-nav')) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
         if (e.target.closest('#modal-overlay')) return;
@@ -2135,8 +2137,11 @@ bindDateNav() {
     if (!row || row.dataset.bound === 'true') return;
     row.dataset.bound = 'true';
     row.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-delta]');
+        const el = e.target && e.target.nodeType === 1 ? e.target : (e.target && e.target.parentElement);
+        const btn = el && el.closest ? el.closest('button[data-delta]') : null;
         if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
         const delta = parseInt(btn.getAttribute('data-delta'), 10);
         if (Number.isFinite(delta)) this.navigateDate(delta);
     });
