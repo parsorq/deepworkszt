@@ -3525,6 +3525,12 @@ hideModalRowMenu() {
     if (menu) menu.style.display = 'none';
 },
 
+getActiveEvent() {
+    if (this.currentEventIdx === null) return null;
+    const events = this.db[this.selectedDate] || [];
+    return events[this.currentEventIdx] || null;
+},
+
 removeStakeholderAt(index) {
     const ev = this.getActiveEvent();
     if (!ev) return;
@@ -6874,13 +6880,13 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
             if (list && (!e.relatedTarget || !list.contains(e.relatedTarget))) {
                 const inputs = list.querySelectorAll('input');
                 if (inputs.length && !inputs[inputs.length - 1].value.trim()) {
-                    const ev = this.getActiveEvent();
+                    const ev = ENGINE.getActiveEvent ? ENGINE.getActiveEvent() : null;
                     if (ev) {
                         const trimmed = Array.from(inputs).slice(0, -1).map(i => i.value.trim()).filter(Boolean);
                         if (list.id === 'stakeholder-list') ev.stakeholders = trimmed.join('|');
                         else ev.agenda = trimmed.join('|');
-                        this.saveSessionWithoutClosing();
-                        this.updatePanelContext();
+                        ENGINE.saveSessionWithoutClosing();
+                        ENGINE.updatePanelContext();
                     }
                 }
             }
