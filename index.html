@@ -5125,45 +5125,16 @@ renderDay() {
         const startStr = formatTime(session.start);
         const endStr = formatTime(session.end);
         const deleteStyle = height <= 40 ? 'top: 50%; transform: translateY(-50%);' : '';
-        // Preview data: agenda (first order in business), stakeholders, budget/spend, URL, density
         const agendaItems = (session.agenda || '').split('|').filter(Boolean);
         const noteItems = this.parseNotes(session.notes || '');
-        const purposeLine = (agendaItems[0] || noteItems[0]?.text || '').trim().slice(0, 42);
-        const firstAgendaLine = agendaItems[0] ? agendaItems[0].trim().slice(0, 50) : '';
-        const stakeholdersList = (session.stakeholders || '').split('|').filter(Boolean);
-        const stakeholdersPreview = stakeholdersList.length <= 3 ? stakeholdersList.join(', ') : stakeholdersList.length + ' stakeholders';
         const eventTx = todayTx.filter(({ tx }) => tx.eventId === session.id);
-        const eventNet = eventTx.reduce((s, { tx }) => s + (tx.amount || 0), 0);
-        const expensesSum = eventTx.reduce((s, { tx }) => s + ((tx.amount || 0) < 0 ? tx.amount : 0), 0);
-        const incomeSum = eventTx.reduce((s, { tx }) => s + ((tx.amount || 0) > 0 ? tx.amount : 0), 0);
-        const budgetNum = this.parseAmount(session.budget || '');
-        const remaining = budgetNum != null && budgetNum >= 0 ? budgetNum + eventNet : null;
-        const budgetStr = budgetNum != null && budgetNum >= 0
-            ? 'Budget ' + this.formatAmount(budgetNum, 0) + ' · ' + this.formatAmount(remaining, 0) + ' left'
-            : (eventTx.length ? 'Net ' + (eventNet >= 0 ? '+' : '') + this.formatAmount(eventNet, 0) : '');
-        const hasUrl = !!(session.location || '').trim();
-        // Audit-style labeled lines (shown only when relevant)
-        const firstOrderStr = agendaItems.length > 0
-            ? (agendaItems.length === 1
-                ? 'First order in business: ' + this.escapeHTML(agendaItems[0].trim())
-                : 'First order in business: ' + this.escapeHTML(agendaItems[0].trim()) + '. ' + (agendaItems.length - 1) + ' additional point(s).')
-            : '';
-        const attendeesStr = stakeholdersList.length > 0 ? 'Attendees: ' + stakeholdersList.map(s => this.escapeHTML(s.trim())).join(', ') : '';
-        const initialBudgetStr = budgetNum != null ? 'Initial budget: ' + this.formatAmount(budgetNum, 0) : '';
-        const expensesLineStr = expensesSum < 0 ? 'Expenses: ' + this.formatAmount(expensesSum, 0) : '';
-        const incomeLineStr = incomeSum > 0 ? 'Income: ' + this.formatAmount(incomeSum, 0) : '';
         const notesCount = noteItems.length;
         const agendaCount = agendaItems.length;
         const expensesCount = eventTx.filter(({ tx }) => (tx.amount || 0) < 0).length;
-        const densityParts = [];
-        if (notesCount) densityParts.push(notesCount + ' note' + (notesCount !== 1 ? 's' : ''));
-        if (agendaCount) densityParts.push(agendaCount + ' agenda');
-        if (expensesCount) densityParts.push(expensesCount + ' expense' + (expensesCount !== 1 ? 's' : ''));
-        const densityStr = densityParts.join(' · ');
-        // Default on every block: type, label, start, finish, length. 15m single line; 30m 3-line (min height); 45m+ first agenda; full rest.
+        const incomeCount = eventTx.filter(({ tx }) => (tx.amount || 0) > 0).length;
+        const detailsStr = notesCount + ' note' + (notesCount !== 1 ? 's' : '') + ' · ' + agendaCount + ' agenda · ' + expensesCount + ' expense' + (expensesCount !== 1 ? 's' : '') + ' · ' + incomeCount + ' income';
+        // 15m single line; all other blocks: type, label, time, divider, "details", counts.
         const isSingleLine = duration <= 0.25;
-        const isCompactThreeLine = duration > 0.25 && duration <= 0.5;
-        const isMedium = duration > 0.5 && height <= 408;
 
         let blockContent = '';
         if (isSingleLine) {
@@ -5174,44 +5145,16 @@ renderDay() {
                     <span style="color: white; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${this.escapeHTML(session.label || 'Session')}</span>
                     <span style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5); flex-shrink: 0;">${startStr} – ${endStr} · ${durationStr}</span>
                 </div>`;
-        } else if (isCompactThreeLine) {
-            // 30m: 3 lines (type, label, time) with min height 130px
+        } else {
+            // 30m and up: type, label, start/finish/length, divider, "details", counts line
             blockContent = `
-                <div style="padding: 8px 12px; pointer-events: auto; display: flex; flex-direction: column; justify-content: center; gap: 4px; height: 100%;">
-                    <div style="color: ${color}; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;">${session.type}</div>
-                    <div style="color: white; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(session.label || 'Session')}</div>
-                    <div style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5);">${startStr} – ${endStr} · ${durationStr}</div>
-                </div>`;
-        } else if (isMedium) {
-            // 45m+: header + audit line "First order in business" (hidden if no agenda)
-            blockContent = `
-                <div style="padding: 10px 14px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; gap: 6px;">
+                <div style="padding: 10px 14px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; gap: 0;">
                     <div style="color: ${color}; font-size: 10px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
                     <div style="color: white; font-weight: 600; font-size: 14px; line-height: 1.25;">${this.escapeHTML(session.label || 'Session')}</div>
-                    <div style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5);">${startStr} – ${endStr} · ${durationStr}</div>
-                    ${firstOrderStr ? `<div style="font-size: 11px; color: rgba(255,255,255,0.6); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.35;"><span style="font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); text-transform: uppercase;">First order in business:</span> ${firstOrderStr.replace(/^First order in business: /, '')}</div>` : ''}
-                </div>`;
-        } else {
-            // Full: header then audit-style lines (each label hidden when empty)
-            const auditLabelStyle = 'font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); text-transform: uppercase;';
-            const details = [];
-            if (firstOrderStr) details.push(`<div style="font-size: 11px; color: rgba(255,255,255,0.65); line-height: 1.4;"><span style="${auditLabelStyle}">First order in business:</span> ${firstOrderStr.replace(/^First order in business: /, '')}</div>`);
-            if (attendeesStr) details.push(`<div style="font-size: 11px; color: rgba(255,255,255,0.6);"><span style="${auditLabelStyle}">Attendees:</span> ${attendeesStr.replace(/^Attendees: /, '')}</div>`);
-            if (initialBudgetStr) details.push(`<div style="font-size: 11px; font-family: 'SF Mono'; color: rgba(255,255,255,0.55);"><span style="${auditLabelStyle}">Initial budget:</span> ${initialBudgetStr.replace(/^Initial budget: /, '')}</div>`);
-            if (expensesLineStr) details.push(`<div style="font-size: 11px; font-family: 'SF Mono'; color: rgba(255,255,255,0.55);"><span style="${auditLabelStyle}">Expenses:</span> ${expensesLineStr.replace(/^Expenses: /, '')}</div>`);
-            if (incomeLineStr) details.push(`<div style="font-size: 11px; font-family: 'SF Mono'; color: rgba(255,255,255,0.55);"><span style="${auditLabelStyle}">Income:</span> ${incomeLineStr.replace(/^Income: /, '')}</div>`);
-            if (hasUrl) details.push(`<a href="${String(session.location||'').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="font-size: 12px; color: rgba(0,122,255,0.85); text-decoration: none;">Join</a>`);
-            if (densityStr) details.push(`<div style="font-size: 10px; color: rgba(255,255,255,0.4);">${this.escapeHTML(densityStr)}</div>`);
-            blockContent = `
-                <div style="padding: 12px 14px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; gap: 0;">
-                    <div style="flex-shrink: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;">
-                        <div style="color: ${color}; font-size: 10px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
-                        <div style="color: white; font-weight: 600; font-size: 15px; margin-top: 2px;">${this.escapeHTML(session.label || 'Session')}</div>
-                        <div style="font-family: 'SF Mono'; font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 4px;">${startStr} – ${endStr} · ${durationStr}</div>
-                    </div>
-                    <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow: hidden;">
-                        ${details.join('')}
-                    </div>
+                    <div style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px;">${startStr} – ${endStr} · ${durationStr}</div>
+                    <div style="height: 1px; background: rgba(255,255,255,0.08); margin: 8px 0;"></div>
+                    <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); text-transform: uppercase;">Details</div>
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.5);">${this.escapeHTML(detailsStr)}</div>
                 </div>`;
         }
 
