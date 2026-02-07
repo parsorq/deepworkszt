@@ -1216,12 +1216,12 @@ body.logged-out #tablet-shell {
                 <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
                     <span id="current-date-display" class="date-display-main">2026-01-30</span>
                     <div class="date-nav-row" style="display:flex; align-items:center; gap: 24px; margin-top: 4px;">
-                        <button type="button" class="date-nav-btn" data-delta="-1" aria-label="Previous day">&#8249;</button>
+                        <button type="button" class="date-nav-btn" aria-label="Previous day" onclick="ENGINE.navigateDate(-1)">&#8249;</button>
                         <div class="date-nav-today-slot">
                             <span id="today-label-plain" class="date-nav-today-plain" style="display: none;">Today</span>
                             <button type="button" id="today-nav-btn" class="date-nav-btn date-nav-today-btn" onclick="ENGINE.goToToday()" aria-label="Go to today" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);">Today</button>
                         </div>
-                        <button type="button" class="date-nav-btn" data-delta="1" aria-label="Next day">&#8250;</button>
+                        <button type="button" class="date-nav-btn" aria-label="Next day" onclick="ENGINE.navigateDate(1)">&#8250;</button>
                     </div>
                 </div>
             </div>
@@ -2086,8 +2086,10 @@ restoreViewState() {
         const raw = localStorage.getItem('ENGINE_VIEW_STATE');
         if (!raw) return;
         const state = JSON.parse(raw);
-        if (state && state.date) this.selectedDate = state.date;
         if (state && state.view) this.initialView = state.view;
+        // Daily ledger always defaults to today on load; other views can keep restored date if desired
+        if (state && state.view === 'day') this.selectedDate = getLocalDateISO();
+        else if (state && state.date) this.selectedDate = state.date;
     } catch (_) {}
 },
 
@@ -2120,10 +2122,15 @@ syncConfigControls() {
     if (lens) lens.value = this.lens;
 },
 
-// Date Navigation
+// Date Navigation (throttled so one click = one day)
 navigateDate(delta) {
     const d = Number(delta);
     if (!Number.isFinite(d) || d === 0) return;
+    const now = Date.now();
+    const key = 'dateNav';
+    if (!this._dateNavLast) this._dateNavLast = { t: 0, delta: 0 };
+    if (now - this._dateNavLast.t < 350 && this._dateNavLast.delta === d) return;
+    this._dateNavLast = { t: now, delta: d };
     const current = new Date(this.selectedDate);
     current.setDate(current.getDate() + d);
     this.selectedDate = getLocalDateISO(current);
@@ -2133,18 +2140,7 @@ navigateDate(delta) {
 },
 
 bindDateNav() {
-    const row = document.querySelector('.date-nav-row');
-    if (!row || row.dataset.bound === 'true') return;
-    row.dataset.bound = 'true';
-    row.addEventListener('click', (e) => {
-        const el = e.target && e.target.nodeType === 1 ? e.target : (e.target && e.target.parentElement);
-        const btn = el && el.closest ? el.closest('button[data-delta]') : null;
-        if (!btn) return;
-        e.preventDefault();
-        e.stopPropagation();
-        const delta = parseInt(btn.getAttribute('data-delta'), 10);
-        if (Number.isFinite(delta)) this.navigateDate(delta);
-    });
+    // Arrows use direct onclick; nothing to bind here (kept for future use)
 },
 
 updateDateDisplay() {
@@ -3150,7 +3146,12 @@ switchTab(view, el) {
     const target = document.getElementById(view + '-view');
     if (target) target.classList.add('active');
 
-    // 3. Trigger specific renders
+    // 3. Daily ledger always shows today when switching to it
+    if (view === 'day') {
+        this.selectedDate = getLocalDateISO();
+        this.updateDateDisplay();
+    }
+    // 4. Trigger specific renders
     if (view === 'day') this.renderDay();
     if (view === 'week') this.renderWeek();
     if (view === 'month') this.renderMonth();
