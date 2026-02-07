@@ -2194,7 +2194,7 @@ async init() {
             const el = e.target;
             if (!modalOverlay.contains(el) || modalOverlay.style.display === 'none') return;
             if (e.key === 'Tab' && !e.shiftKey && el && el.id === 'timeblock-expense-subcategory') {
-                const addBtn = document.querySelector('#dynamic-fields-container button[onclick*="addTimeblockExpense"]');
+                const addBtn = document.getElementById('timeblock-expense-add');
                 if (addBtn) {
                     e.preventDefault();
                     addBtn.focus();
@@ -2212,29 +2212,8 @@ async init() {
                     const next = document.getElementById(nextIds[idx + 1]);
                     if (next) next.focus();
                 } else {
-                    const itemIn = document.getElementById('timeblock-expense-item');
-                    const catSel = document.getElementById('timeblock-expense-category');
-                    const amtIn = document.getElementById('timeblock-expense-amount');
-                    const hasItem = itemIn && itemIn.value.trim() !== '';
-                    const hasCategory = catSel && catSel.value;
-                    const hasAmount = amtIn && this.parseAmount(amtIn.value) !== null;
-                    if (hasItem && hasCategory && hasAmount) {
-                        this.addTimeblockExpense();
-                        setTimeout(() => document.getElementById('timeblock-expense-item')?.focus(), 0);
-                    }
-                }
-                return;
-            }
-            if (el.id === 'timeblock-expense-subcategory') {
-                const itemIn = document.getElementById('timeblock-expense-item');
-                const catSel = document.getElementById('timeblock-expense-category');
-                const amtIn = document.getElementById('timeblock-expense-amount');
-                const hasItem = itemIn && itemIn.value.trim() !== '';
-                const hasCategory = catSel && catSel.value;
-                const hasAmount = amtIn && this.parseAmount(amtIn.value) !== null;
-                if (hasItem && hasCategory && hasAmount) {
-                    this.addTimeblockExpense();
-                    setTimeout(() => document.getElementById('timeblock-expense-item')?.focus(), 0);
+                    const addBtn = document.getElementById('timeblock-expense-add');
+                    if (addBtn) addBtn.focus();
                 }
                 return;
             }
@@ -3306,7 +3285,7 @@ showBlockMenu(x, y, idx) {
     }
     menu.innerHTML = `
         <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideBlockMenu(); ENGINE.openMeeting(${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
-        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideBlockMenu(); ENGINE.deleteEvent(${idx});" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.showDeleteConfirm(function(){ ENGINE.hideBlockMenu(); ENGINE.deleteEvent(${idx}); });" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
     `;
     const menuRect = menu.getBoundingClientRect();
     const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
@@ -3321,6 +3300,40 @@ hideBlockMenu() {
     if (menu) menu.style.display = 'none';
 },
 
+showDeleteConfirm(onConfirm) {
+    let overlay = document.getElementById('delete-confirm-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'delete-confirm-overlay';
+        overlay.style.cssText = 'position: fixed; inset: 0; z-index: 3000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);';
+        overlay.innerHTML = `
+            <div style="background: rgba(22,27,34,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 24px; display: flex; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4);">
+                <button type="button" id="delete-confirm-cancel" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Cancel</button>
+                <button type="button" id="delete-confirm-ok" style="background: rgba(255,69,58,0.25); border: 1px solid rgba(255,69,58,0.4); color: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Confirm</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#delete-confirm-cancel').addEventListener('click', () => {
+            overlay.style.display = 'none';
+            if (overlay._pendingCallback) overlay._pendingCallback = null;
+        });
+        overlay.querySelector('#delete-confirm-ok').addEventListener('click', () => {
+            const cb = overlay._pendingCallback;
+            overlay.style.display = 'none';
+            overlay._pendingCallback = null;
+            if (typeof cb === 'function') cb();
+        });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.style.display = 'none';
+                overlay._pendingCallback = null;
+            }
+        });
+    }
+    overlay._pendingCallback = onConfirm;
+    overlay.style.display = 'flex';
+},
+
 showTransactionMenu(x, y, idx) {
     let menu = document.getElementById('transaction-context-menu');
     if (!menu) {
@@ -3331,7 +3344,7 @@ showTransactionMenu(x, y, idx) {
     }
     menu.innerHTML = `
         <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideTransactionMenu(); ENGINE.openTransactionModalWithData('', ${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
-        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideTransactionMenu(); ENGINE.deleteTransaction(${idx});" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.showDeleteConfirm(function(){ ENGINE.hideTransactionMenu(); ENGINE.deleteTransaction(${idx}); });" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
     `;
     const menuRect = menu.getBoundingClientRect();
     const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
@@ -3387,8 +3400,10 @@ showModalRowMenu(x, y, type, index) {
                     }
                 }, 0);
             } else {
-                if (typ === 'stakeholder') ENGINE.removeStakeholderAt(idx);
-                else ENGINE.removeAgendaItemAt(idx);
+                ENGINE.showDeleteConfirm(() => {
+                    if (typ === 'stakeholder') ENGINE.removeStakeholderAt(idx);
+                    else ENGINE.removeAgendaItemAt(idx);
+                });
             }
         });
     });
@@ -3856,6 +3871,7 @@ injectStyles() {
         #agenda-items-list::-webkit-scrollbar { ... }
         .widget-header-symbol { padding: 4px 8px; border-radius: 6px; border: 1px solid transparent; background: transparent; transition: color 0.15s, opacity 0.15s, background 0.15s, border-color 0.15s; }
         .widget-header-row:hover .widget-header-symbol { color: rgba(255,255,255,0.95); opacity: 1; background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+        .widget-header-row { border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; }
     `;
     document.head.appendChild(style);
 },
@@ -4074,7 +4090,7 @@ updatePanelContext() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 8px; align-items:center;">
                     <select id="timeblock-expense-category" class="subtle-select"></select>
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
-                    <button type="button" tabindex="0" onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
+                    <button type="button" id="timeblock-expense-add" tabindex="0" onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
                 <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 4px; min-height: 28px; max-height: 100px; overflow-y: auto; margin-top: 8px;">
                     ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
@@ -6290,6 +6306,8 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         if (descInput) descInput.value = '';
         if (itemInput) itemInput.value = '';
         if (amountInput) amountInput.value = this.formatAmount(0);
+        if (categorySelect) categorySelect.value = '';
+        if (subcategorySelect) subcategorySelect.value = '';
         this.renderPanelExpenses();
         setTimeout(() => { const first = document.getElementById('timeblock-expense-item'); if (first) first.focus(); }, 0);
     },
@@ -6836,7 +6854,7 @@ document.addEventListener('mousedown', (e) => {
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <button id="edit-meeting-widgets-btn" onclick="ENGINE.openEditMeetingSettings()" aria-label="Edit Meeting widgets" style="background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); width: 32px; height: 32px; border-radius: 8px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">⚙</button>
-                <button id="delete-event-btn" onclick="ENGINE.deleteCurrentEvent()" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
+                <button id="delete-event-btn" onclick="ENGINE.showDeleteConfirm(function(){ ENGINE.deleteCurrentEvent(); })" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
                 <button onclick="ENGINE.closeModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
             </div>
         </div>
