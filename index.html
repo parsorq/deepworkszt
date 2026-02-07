@@ -2051,6 +2051,44 @@ async init() {
         }
     }, true);
 
+    // Enter in transaction overlay saves when focus is on SAVE
+    document.addEventListener('keydown', (e) => {
+        const overlay = document.getElementById('transaction-overlay');
+        if (!overlay || overlay.style.display !== 'flex' || !e.target || !e.target.closest || !e.target.closest('#transaction-overlay')) return;
+        if (e.key === 'Enter' && e.target.id === 'transaction-save') {
+            e.preventDefault();
+            e.stopPropagation();
+            this.saveTransactionModal();
+        }
+    }, true);
+
+    // Tab from last input/select/textarea in small edit panels goes to SAVE button
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab' || e.shiftKey) return;
+        const target = e.target;
+        const editEntityOverlay = document.getElementById('edit-entity-overlay');
+        if (editEntityOverlay && editEntityOverlay.style.display === 'flex' && target && target.closest && target.closest('#edit-entity-overlay')) {
+            const panel = editEntityOverlay.querySelector('.meeting-panel') || editEntityOverlay;
+            const focusables = Array.from(panel.querySelectorAll('input, select, textarea')).filter(el => el.offsetParent != null);
+            if (focusables.length && document.activeElement === focusables[focusables.length - 1]) {
+                e.preventDefault();
+                const saveBtn = document.getElementById('edit-entity-save');
+                if (saveBtn) saveBtn.focus();
+            }
+            return;
+        }
+        const transactionOverlay = document.getElementById('transaction-overlay');
+        if (transactionOverlay && transactionOverlay.style.display === 'flex' && target && target.closest && target.closest('#transaction-overlay')) {
+            const panel = transactionOverlay.querySelector('.meeting-panel') || transactionOverlay;
+            const focusables = Array.from(panel.querySelectorAll('input, select, textarea')).filter(el => el.offsetParent != null);
+            if (focusables.length && document.activeElement === focusables[focusables.length - 1]) {
+                e.preventDefault();
+                const saveBtn = document.getElementById('transaction-save');
+                if (saveBtn) saveBtn.focus();
+            }
+        }
+    }, true);
+
     // Tab from last input/select in a settings section focuses that section's ADD button
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Tab' || e.shiftKey) return;
@@ -5641,6 +5679,7 @@ updateTimeline(shouldScroll = false) {
         }
 
         overlay.style.display = 'flex';
+        setTimeout(() => { const first = document.getElementById('edit-entity-name'); if (first) first.focus(); }, 0);
     },
 
     openCreateEntity(type) {
@@ -5699,6 +5738,7 @@ updateTimeline(shouldScroll = false) {
         }
 
         overlay.style.display = 'flex';
+        setTimeout(() => { const first = document.getElementById('edit-entity-name'); if (first) first.focus(); }, 0);
     },
 
     closeEditEntity() {
@@ -6090,6 +6130,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         }
         this.setTransactionModalSign(sign);
         overlay.style.display = 'flex';
+        setTimeout(() => { const first = document.getElementById('transaction-amount'); if (first) first.focus(); }, 0);
     },
 
     openTransactionModalWithData(id, idx = null) {
@@ -6122,6 +6163,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         }
         this.setTransactionModalSign(sign);
         overlay.style.display = 'flex';
+        setTimeout(() => { const first = document.getElementById('transaction-amount'); if (first) first.focus(); }, 0);
     },
 
     closeTransactionModal() {
@@ -6582,7 +6624,7 @@ document.addEventListener('mousedown', (e) => {
         </div>
         <div style="display:flex; gap: 12px; margin-top: 20px;">
             <button onclick="ENGINE.closeEditEntity()" style="flex: 1; padding: 12px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button onclick="ENGINE.saveEditEntity()" style="flex: 1; padding: 12px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
+            <button id="edit-entity-save" onclick="ENGINE.saveEditEntity()" style="flex: 1; padding: 12px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
@@ -6640,7 +6682,7 @@ document.addEventListener('mousedown', (e) => {
         </div>
         <div style="display:flex; gap: 16px; margin-top: 14px;">
             <button onclick="ENGINE.closeTransactionModal()" style="flex: 1; padding: 10px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button onclick="ENGINE.saveTransactionModal()" style="flex: 1; padding: 10px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
+            <button id="transaction-save" onclick="ENGINE.saveTransactionModal()" style="flex: 1; padding: 10px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
