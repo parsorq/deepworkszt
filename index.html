@@ -4068,39 +4068,23 @@ updatePanelContext() {
             this.renderPanelExpenses();
         };
         budgetInput.addEventListener('input', () => {
-            const raw = budgetInput.value.trim();
-            if (raw.endsWith('.') || raw.endsWith('.0') || raw === '') {
-                syncBudgetAndRemaining();
-                return;
-            }
-            const parsed = this.parseAmount(budgetInput.value);
-            if (parsed !== null) {
-                const formatted = this.formatAmount(parsed, 2);
-                if (budgetInput.value !== formatted) {
-                    budgetInput.value = formatted;
-                    budgetInput.setSelectionRange(formatted.length, formatted.length);
-                }
-            }
+            budgetInput.value = budgetInput.value.replace(/[^\d.]/g, '');
             syncBudgetAndRemaining();
         });
         budgetInput.addEventListener('blur', () => {
-            const formatted = this.formatBudgetDisplay(budgetInput.value);
+            const parsed = this.parseAmount(budgetInput.value);
+            const formatted = parsed !== null ? this.formatAmount(parsed, 2) : '';
             if (formatted !== '') budgetInput.value = formatted;
             syncBudgetAndRemaining();
         });
     }
     if (expenseAmountInput) {
         expenseAmountInput.addEventListener('input', () => {
-            const raw = expenseAmountInput.value.trim();
-            if (raw.endsWith('.') || raw.endsWith('.0') || raw === '') return;
+            expenseAmountInput.value = expenseAmountInput.value.replace(/[^\d.]/g, '');
+        });
+        expenseAmountInput.addEventListener('blur', () => {
             const parsed = this.parseAmount(expenseAmountInput.value);
-            if (parsed !== null) {
-                const formatted = this.formatAmount(parsed, 2);
-                if (expenseAmountInput.value !== formatted) {
-                    expenseAmountInput.value = formatted;
-                    expenseAmountInput.setSelectionRange(formatted.length, formatted.length);
-                }
-            }
+            expenseAmountInput.value = parsed !== null ? this.formatAmount(parsed, 2) : this.formatAmount(0);
         });
     }
 },
