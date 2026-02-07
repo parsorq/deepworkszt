@@ -293,7 +293,7 @@ body.dragging .reminder-marker {
 }
 
 #date-calendar-popup, #time-picker-popup {
-    position: absolute;
+    position: fixed;
     z-index: 2100;
     background: rgba(22, 27, 34, 0.98);
     border: 1px solid rgba(255,255,255,0.1);
@@ -308,7 +308,8 @@ body.dragging .reminder-marker {
 #date-calendar-popup .cal-day { font-size: 11px; color: rgba(255,255,255,0.9); text-align: center; padding: 6px; border-radius: 6px; cursor: pointer; }
 #date-calendar-popup .cal-day:hover { background: rgba(255,255,255,0.1); }
 #date-calendar-popup .cal-day.other { color: rgba(255,255,255,0.35); }
-#date-calendar-popup .cal-day.today { background: rgba(0,122,255,0.25); }
+#date-calendar-popup .cal-day.selected { background: rgba(0,122,255,0.35); }
+#date-calendar-popup .cal-day.today:not(.selected) { box-shadow: 0 0 0 1px rgba(0,122,255,0.4); }
 #time-picker-popup { display: flex; gap: 8px; max-height: 180px; }
 #time-picker-popup .tp-col { overflow-y: auto; width: 44px; text-align: center; }
 #time-picker-popup .tp-item { font-size: 12px; font-family: 'SF Mono', monospace; color: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; cursor: pointer; }
@@ -6462,10 +6463,11 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         }
         const hidePopups = () => { calPopup.style.display = 'none'; timePopup.style.display = 'none'; };
         const showCalendar = () => {
-            const val = dateInput && dateInput.value ? dateInput.value.trim() : this.selectedDate;
-            const [y, m] = val && /^\d{4}-\d{2}-\d{2}$/.test(val) ? val.split('-').map(Number) : [new Date().getFullYear(), new Date().getMonth() + 1];
-            const year = y || new Date().getFullYear();
-            const month = (m || new Date().getMonth() + 1) - 1;
+            const val = (dateInput && dateInput.value ? dateInput.value.trim() : this.selectedDate) || '';
+            const parsed = val && /^\d{4}-\d{2}-\d{2}$/.test(val) ? val.split('-').map(Number) : null;
+            const year = parsed ? parsed[0] : new Date().getFullYear();
+            const month = parsed ? parsed[1] - 1 : new Date().getMonth();
+            const selectedDateStr = val && /^\d{4}-\d{2}-\d{2}$/.test(val) ? val : '';
             const first = new Date(year, month, 1);
             const last = new Date(year, month + 1, 0);
             const startPad = first.getDay();
@@ -6478,13 +6480,16 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 const d = prevDays - startPad + i + 1;
                 const py = month === 0 ? year - 1 : year;
                 const pm = month === 0 ? 12 : month;
-                grid += `<div class="cal-day other" data-date="${py}-${String(pm).padStart(2,'0')}-${String(d).padStart(2,'0')}">${d}</div>`;
+                const dateStr = `${py}-${String(pm).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const isSelected = dateStr === selectedDateStr;
+                grid += `<div class="cal-day other ${isSelected ? 'selected' : ''}" data-date="${dateStr}">${d}</div>`;
             }
             const today = new Date();
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
-                grid += `<div class="cal-day ${isToday ? 'today' : ''}" data-date="${dateStr}">${d}</div>`;
+                const isSelected = dateStr === selectedDateStr;
+                grid += `<div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-date="${dateStr}">${d}</div>`;
             }
             const totalCells = startPad + daysInMonth;
             const remaining = (7 - (totalCells % 7)) % 7;
@@ -6504,7 +6509,12 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
             });
             const rect = dateInput.getBoundingClientRect();
             calPopup.style.left = rect.left + 'px';
-            calPopup.style.top = (rect.bottom + 4) + 'px';
+            const calHeight = 220;
+            if (rect.bottom + 4 + calHeight > window.innerHeight - 12) {
+                calPopup.style.top = (rect.top - calHeight - 4) + 'px';
+            } else {
+                calPopup.style.top = (rect.bottom + 4) + 'px';
+            }
             calPopup.style.display = 'block';
             timePopup.style.display = 'none';
         };
