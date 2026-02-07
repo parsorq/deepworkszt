@@ -1925,7 +1925,7 @@ const ENGINE = {
     currentNet: 23550.00,
     isMeetingActive: false,
     GRID_TOP_OFFSET: 0,
-    HOUR_HEIGHT: 312,
+    HOUR_HEIGHT: 240,
     nextEventId: 100, // For generating unique IDs
     editMeetingWidgets: { stakeholders: true, agenda: true, timeblockExpenses: true },
     editMeetingDraftWidgets: {},
@@ -5057,7 +5057,7 @@ renderDay() {
     const container = document.getElementById('ledger-container');
     if (!container) return;
 
-    this.HOUR_HEIGHT = 312;
+    this.HOUR_HEIGHT = 240;
     const colors = { MEETING: 'rgba(0, 122, 255, 0.72)', REMINDER: 'rgba(50, 215, 75, 0.72)', TASK: 'rgba(255, 59, 48, 0.72)', EVENT: 'rgba(255, 149, 0, 0.72)' };
 
     // Format time helper
@@ -5137,8 +5137,9 @@ renderDay() {
         if (incomeCount) detailsParts.push(incomeCount + ' income');
         const detailsStr = detailsParts.join(' · ');
         const hasDetails = detailsStr.length > 0;
-        // 15m single line; all other blocks: type, label, time, divider, "details", counts (details row hidden if all zeros).
+        // 15m single line; 30m compact 3 lines (no details); 45m+ type, label, time, divider, details.
         const isSingleLine = duration <= 0.25;
+        const is30mOnly = duration > 0.25 && duration <= 0.5;
 
         let blockContent = '';
         if (isSingleLine) {
@@ -5149,8 +5150,16 @@ renderDay() {
                     <span style="color: white; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${this.escapeHTML(session.label || 'Session')}</span>
                     <span style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5); flex-shrink: 0;">${startStr} – ${endStr} · ${durationStr}</span>
                 </div>`;
+        } else if (is30mOnly) {
+            // 30m: compact 3 lines only (no divider/details) to remove vertical extra space below time
+            blockContent = `
+                <div style="padding: 6px 10px; pointer-events: auto; display: flex; flex-direction: column; justify-content: center; gap: 2px; height: 100%;">
+                    <div style="color: ${color}; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;">${session.type}</div>
+                    <div style="color: white; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(session.label || 'Session')}</div>
+                    <div style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5);">${startStr} – ${endStr} · ${durationStr}</div>
+                </div>`;
         } else {
-            // 30m and up: type, label, start/finish/length, divider, "details", counts line
+            // 45m+: type, label, start/finish/length, divider, "details", counts line
             blockContent = `
                 <div style="padding: 10px 14px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; gap: 0;">
                     <div style="color: ${color}; font-size: 10px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
