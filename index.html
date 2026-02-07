@@ -177,7 +177,7 @@ body {
 
     .hour-row {
         display: flex;
-        height: 100px; 
+        height: 110px; 
         border: none !important;
         background: transparent !important;
         position: relative;
@@ -1915,7 +1915,7 @@ const ENGINE = {
     currentNet: 23550.00,
     isMeetingActive: false,
     GRID_TOP_OFFSET: 0,
-    HOUR_HEIGHT: 100,
+    HOUR_HEIGHT: 110,
     nextEventId: 100, // For generating unique IDs
     editMeetingWidgets: { stakeholders: true, agenda: true, timeblockExpenses: true },
     editMeetingDraftWidgets: {},
@@ -5033,7 +5033,7 @@ renderDay() {
     const container = document.getElementById('ledger-container');
     if (!container) return;
 
-    this.HOUR_HEIGHT = 100;
+    this.HOUR_HEIGHT = 110;
     const colors = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', EVENT: '#FF9500' };
 
     // Format time helper
@@ -5096,40 +5096,66 @@ renderDay() {
         const height = (session.end - session.start) * this.HOUR_HEIGHT;
         const duration = session.end - session.start;
         const durationStr = duration >= 1 ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : `${Math.round(duration * 60)}m`;
+        const startStr = formatTime(session.start);
+        const endStr = formatTime(session.end);
         const deleteStyle = height <= 40 ? 'top: 50%; transform: translateY(-50%);' : '';
-        // Responsive content based on block height
-        const isCompact = height <= 35;  // 15min or less
-        const isMedium = height > 35 && height <= 150;  // ~1.5h
+        // Preview data: purpose, stakeholders, budget/spend, URL, density
+        const agendaItems = (session.agenda || '').split('|').filter(Boolean);
+        const noteItems = this.parseNotes(session.notes || '');
+        const purposeLine = (agendaItems[0] || noteItems[0]?.text || '').trim().slice(0, 42);
+        const stakeholdersList = (session.stakeholders || '').split('|').filter(Boolean);
+        const stakeholdersPreview = stakeholdersList.length <= 3 ? stakeholdersList.join(', ') : stakeholdersList.length + ' stakeholders';
+        const eventExpenses = todayTx.filter(({ tx }) => tx.eventId === session.id && tx.amount < 0);
+        const spent = eventExpenses.reduce((s, { tx }) => s + Math.abs(tx.amount), 0);
+        const budgetNum = this.parseAmount(session.budget || '');
+        const budgetStr = budgetNum != null && budgetNum >= 0
+            ? 'Budget ' + this.formatAmount(budgetNum, 0) + ' · ' + this.formatAmount(Math.max(0, budgetNum - spent), 0) + ' left'
+            : (spent > 0 ? 'Spent ' + this.formatAmount(spent, 0) : '');
+        const hasUrl = !!(session.location || '').trim();
+        const notesCount = noteItems.length;
+        const agendaCount = agendaItems.length;
+        const expensesCount = eventExpenses.length;
+        const densityParts = [];
+        if (notesCount) densityParts.push(notesCount + ' note' + (notesCount !== 1 ? 's' : ''));
+        if (agendaCount) densityParts.push(agendaCount + ' agenda');
+        if (expensesCount) densityParts.push(expensesCount + ' expense' + (expensesCount !== 1 ? 's' : ''));
+        const densityStr = densityParts.join(' · ');
+        // Responsive content based on block height (progressive disclosure)
+        const isCompact = height <= 55;
+        const isMedium = height > 55 && height <= 180;
 
         let blockContent = '';
         if (isCompact) {
-            // Ultra-compact: label + duration
+            // Compact: label + start–end · length (always show time info)
             blockContent = `
-                <div style="padding: 4px 8px; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; height: 100%;">
-                    <span style="color: white; font-weight: 600; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${session.label}</span>
-                    <span style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-left: 8px;">${durationStr}</span>
+                <div style="padding: 4px 8px; pointer-events: auto; display: flex; flex-direction: column; justify-content: center; gap: 2px; height: 100%;">
+                    <div style="color: white; font-weight: 600; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(session.label || 'Session')}</div>
+                    <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">${startStr} – ${endStr} · ${durationStr}</div>
                 </div>`;
         } else if (isMedium) {
-            // Medium: type + label + time + duration
+            // Medium: type, label, start–end · length, then purpose and/or stakeholders/budget
             blockContent = `
-                <div style="padding: 6px 10px; pointer-events: auto; height: 100%;">
+                <div style="padding: 6px 10px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; gap: 4px;">
                     <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
-                    <div style="color: white; font-weight: 600; font-size: 12px; margin-top: 2px;">${session.label}</div>
-                    <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">${formatTime(session.start)} – ${formatTime(session.end)} · ${durationStr}</div>
+                    <div style="color: white; font-weight: 600; font-size: 12px; line-height: 1.2;">${this.escapeHTML(session.label || 'Session')}</div>
+                    <div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">${startStr} – ${endStr} · ${durationStr}</div>
+                    ${purposeLine ? `<div style="font-size: 10px; color: rgba(255,255,255,0.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHTML(purposeLine)}</div>` : ''}
+                    ${stakeholdersPreview ? `<div style="font-size: 9px; color: rgba(255,255,255,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHTML(stakeholdersPreview)}</div>` : ''}
+                    ${budgetStr ? `<div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">${this.escapeHTML(budgetStr)}</div>` : ''}
                 </div>`;
         } else {
-            // Full: all info
+            // Full: type, label, start–end · length, purpose, stakeholders, budget, URL link, density cues
             blockContent = `
-                <div style="padding: 10px 12px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="padding: 10px 12px; pointer-events: auto; height: 100%; display: flex; flex-direction: column; justify-content: space-between; gap: 6px;">
                     <div>
                         <div style="color: ${color}; font-size: 8px; font-weight: 800; letter-spacing: 1px; margin-bottom: 2px;">${session.type}</div>
-                        <div style="color: white; font-weight: 600; font-size: 13px;">${session.label}</div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
-                            <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.4);">${formatTime(session.start)} – ${formatTime(session.end)}</span>
-                            <span style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.3);">${durationStr}</span>
-                        </div>
+                        <div style="color: white; font-weight: 600; font-size: 13px;">${this.escapeHTML(session.label || 'Session')}</div>
+                        <div style="font-family: 'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 2px;">${startStr} – ${endStr} · ${durationStr}</div>
+                        ${purposeLine ? `<div style="font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHTML(purposeLine)}</div>` : ''}
+                        ${stakeholdersPreview ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHTML(stakeholdersPreview)}</div>` : ''}
+                        ${budgetStr ? `<div style="font-family: 'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">${this.escapeHTML(budgetStr)}</div>` : ''}
+                        ${hasUrl ? `<a href="${String(session.location||'').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="font-size: 10px; color: rgba(0,122,255,0.9); text-decoration: none;">Join</a>` : ''}
+                        ${densityStr ? `<div style="font-size: 9px; color: rgba(255,255,255,0.4);">${this.escapeHTML(densityStr)}</div>` : ''}
                     </div>
                 </div>`;
         }
