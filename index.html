@@ -2112,6 +2112,10 @@ async init() {
         if (e.target.closest('#block-context-menu')) return;
         if (e.target.closest('#drag-create-type-menu')) return;
         if (e.target.closest('#modal-overlay')) return;
+        if (e.target.closest('#settings-overlay')) return;
+        if (e.target.closest('#edit-entity-overlay')) return;
+        if (e.target.closest('#transaction-overlay')) return;
+        if (e.target.closest('#edit-meeting-settings-overlay')) return;
         const bounds = this.getEventsBounds();
         if (!bounds) return;
         if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) return;
