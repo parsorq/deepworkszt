@@ -5132,8 +5132,14 @@ renderDay() {
         const agendaCount = agendaItems.length;
         const expensesCount = eventTx.filter(({ tx }) => (tx.amount || 0) < 0).length;
         const incomeCount = eventTx.filter(({ tx }) => (tx.amount || 0) > 0).length;
-        const detailsStr = notesCount + ' note' + (notesCount !== 1 ? 's' : '') + ' · ' + agendaCount + ' agenda · ' + expensesCount + ' expense' + (expensesCount !== 1 ? 's' : '') + ' · ' + incomeCount + ' income';
-        // 15m single line; all other blocks: type, label, time, divider, "details", counts.
+        const detailsParts = [];
+        if (notesCount) detailsParts.push(notesCount + ' note' + (notesCount !== 1 ? 's' : ''));
+        if (agendaCount) detailsParts.push(agendaCount + ' agenda');
+        if (expensesCount) detailsParts.push(expensesCount + ' expense' + (expensesCount !== 1 ? 's' : ''));
+        if (incomeCount) detailsParts.push(incomeCount + ' income');
+        const detailsStr = detailsParts.join(' · ');
+        const hasDetails = detailsStr.length > 0;
+        // 15m single line; all other blocks: type, label, time, divider, "details", counts (details row hidden if all zeros).
         const isSingleLine = duration <= 0.25;
 
         let blockContent = '';
@@ -5152,11 +5158,11 @@ renderDay() {
                     <div style="color: ${color}; font-size: 10px; font-weight: 800; letter-spacing: 1px;">${session.type}</div>
                     <div style="color: white; font-weight: 600; font-size: 14px; line-height: 1.25;">${this.escapeHTML(session.label || 'Session')}</div>
                     <div style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px;">${startStr} – ${endStr} · ${durationStr}</div>
-                    <div style="height: 1px; background: rgba(255,255,255,0.08); margin: 8px 0;"></div>
+                    ${hasDetails ? `<div style="height: 1px; background: rgba(255,255,255,0.08); margin: 8px 0;"></div>
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0;">
                         <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); text-transform: uppercase; flex-shrink: 0;">Details</span>
                         <span style="font-size: 11px; color: rgba(255,255,255,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHTML(detailsStr)}</span>
-                    </div>
+                    </div>` : ''}
                 </div>`;
         }
 
