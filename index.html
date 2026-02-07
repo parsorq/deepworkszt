@@ -476,6 +476,14 @@ body.dragging .reminder-marker {
     pointer-events: auto;
 }
 
+/* Transaction modal: shrink to content only (no fixed height for single-record edit) */
+#transaction-overlay .meeting-panel {
+    height: auto;
+    min-height: 0;
+    max-height: 90vh;
+    overflow: visible;
+}
+
 /* Edit Meeting: 3 areas — top fixed, middle flexible+scrollable, bottom fixed */
 .meeting-panel--editor {
     display: flex;
