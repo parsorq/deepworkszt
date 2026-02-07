@@ -1886,6 +1886,7 @@ const ENGINE = {
     projects: [],
     categories: [],
     subcategories: [],
+    roles: [],
     userEmail: null,
     userSheetId: null,
     sheetInfo: null,
@@ -1900,6 +1901,7 @@ const ENGINE = {
         projects: 'Projects',
         categories: 'Categories',
         subcategories: 'Subcategories',
+        roles: 'Roles',
         logs: LOG_SHEET_NAME
     },
 
@@ -4345,6 +4347,7 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.categories, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.subcategories, ['id', 'name', 'category', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.roles, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.logs, ['timestamp', 'user', 'action', 'section', 'entity_id', 'details'])
     ]);
 },
@@ -4361,7 +4364,7 @@ async writeHeaders(sheetName, headers) {
 
 async loadData() {
     await this.ensureUserStorage();
-    const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes, categoriesRes, subcategoriesRes] = await Promise.all([
+    const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes, categoriesRes, subcategoriesRes, rolesRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.events}!A:M`
@@ -4397,6 +4400,10 @@ async loadData() {
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
             range: `${this.sheetNames.subcategories}!A:F`
+        }),
+        gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.roles}!A:E`
         })
     ]);
 
@@ -4409,6 +4416,7 @@ async loadData() {
     const projectRows = projectsRes.result.values || [];
     const categoryRows = categoriesRes.result.values || [];
     const subcategoryRows = subcategoriesRes.result.values || [];
+    const roleRows = rolesRes.result.values || [];
 
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
@@ -4502,6 +4510,7 @@ async loadData() {
     this.institutions = this.parseEntities(institutionRows);
     this.categories = this.parseEntities(categoryRows);
     this.subcategories = this.parseSubcategories(subcategoryRows);
+    this.roles = this.parseEntities(roleRows);
 },
 
 parseEntities(rows) {
@@ -4600,6 +4609,7 @@ getSheetNameForEntity(type) {
     if (type === 'projects') return this.sheetNames.projects;
     if (type === 'categories') return this.sheetNames.categories;
     if (type === 'subcategories') return this.sheetNames.subcategories;
+    if (type === 'roles') return this.sheetNames.roles;
     return null;
 },
 
@@ -5427,6 +5437,13 @@ updateTimeline(shouldScroll = false) {
         if (projectList) projectList.innerHTML = this.projects.length ? renderList(this.projects, 'projects') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No projects yet.</div>';
         if (categoryList) categoryList.innerHTML = this.categories.length ? renderList(this.categories, 'categories') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No categories yet.</div>';
         if (subcategoryList) subcategoryList.innerHTML = this.subcategories.length ? renderList(this.subcategories, 'subcategories') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No subcategories yet.</div>';
+        const roleList = document.getElementById('settings-role-list');
+        if (roleList) roleList.innerHTML = this.roles.length ? renderList(this.roles, 'roles') : '<div style="color: rgba(255,255,255,0.4); font-size: 11px;">No roles yet.</div>';
+        const profileRoleSelect = document.getElementById('settings-profiles-role');
+        if (profileRoleSelect) {
+            const roleOptions = ['<option value="">Role</option>'].concat(this.roles.map(r => `<option value="${(r.name || '').replace(/"/g, '&quot;')}">${(r.name || '').replace(/</g, '&lt;')}</option>`));
+            profileRoleSelect.innerHTML = roleOptions.join('');
+        }
         if (projectSelect) {
             const options = ['<option value="">Link to Project</option>']
                 .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
@@ -5592,6 +5609,10 @@ updateTimeline(shouldScroll = false) {
         }
         if (roleInput) {
             roleInput.style.display = type === 'profiles' ? 'block' : 'none';
+            if (type === 'profiles') {
+                const roleOpts = ['<option value="">Role</option>'].concat((this.roles || []).map(r => `<option value="${String(r.name || '').replace(/"/g, '&quot;')}">${String(r.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`));
+                roleInput.innerHTML = roleOpts.join('');
+            }
             roleInput.value = entity.role || '';
         }
         if (projectSelect) {
@@ -5647,6 +5668,10 @@ updateTimeline(shouldScroll = false) {
         }
         if (roleInput) {
             roleInput.style.display = type === 'profiles' ? 'block' : 'none';
+            if (type === 'profiles') {
+                const roleOpts = ['<option value="">Role</option>'].concat((this.roles || []).map(r => `<option value="${String(r.name || '').replace(/"/g, '&quot;')}">${String(r.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`));
+                roleInput.innerHTML = roleOpts.join('');
+            }
             roleInput.value = '';
         }
         if (projectSelect) {
@@ -6420,7 +6445,7 @@ document.addEventListener('mousedown', (e) => {
                 <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-profiles-name" placeholder="Profile name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                     <input id="settings-profiles-email" placeholder="Email" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                    <input id="settings-profiles-role" placeholder="Role" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <select id="settings-profiles-role" class="subtle-select" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;"><option value="">Role</option></select>
                 </div>
                 <div style="margin-bottom: 12px;">
                     <input id="settings-profiles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none; width: 100%;">
@@ -6477,6 +6502,18 @@ document.addEventListener('mousedown', (e) => {
                     <input id="settings-subcategories-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
                 <div id="settings-subcategory-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
+
+            <div data-section="roles" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">ROLES</div>
+                    <button id="settings-roles-add" onclick="ENGINE.addEntity('roles')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD ROLE</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-roles-name" placeholder="Role name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-roles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-role-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
@@ -6537,7 +6574,7 @@ document.addEventListener('mousedown', (e) => {
         <div style="display:flex; flex-direction:column; gap: 12px;">
             <input id="edit-entity-name" placeholder="Name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <input id="edit-entity-email" placeholder="Email" style="display:none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-            <input id="edit-entity-role" placeholder="Role" style="display:none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <select id="edit-entity-role" class="subtle-select" style="display:none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;"><option value="">Role</option></select>
             <select id="edit-entity-project" class="subtle-select" style="display:none;"></select>
             <select id="edit-entity-category" class="subtle-select" style="display:none;"></select>
             <div id="edit-entity-profiles" style="display:none; flex-direction:column; gap:6px; max-height: 160px; overflow-y: auto;"></div>
