@@ -177,7 +177,7 @@ body {
 
     .hour-row {
         display: flex;
-        height: 110px; 
+        height: 165px; 
         border: none !important;
         background: transparent !important;
         position: relative;
@@ -1925,7 +1925,7 @@ const ENGINE = {
     currentNet: 23550.00,
     isMeetingActive: false,
     GRID_TOP_OFFSET: 0,
-    HOUR_HEIGHT: 110,
+    HOUR_HEIGHT: 165,
     nextEventId: 100, // For generating unique IDs
     editMeetingWidgets: { stakeholders: true, agenda: true, timeblockExpenses: true },
     editMeetingDraftWidgets: {},
@@ -5074,7 +5074,7 @@ renderDay() {
     const container = document.getElementById('ledger-container');
     if (!container) return;
 
-    this.HOUR_HEIGHT = 110;
+    this.HOUR_HEIGHT = 165;
     const colors = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', EVENT: '#FF9500' };
 
     // Format time helper
@@ -5163,8 +5163,8 @@ renderDay() {
         if (expensesCount) densityParts.push(expensesCount + ' expense' + (expensesCount !== 1 ? 's' : ''));
         const densityStr = densityParts.join(' · ');
         // Responsive content based on block height (progressive disclosure)
-        const isCompact = height <= 55;
-        const isMedium = height > 55 && height <= 180;
+        const isCompact = height <= 83;
+        const isMedium = height > 83 && height <= 270;
 
         let blockContent = '';
         if (isCompact) {
