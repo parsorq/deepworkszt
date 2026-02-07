@@ -680,22 +680,39 @@ body.dragging .reminder-marker {
     transform: scale(0.95);
 }
 
+.date-nav-today-slot {
+    width: 72px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
 .date-nav-today-btn {
-    min-width: 52px;
-    padding: 6px 12px;
+    width: 72px;
+    height: 28px;
+    padding: 0;
     font-size: 12px;
     font-family: 'SF Mono', monospace;
     letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .date-nav-today-plain {
-    min-width: 52px;
-    padding: 6px 12px;
+    width: 72px;
+    height: 28px;
+    padding: 0;
     font-size: 12px;
     font-family: 'SF Mono', monospace;
     letter-spacing: 0.5px;
     color: rgba(255,255,255,0.45);
     cursor: default;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .date-display-main {
@@ -1199,10 +1216,12 @@ body.logged-out #tablet-shell {
                 <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
                     <span id="current-date-display" class="date-display-main">2026-01-30</span>
                     <div class="date-nav-row" style="display:flex; align-items:center; gap: 24px; margin-top: 4px;">
-                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(-1)" aria-label="Previous day">‹</button>
-                        <span id="today-label-plain" class="date-nav-today-plain" style="display: none;">Today</span>
-                        <button id="today-nav-btn" class="date-nav-btn date-nav-today-btn" onclick="ENGINE.goToToday()" aria-label="Go to today" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);">Today</button>
-                        <button class="date-nav-btn" onclick="ENGINE.navigateDate(1)" aria-label="Next day">›</button>
+                        <button type="button" class="date-nav-btn" data-delta="-1" aria-label="Previous day">&#8249;</button>
+                        <div class="date-nav-today-slot">
+                            <span id="today-label-plain" class="date-nav-today-plain" style="display: none;">Today</span>
+                            <button type="button" id="today-nav-btn" class="date-nav-btn date-nav-today-btn" onclick="ENGINE.goToToday()" aria-label="Go to today" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);">Today</button>
+                        </div>
+                        <button type="button" class="date-nav-btn" data-delta="1" aria-label="Next day">&#8250;</button>
                     </div>
                 </div>
             </div>
@@ -1807,6 +1826,7 @@ async init() {
     this.initFinancialPulse();
     this.startTimelineUpdater();
     this.bindLedgerInteractions();
+    this.bindDateNav();
     this.restoreLogQueue();
 
     // Global listeners for smooth drag
@@ -2100,12 +2120,26 @@ syncConfigControls() {
 
 // Date Navigation
 navigateDate(delta) {
+    const d = Number(delta);
+    if (!Number.isFinite(d) || d === 0) return;
     const current = new Date(this.selectedDate);
-    current.setDate(current.getDate() + delta);
+    current.setDate(current.getDate() + d);
     this.selectedDate = getLocalDateISO(current);
     this.updateDateDisplay();
     this.renderDay();
     this.saveViewState();
+},
+
+bindDateNav() {
+    const row = document.querySelector('.date-nav-row');
+    if (!row || row.dataset.bound === 'true') return;
+    row.dataset.bound = 'true';
+    row.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-delta]');
+        if (!btn) return;
+        const delta = parseInt(btn.getAttribute('data-delta'), 10);
+        if (Number.isFinite(delta)) this.navigateDate(delta);
+    });
 },
 
 updateDateDisplay() {
