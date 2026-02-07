@@ -2037,6 +2037,36 @@ async init() {
             return;
         this.hideAllMenus();
     }, true);
+
+    // Enter in edit-entity overlay saves (except when focus is on notes textarea)
+    document.addEventListener('keydown', (e) => {
+        const overlay = document.getElementById('edit-entity-overlay');
+        if (!overlay || overlay.style.display !== 'flex' || !e.target || !e.target.closest || !e.target.closest('#edit-entity-overlay')) return;
+        if (e.key === 'Enter' && e.target.id !== 'edit-entity-notes') {
+            e.preventDefault();
+            e.stopPropagation();
+            this.saveEditEntity();
+        }
+    }, true);
+
+    // Tab from last input/select in a settings section focuses that section's ADD button
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab' || e.shiftKey) return;
+        const target = e.target;
+        const settingsOverlay = document.getElementById('settings-overlay');
+        if (!settingsOverlay || settingsOverlay.style.display !== 'flex' || !target || !target.closest || !target.closest('#settings-overlay')) return;
+        const section = target.closest('[data-section]');
+        if (!section) return;
+        const focusables = Array.from(section.querySelectorAll('input, select'));
+        if (!focusables.length) return;
+        if (document.activeElement !== focusables[focusables.length - 1]) return;
+        const addBtn = document.getElementById('settings-' + section.dataset.section + '-add');
+        if (addBtn) {
+            e.preventDefault();
+            addBtn.focus();
+        }
+    }, true);
+
     const modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) {
         modalOverlay.addEventListener('keydown', (e) => {
@@ -5530,6 +5560,8 @@ updateTimeline(shouldScroll = false) {
         if (roleInput && type === 'profiles') roleInput.value = '';
         if (subcategoryCategorySelect && type === 'subcategories') subcategoryCategorySelect.value = '';
         this.renderSettings();
+        const firstInput = document.getElementById(`settings-${type}-name`);
+        if (firstInput) firstInput.focus();
     },
 
     openEditEntity(type, id) {
@@ -6364,10 +6396,10 @@ document.addEventListener('mousedown', (e) => {
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr; gap: 20px;">
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="teams" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">TEAMS</div>
-                    <button onclick="ENGINE.addEntity('teams')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD TEAM</button>
+                    <button id="settings-teams-add" onclick="ENGINE.addEntity('teams')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD TEAM</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-teams-name" placeholder="Team name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -6380,10 +6412,10 @@ document.addEventListener('mousedown', (e) => {
                 <div id="settings-team-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="profiles" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PROFILES</div>
-                    <button onclick="ENGINE.addEntity('profiles')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROFILE</button>
+                    <button id="settings-profiles-add" onclick="ENGINE.addEntity('profiles')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROFILE</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-profiles-name" placeholder="Profile name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -6396,10 +6428,10 @@ document.addEventListener('mousedown', (e) => {
                 <div id="settings-profile-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="institutions" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">INSTITUTIONS</div>
-                    <button onclick="ENGINE.addEntity('institutions')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD INSTITUTION</button>
+                    <button id="settings-institutions-add" onclick="ENGINE.addEntity('institutions')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD INSTITUTION</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-institutions-name" placeholder="Institution name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -6408,10 +6440,10 @@ document.addEventListener('mousedown', (e) => {
                 <div id="settings-institution-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="projects" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PROJECTS</div>
-                    <button onclick="ENGINE.addEntity('projects')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROJECT</button>
+                    <button id="settings-projects-add" onclick="ENGINE.addEntity('projects')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROJECT</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-projects-name" placeholder="Project name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -6420,10 +6452,10 @@ document.addEventListener('mousedown', (e) => {
                 <div id="settings-project-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="categories" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">CATEGORIES</div>
-                    <button onclick="ENGINE.addEntity('categories')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD CATEGORY</button>
+                    <button id="settings-categories-add" onclick="ENGINE.addEntity('categories')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD CATEGORY</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-categories-name" placeholder="Category name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
@@ -6432,10 +6464,10 @@ document.addEventListener('mousedown', (e) => {
                 <div id="settings-category-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="subcategories" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">SUBCATEGORIES</div>
-                    <button onclick="ENGINE.addEntity('subcategories')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD SUBCATEGORY</button>
+                    <button id="settings-subcategories-add" onclick="ENGINE.addEntity('subcategories')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD SUBCATEGORY</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-subcategories-name" placeholder="Subcategory name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
