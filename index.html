@@ -1955,6 +1955,10 @@ async init() {
     document.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         if (e.target.closest('#modal-overlay')) return;
+        if (e.target.closest('#settings-overlay')) return;
+        if (e.target.closest('#edit-entity-overlay')) return;
+        if (e.target.closest('#transaction-overlay')) return;
+        if (e.target.closest('#edit-meeting-settings-overlay')) return;
         if (e.target.closest('.date-nav')) return;
         if (e.pointerType === 'mouse' && e.ctrlKey) return;
         if (e.target.closest('#quick-create-menu')) return;
