@@ -654,6 +654,8 @@ body.dragging .reminder-marker {
     display: flex;
     align-items: center;
     gap: 8px;
+    position: relative;
+    z-index: 10;
 }
 
 .date-nav-btn {
@@ -1216,12 +1218,12 @@ body.logged-out #tablet-shell {
                 <div style="display:flex; flex-direction:column; align-items:center; gap: 10px;">
                     <span id="current-date-display" class="date-display-main">2026-01-30</span>
                     <div class="date-nav-row" style="display:flex; align-items:center; gap: 24px; margin-top: 4px;">
-                        <button type="button" class="date-nav-btn" aria-label="Previous day" onclick="ENGINE.navigateDate(-1)">&#8249;</button>
+                        <button type="button" id="date-nav-prev" class="date-nav-btn" aria-label="Previous day">&#8249;</button>
                         <div class="date-nav-today-slot">
                             <span id="today-label-plain" class="date-nav-today-plain" style="display: none;">Today</span>
                             <button type="button" id="today-nav-btn" class="date-nav-btn date-nav-today-btn" onclick="ENGINE.goToToday()" aria-label="Go to today" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7);">Today</button>
                         </div>
-                        <button type="button" class="date-nav-btn" aria-label="Next day" onclick="ENGINE.navigateDate(1)">&#8250;</button>
+                        <button type="button" id="date-nav-next" class="date-nav-btn" aria-label="Next day">&#8250;</button>
                     </div>
                 </div>
             </div>
@@ -2140,7 +2142,17 @@ navigateDate(delta) {
 },
 
 bindDateNav() {
-    // Arrows use direct onclick; nothing to bind here (kept for future use)
+    const prev = document.getElementById('date-nav-prev');
+    const next = document.getElementById('date-nav-next');
+    if (!prev || !next) return;
+    const handler = (delta) => (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        this.navigateDate(delta);
+    };
+    prev.addEventListener('click', handler(-1), true);
+    next.addEventListener('click', handler(1), true);
 },
 
 updateDateDisplay() {
