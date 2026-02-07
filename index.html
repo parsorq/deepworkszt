@@ -1644,6 +1644,55 @@ function finalizeLoginSuccess() {
     if (loginOverlay && loginOverlay.parentNode) loginOverlay.remove();
 }
 
+let _restoreAttempted = false;
+function tryRestoreSession() {
+    if (_restoreAttempted) return;
+    _restoreAttempted = true;
+    const lastUser = localStorage.getItem('ENGINE_LAST_USER');
+    if (!lastUser || !lastUser.trim()) {
+        if (typeof showLoginUI === 'function') showLoginUI();
+        return;
+    }
+    ensureGoogleReady().then(() => {
+        if (!window.google?.accounts?.oauth2) {
+            if (typeof showLoginUI === 'function') showLoginUI();
+            return;
+        }
+        const tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: GOOGLE_SCOPES,
+            callback: async (response) => {
+                if (response.error) {
+                    if (typeof showLoginUI === 'function') showLoginUI();
+                    return;
+                }
+                googleAccessToken = response.access_token;
+                gapi.client.setToken({ access_token: googleAccessToken });
+                try {
+                    const profile = await fetchUserProfile();
+                    const allowed = await validateMasterRegistry(profile.email);
+                    if (!allowed) {
+                        if (typeof showLoginUI === 'function') showLoginUI();
+                        return;
+                    }
+                    ENGINE.userEmail = profile.email;
+                    localStorage.setItem('ENGINE_LAST_USER', profile.email);
+                    await ENGINE.init();
+                    finalizeLoginSuccess();
+                } catch (_) {
+                    if (typeof showLoginUI === 'function') showLoginUI();
+                }
+            },
+            error_callback: () => {
+                if (typeof showLoginUI === 'function') showLoginUI();
+            }
+        });
+        tokenClient.requestAccessToken({ prompt: 'none' });
+    }).catch(() => {
+        if (typeof showLoginUI === 'function') showLoginUI();
+    });
+}
+
 function showLoginUI() {
     if (document.getElementById('engine-login-overlay')) return;
     document.body.classList.add('logged-out');
@@ -6048,10 +6097,10 @@ setInterval(() => {
     if (new Date().getSeconds() === 0) ENGINE.updateTimeline();
 }, 1000);
 
-// Show login as soon as DOM is ready so user never sees a black screen
+// On load: try to restore session from ENGINE_LAST_USER (silent token refresh); otherwise show login
 function initLoginUI() {
     if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay')) {
-        if (typeof showLoginUI === 'function') showLoginUI();
+        tryRestoreSession();
     }
 }
 if (document.readyState === 'loading') {
