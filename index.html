@@ -6114,6 +6114,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 void this.saveTransaction(tx);
                 this.sortTransactions();
                 this.renderTransactions();
+                if (date !== this.selectedDate) this.selectedDate = date;
                 this.renderDay();
             }
         } else {
@@ -6373,51 +6374,57 @@ document.addEventListener('mousedown', (e) => {
 </div>
 
 <!-- Transaction Overlay (same UX as Edit Meeting finance widget) -->
-<div id="transaction-overlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 1350; justify-content:center; align-items:center; padding: 40px;">
-    <div class="meeting-panel panel-section" style="max-width: 720px; width: 90%; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 10px 20px; border: 1px solid rgba(255,255,255,0.04);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 9px;">
+<div id="transaction-overlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 1350; justify-content:center; align-items:center; padding: 24px;">
+    <div class="meeting-panel panel-section" style="max-width: 720px; width: 90%; background: rgba(255,255,255,0.015); border-radius: 20px; padding: 14px 20px; border: 1px solid rgba(255,255,255,0.04); pointer-events: auto; align-self: flex-start; margin: auto 0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
             <h2 id="transaction-title" style="margin:0; color:white; font-size: 18px; font-weight: 600;">Add Transaction</h2>
             <button onclick="ENGINE.closeTransactionModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
-        <div style="display:flex; flex-direction:column; gap: 5px;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 4px 16px; align-items: start;">
-                <div style="display:flex; flex-direction:column; gap:2px;">
-                    <div style="display:flex; align-items:center; gap:6px;">
+        <div style="display:flex; flex-direction:column; gap: 10px; pointer-events: auto;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px 16px; align-items: start;">
+                <div style="display:flex; flex-direction:column; gap: 4px;">
+                    <div style="display:flex; align-items:center; gap: 6px;">
                         <span style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Transaction</span>
                         <span id="transaction-type-label" style="color: rgba(255,255,255,0.7); font-size: 11px; font-family:'SF Mono';">Expense</span>
                     </div>
-                    <div id="transaction-sign-row" data-sign="-1" style="display:flex; gap:6px; align-items:center;">
+                    <div id="transaction-sign-row" data-sign="-1" style="display:flex; gap: 6px; align-items:center;">
                         <button type="button" onclick="ENGINE.setTransactionModalSign(-1)" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); font-size:12px; font-weight:800; width: 48px; height: 28px; border-radius:6px; cursor:pointer;">−</button>
                         <button type="button" onclick="ENGINE.setTransactionModalSign(1)" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-size:12px; font-weight:800; width: 48px; height: 28px; border-radius:6px; cursor:pointer;">+</button>
                     </div>
                 </div>
                 <div></div>
-                <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="display:flex; flex-direction:column; gap: 4px;">
                     <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Amount</div>
-                    <input id="transaction-amount" type="text" placeholder="0.00" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
+                    <input id="transaction-amount" type="text" placeholder="0.00" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline:none; pointer-events: auto;">
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 4px 16px;">
-                <input id="transaction-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
-                <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px 16px;">
+                <input id="transaction-item" placeholder="Item" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline:none; pointer-events: auto;">
+                <input id="transaction-desc" placeholder="Description" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline:none; pointer-events: auto;">
                 <div></div>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px 16px;">
-                <div style="display:flex; flex-direction:column; gap:2px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
+                <div style="display:flex; flex-direction:column; gap: 4px;">
                     <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Date</div>
-                    <input id="transaction-date" type="text" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
+                    <input id="transaction-date" type="text" placeholder="YYYY-MM-DD" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline:none; pointer-events: auto;">
                 </div>
-                <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="display:flex; flex-direction:column; gap: 4px;">
                     <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Time</div>
-                    <input id="transaction-time" type="text" placeholder="HH:MM" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:6px 8px; border-radius: 8px; font-size: 11px; outline:none;">
+                    <input id="transaction-time" type="text" placeholder="HH:MM" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding: 8px 10px; border-radius: 8px; font-size: 11px; outline:none; pointer-events: auto;">
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px 16px;">
-                <select id="transaction-category" class="subtle-select" style="font-size: 11px;"></select>
-                <select id="transaction-subcategory" class="subtle-select" style="font-size: 11px;"></select>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
+                <div style="display:flex; flex-direction:column; gap: 4px;">
+                    <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Category</div>
+                    <select id="transaction-category" class="subtle-select" style="font-size: 11px; padding: 8px 10px; pointer-events: auto;"></select>
+                </div>
+                <div style="display:flex; flex-direction:column; gap: 4px;">
+                    <div style="font-family:'SF Mono'; font-size: 9px; color: rgba(255,255,255,0.45);">Subcategory</div>
+                    <select id="transaction-subcategory" class="subtle-select" style="font-size: 11px; padding: 8px 10px; pointer-events: auto;"></select>
+                </div>
             </div>
         </div>
-        <div style="display:flex; gap: 16px; margin-top: 10px;">
+        <div style="display:flex; gap: 16px; margin-top: 14px;">
             <button onclick="ENGINE.closeTransactionModal()" style="flex: 1; padding: 10px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 600; cursor: pointer;">CANCEL</button>
             <button onclick="ENGINE.saveTransactionModal()" style="flex: 1; padding: 10px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
