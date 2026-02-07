@@ -1645,17 +1645,42 @@ function finalizeLoginSuccess() {
 }
 
 let _restoreAttempted = false;
+const RESTORE_TIMEOUT_MS = 12000;
+
+function showRestoringOverlay() {
+    if (document.getElementById('engine-restoring-overlay')) return;
+    const el = document.createElement('div');
+    el.id = 'engine-restoring-overlay';
+    el.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);z-index:1999;backdrop-filter:blur(12px);';
+    el.innerHTML = '<div style="color:rgba(255,255,255,0.85);font-size:16px;">Restoring session…</div>';
+    document.body.appendChild(el);
+}
+function removeRestoringOverlay() {
+    document.getElementById('engine-restoring-overlay')?.remove();
+}
+
 function tryRestoreSession() {
     if (_restoreAttempted) return;
     _restoreAttempted = true;
-    const lastUser = localStorage.getItem('ENGINE_LAST_USER');
-    if (!lastUser || !lastUser.trim()) {
+    const lastUser = (localStorage.getItem('ENGINE_LAST_USER') || '').trim();
+    if (!lastUser) {
         if (typeof showLoginUI === 'function') showLoginUI();
         return;
     }
+    showRestoringOverlay();
+    let restoreCallbackFired = false;
+    let restoreTimeoutId = null;
+    const doneRestore = (showLogin) => {
+        if (restoreCallbackFired) return;
+        restoreCallbackFired = true;
+        if (restoreTimeoutId) clearTimeout(restoreTimeoutId);
+        removeRestoringOverlay();
+        if (showLogin && typeof showLoginUI === 'function') showLoginUI();
+    };
+    restoreTimeoutId = setTimeout(() => doneRestore(true), RESTORE_TIMEOUT_MS);
     ensureGoogleReady().then(() => {
         if (!window.google?.accounts?.oauth2) {
-            if (typeof showLoginUI === 'function') showLoginUI();
+            doneRestore(true);
             return;
         }
         const tokenClient = google.accounts.oauth2.initTokenClient({
@@ -1663,7 +1688,7 @@ function tryRestoreSession() {
             scope: GOOGLE_SCOPES,
             callback: async (response) => {
                 if (response.error) {
-                    if (typeof showLoginUI === 'function') showLoginUI();
+                    doneRestore(true);
                     return;
                 }
                 googleAccessToken = response.access_token;
@@ -1672,28 +1697,28 @@ function tryRestoreSession() {
                     const profile = await fetchUserProfile();
                     const allowed = await validateMasterRegistry(profile.email);
                     if (!allowed) {
-                        if (typeof showLoginUI === 'function') showLoginUI();
+                        doneRestore(true);
                         return;
                     }
                     ENGINE.userEmail = profile.email;
                     localStorage.setItem('ENGINE_LAST_USER', profile.email);
                     await ENGINE.init();
+                    doneRestore(false);
                     finalizeLoginSuccess();
                 } catch (_) {
-                    if (typeof showLoginUI === 'function') showLoginUI();
+                    doneRestore(true);
                 }
             },
-            error_callback: () => {
-                if (typeof showLoginUI === 'function') showLoginUI();
-            }
+            error_callback: () => { doneRestore(true); }
         });
-        tokenClient.requestAccessToken({ prompt: 'none' });
+        tokenClient.requestAccessToken({ prompt: 'none', login_hint: lastUser });
     }).catch(() => {
-        if (typeof showLoginUI === 'function') showLoginUI();
+        doneRestore(true);
     });
 }
 
 function showLoginUI() {
+    removeRestoringOverlay();
     if (document.getElementById('engine-login-overlay')) return;
     document.body.classList.add('logged-out');
     loginOverlay = document.createElement('div');
