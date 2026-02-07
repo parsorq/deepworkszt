@@ -1482,7 +1482,7 @@ const GOOGLE_DISCOVERY_DOCS = [
 
 /* Timeouts & intervals (ms) */
 const GOOGLE_READY_TIMEOUT_MS = 15000;
-const RESTORE_TIMEOUT_MS = 12000;
+const RESTORE_TIMEOUT_MS = 22000;
 const CHAT_FETCH_TIMEOUT_MS = 30000;
 const CLOCK_INTERVAL_MS = 1000;
 
@@ -1592,7 +1592,9 @@ async function fetchUserProfile() {
         headers: { Authorization: `Bearer ${googleAccessToken}` }
     });
     if (!res.ok) {
-        throw new Error('Unable to load user profile.');
+        var err = new Error('Unable to load user profile.');
+        err.unauthorized = res.status === 401;
+        throw err;
     }
     return res.json();
 }
@@ -1815,6 +1817,8 @@ function tryRestoreSession() {
             doneRestore(true);
             return;
         }
+        if (restoreTimeoutId) clearTimeout(restoreTimeoutId);
+        restoreTimeoutId = setTimeout(() => doneRestore(true), 25000);
         tryRestoreWithStoredToken(lastUser, doneRestore, finalizeLoginSuccess).then(function(ok) {
             if (ok) return;
             var tokenClient = google.accounts.oauth2.initTokenClient({
@@ -1871,8 +1875,10 @@ function tryRestoreWithStoredToken(lastUser, doneRestore, finalizeLoginSuccess) 
         doneRestore(false);
         finalizeLoginSuccess();
         return true;
-    }).catch(function() {
-        try { localStorage.removeItem('ENGINE_ACCESS_TOKEN'); } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage removeItem failed', e); }
+    }).catch(function(err) {
+        if (err && err.unauthorized) {
+            try { localStorage.removeItem('ENGINE_ACCESS_TOKEN'); } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage removeItem failed', e); }
+        }
         return false;
     });
 }
@@ -7004,12 +7010,12 @@ setInterval(() => {
 let _loginUIInited = false;
 function initLoginUI() {
     if (_loginUIInited) return;
-    _loginUIInited = true;
     try {
         if (!document.body) return;
-        if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay')) {
-            tryRestoreSession();
-        }
+        if (!document.body.classList.contains('logged-out')) return;
+        if (document.getElementById('engine-login-overlay')) return;
+        _loginUIInited = true;
+        tryRestoreSession();
     } catch (e) {
         console.error('initLoginUI', e);
         if (typeof showLoginUI === 'function') showLoginUI();
