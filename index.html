@@ -7102,20 +7102,16 @@ document.addEventListener('mousedown', (e) => {
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr; gap: 20px;">
-            <div data-section="teams" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="roles" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">TEAMS</div>
-                    <button id="settings-teams-add" onclick="ENGINE.addEntity('teams')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD TEAM</button>
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">ROLES</div>
+                    <button id="settings-roles-add" onclick="ENGINE.addEntity('roles')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD ROLE</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                    <input id="settings-teams-name" placeholder="Team name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                    <input id="settings-teams-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-roles-name" placeholder="Role name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-roles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
-                <div style="margin-bottom: 12px;">
-                    <select id="settings-teams-project" class="subtle-select"></select>
-                </div>
-                <div id="settings-teams-profiles" style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; max-height: 140px; overflow-y: auto;"></div>
-                <div id="settings-team-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+                <div id="settings-role-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
             <div data-section="profiles" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
@@ -7134,16 +7130,20 @@ document.addEventListener('mousedown', (e) => {
                 <div id="settings-profile-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
-            <div data-section="institutions" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+            <div data-section="teams" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">INSTITUTIONS</div>
-                    <button id="settings-institutions-add" onclick="ENGINE.addEntity('institutions')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD INSTITUTION</button>
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">TEAMS</div>
+                    <button id="settings-teams-add" onclick="ENGINE.addEntity('teams')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD TEAM</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                    <input id="settings-institutions-name" placeholder="Institution name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                    <input id="settings-institutions-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-teams-name" placeholder="Team name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-teams-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
-                <div id="settings-institution-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+                <div style="margin-bottom: 12px;">
+                    <select id="settings-teams-project" class="subtle-select"></select>
+                </div>
+                <div id="settings-teams-profiles" style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; max-height: 140px; overflow-y: auto;"></div>
+                <div id="settings-team-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
             <div data-section="projects" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
@@ -7156,6 +7156,18 @@ document.addEventListener('mousedown', (e) => {
                     <input id="settings-projects-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
                 <div id="settings-project-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
+            </div>
+
+            <div data-section="institutions" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">INSTITUTIONS</div>
+                    <button id="settings-institutions-add" onclick="ENGINE.addEntity('institutions')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD INSTITUTION</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <input id="settings-institutions-name" placeholder="Institution name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-institutions-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                </div>
+                <div id="settings-institution-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
             <div data-section="categories" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
@@ -7183,18 +7195,6 @@ document.addEventListener('mousedown', (e) => {
                     <input id="settings-subcategories-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
                 <div id="settings-subcategory-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
-            </div>
-
-            <div data-section="roles" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">ROLES</div>
-                    <button id="settings-roles-add" onclick="ENGINE.addEntity('roles')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD ROLE</button>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                    <input id="settings-roles-name" placeholder="Role name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                    <input id="settings-roles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
-                </div>
-                <div id="settings-role-list" style="display:flex; flex-direction:column; gap: 8px;"></div>
             </div>
 
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
