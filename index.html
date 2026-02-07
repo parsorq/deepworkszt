@@ -1620,7 +1620,7 @@ async function handleLogin(promptMode = 'consent') {
                 }
                 googleAccessToken = response.access_token;
                 gapi.client.setToken({ access_token: googleAccessToken });
-                try { sessionStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
+                try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
                 try {
                     const profile = await fetchUserProfile();
                     const allowed = await validateMasterRegistry(profile.email);
@@ -1665,7 +1665,7 @@ function handleLoginInteractive(promptMode = 'select_account') {
                 }
                 googleAccessToken = response.access_token;
                 gapi.client.setToken({ access_token: googleAccessToken });
-                try { sessionStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
+                try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
                 try {
                     const profile = await fetchUserProfile();
                     const allowed = await validateMasterRegistry(profile.email);
@@ -1716,7 +1716,7 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
         }
         googleAccessToken = response.access_token;
         gapi.client.setToken({ access_token: googleAccessToken });
-        try { sessionStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
+        try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
         try {
             const profile = await fetchUserProfile();
             const allowed = await validateMasterRegistry(profile.email);
@@ -1773,7 +1773,7 @@ function showRestoringOverlay() {
     document.body.appendChild(el);
 }
 function removeRestoringOverlay() {
-    document.getElementById('engine-restoring-overlay')?.remove();
+    var ro = document.getElementById('engine-restoring-overlay'); if (ro) ro.remove();
 }
 
 function tryRestoreSession() {
@@ -1818,7 +1818,7 @@ function tryRestoreSession() {
                     }
                     googleAccessToken = response.access_token;
                     gapi.client.setToken({ access_token: googleAccessToken });
-                    try { sessionStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
+                    try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
                     fetchUserProfile().then(function(profile) {
                         return validateMasterRegistry(profile.email).then(function(allowed) {
                             if (!allowed) { doneRestore(true); return; }
@@ -1842,7 +1842,7 @@ function tryRestoreSession() {
 
 function tryRestoreWithStoredToken(lastUser, doneRestore, finalizeLoginSuccess) {
     var stored = null;
-    try { stored = sessionStorage.getItem('ENGINE_ACCESS_TOKEN'); } catch (_) {}
+    try { stored = localStorage.getItem('ENGINE_ACCESS_TOKEN'); } catch (_) {}
     if (!stored || !lastUser) return Promise.resolve(false);
     googleAccessToken = stored;
     if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
@@ -1863,7 +1863,7 @@ function tryRestoreWithStoredToken(lastUser, doneRestore, finalizeLoginSuccess) 
         finalizeLoginSuccess();
         return true;
     }).catch(function() {
-        try { sessionStorage.removeItem('ENGINE_ACCESS_TOKEN'); } catch (_) {}
+        try { localStorage.removeItem('ENGINE_ACCESS_TOKEN'); } catch (_) {}
         return false;
     });
 }
@@ -3953,7 +3953,8 @@ applyExpandedWidget() {
 
     if (!this.expandedWidget) {
         if (container) container.classList.remove('widget-single-view');
-        const isNew = this.currentEventIdx !== null && (this.db[this.selectedDate] || [])[this.currentEventIdx]?.isNew;
+        const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
+        const isNew = this.currentEventIdx !== null && evt && evt.isNew === true;
         if (footer) footer.style.display = isNew ? 'flex' : 'none';
         show(backBar, 'none');
         show(notes); show(urlRow, 'grid'); show(url); show(stakeholders); show(agenda); show(timeblockExpenses);
@@ -5350,9 +5351,16 @@ openMeeting(idx) {
 
     this.updatePanelContext();
     const ev = idx !== null ? events[idx] : null;
-    if (ev && ev.isNew) {
+    if (ev && ev.isNew === true) {
         const footer = document.querySelector('.meeting-panel--editor .meeting-panel-footer');
-        if (footer) footer.style.display = 'flex';
+        if (footer) {
+            footer.style.display = 'flex';
+            footer.style.visibility = 'visible';
+        }
+        const raf = window.requestAnimationFrame || function(f) { setTimeout(f, 0); };
+        raf(function() {
+            if (footer) footer.style.display = 'flex';
+        });
     }
 },
 
@@ -5804,7 +5812,7 @@ updateTimeline(shouldScroll = false) {
         this.userSheetId = null;
         try {
             localStorage.removeItem('ENGINE_LAST_USER');
-            sessionStorage.removeItem('ENGINE_ACCESS_TOKEN');
+            localStorage.removeItem('ENGINE_ACCESS_TOKEN');
         } catch (_) {}
         googleAccessToken = null;
         if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
