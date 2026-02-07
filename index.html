@@ -2129,11 +2129,13 @@ navigateDate(delta) {
     const d = Number(delta);
     if (!Number.isFinite(d) || d === 0) return;
     const now = Date.now();
-    const key = 'dateNav';
     if (!this._dateNavLast) this._dateNavLast = { t: 0, delta: 0 };
     if (now - this._dateNavLast.t < 350 && this._dateNavLast.delta === d) return;
     this._dateNavLast = { t: now, delta: d };
-    const current = new Date(this.selectedDate);
+    // Parse selectedDate as local calendar date (YYYY-MM-DD); avoid new Date(str) = UTC midnight
+    const parts = this.selectedDate.split('-').map(Number);
+    if (parts.length !== 3) return;
+    const current = new Date(parts[0], parts[1] - 1, parts[2]);
     current.setDate(current.getDate() + d);
     this.selectedDate = getLocalDateISO(current);
     this.updateDateDisplay();
@@ -5642,11 +5644,16 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
     normalizeDateKey(value) {
         if (value == null || value === '') return '';
         const s = String(value).trim();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s.slice(0, 10))) return s.slice(0, 10);
+        const isoDate = s.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate;
         const num = Number(value);
         if (Number.isFinite(num) && num >= 1000 && num <= 1000000) {
             const ms = (num - 25569) * 86400 * 1000;
-            return getLocalDateISO(new Date(ms));
+            const d = new Date(ms);
+            const y = d.getUTCFullYear();
+            const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
         }
         return this.formatDate(value);
     },
