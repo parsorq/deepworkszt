@@ -1925,7 +1925,7 @@ const ENGINE = {
     currentNet: 23550.00,
     isMeetingActive: false,
     GRID_TOP_OFFSET: 0,
-    HOUR_HEIGHT: 240,
+    HOUR_HEIGHT: 312,
     nextEventId: 100, // For generating unique IDs
     editMeetingWidgets: { stakeholders: true, agenda: true, timeblockExpenses: true },
     editMeetingDraftWidgets: {},
@@ -5057,7 +5057,7 @@ renderDay() {
     const container = document.getElementById('ledger-container');
     if (!container) return;
 
-    this.HOUR_HEIGHT = 240;
+    this.HOUR_HEIGHT = 312;
     const colors = { MEETING: 'rgba(0, 122, 255, 0.72)', REMINDER: 'rgba(50, 215, 75, 0.72)', TASK: 'rgba(255, 59, 48, 0.72)', EVENT: 'rgba(255, 149, 0, 0.72)' };
 
     // Format time helper
