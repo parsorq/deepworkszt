@@ -296,6 +296,11 @@ body.dragging .reminder-marker {
     position: relative;
     padding-left: 12px;
     z-index: 1;
+    cursor: default;
+}
+
+.ledger-transactions-col .transaction-marker {
+    cursor: pointer;
 }
 
 .transaction-marker {
@@ -1265,7 +1270,7 @@ body.logged-out #tablet-shell {
         <div style="display: flex; flex-direction: column; height: calc(100% - 60px); gap: 16px;">
             <div id="ledger-wrapper" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
                 <div id="ledger-container" 
-                     style="overflow-y: auto; flex: 1; padding: 20px 20px 20px 60px; position: relative; cursor: crosshair;">
+                     style="overflow-y: auto; flex: 1; padding: 20px 20px 20px 60px; position: relative;">
                 </div>
             </div>
             <div id="graph-stage" style="height: 180px; flex-shrink: 0;">
