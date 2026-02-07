@@ -4253,7 +4253,7 @@ async ensureSheetStructure() {
         this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'item', 'description', 'amount', 'category', 'subcategory', 'eventId']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
-        this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'notes', 'createdAt', 'updatedAt']),
+        this.writeHeaders(this.sheetNames.profiles, ['id', 'name', 'email', 'role', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.institutions, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.projects, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
         this.writeHeaders(this.sheetNames.categories, ['id', 'name', 'notes', 'createdAt', 'updatedAt']),
@@ -4293,7 +4293,7 @@ async loadData() {
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.profiles}!A:F`
+            range: `${this.sheetNames.profiles}!A:G`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -4435,9 +4435,25 @@ parseTeams(rows) {
 
 parseProfiles(rows) {
     return rows.slice(1).map((row) => {
-        const [id, name, email, notes, createdAt, updatedAt] = row;
-        if (!id) return null;
-        return { id, name, email, notes, createdAt, updatedAt };
+        if (!row || !row[0]) return null;
+        const id = row[0];
+        const name = row[1] || '';
+        const email = row[2] || '';
+        let role = '';
+        let notes = '';
+        let createdAt = '';
+        let updatedAt = '';
+        if (row.length >= 7) {
+            role = row[3] || '';
+            notes = row[4] || '';
+            createdAt = row[5] || '';
+            updatedAt = row[6] || '';
+        } else {
+            notes = row[3] || '';
+            createdAt = row[4] || '';
+            updatedAt = row[5] || '';
+        }
+        return { id, name, email, role, notes, createdAt, updatedAt };
     }).filter(Boolean);
 },
 
@@ -4508,7 +4524,7 @@ async saveEntity(type, entity) {
     if (type === 'teams') {
         row = [entity.id, entity.name, entity.projectId || '', entity.profileIds || '', entity.notes || '', entity.createdAt, entity.updatedAt];
     } else if (type === 'profiles') {
-        row = [entity.id, entity.name, entity.email || '', entity.notes || '', entity.createdAt, entity.updatedAt];
+        row = [entity.id, entity.name, entity.email || '', entity.role || '', entity.notes || '', entity.createdAt, entity.updatedAt];
     } else if (type === 'projects') {
         row = [entity.id, entity.name, entity.notes || '', entity.createdAt, entity.updatedAt];
     } else if (type === 'subcategories') {
@@ -5295,6 +5311,7 @@ updateTimeline(shouldScroll = false) {
                     <div style="font-size: 12px; color: #ffffff; font-weight: 600;">${item.name}</div>
                     <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-family:'SF Mono';">${item.id}</div>
                     ${type === 'profiles' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Email: ${item.email || ''}</div>` : ''}
+                    ${type === 'profiles' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Role: ${item.role || ''}</div>` : ''}
                     ${type === 'teams' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Project: ${this.getProjectNameById(item.projectId) || 'Unassigned'}</div>` : ''}
                     ${type === 'teams' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Profiles: ${this.getProfileNamesByIds(item.profileIds).join(', ') || 'None'}</div>` : ''}
                     ${type === 'subcategories' ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5);">Category: ${item.category || 'Unassigned'}</div>` : ''}
@@ -5414,6 +5431,7 @@ updateTimeline(shouldScroll = false) {
         const projectSelect = document.getElementById('settings-teams-project');
         const teamProfiles = document.getElementById('settings-teams-profiles');
         const emailInput = document.getElementById('settings-profiles-email');
+        const roleInput = document.getElementById('settings-profiles-role');
         const subcategoryCategorySelect = document.getElementById('settings-subcategories-category');
         if (!nameInput) return;
         const name = nameInput.value.trim();
@@ -5437,6 +5455,9 @@ updateTimeline(shouldScroll = false) {
         if (type === 'profiles' && emailInput) {
             entity.email = emailInput.value.trim();
         }
+        if (type === 'profiles' && roleInput) {
+            entity.role = roleInput.value.trim();
+        }
         if (type === 'subcategories' && subcategoryCategorySelect) {
             entity.category = subcategoryCategorySelect.value || '';
         }
@@ -5449,6 +5470,7 @@ updateTimeline(shouldScroll = false) {
             teamProfiles.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = false; });
         }
         if (emailInput && type === 'profiles') emailInput.value = '';
+        if (roleInput && type === 'profiles') roleInput.value = '';
         if (subcategoryCategorySelect && type === 'subcategories') subcategoryCategorySelect.value = '';
         this.renderSettings();
     },
@@ -5462,6 +5484,7 @@ updateTimeline(shouldScroll = false) {
         const title = document.getElementById('edit-entity-title');
         const nameInput = document.getElementById('edit-entity-name');
         const emailInput = document.getElementById('edit-entity-email');
+        const roleInput = document.getElementById('edit-entity-role');
         const notesInput = document.getElementById('edit-entity-notes');
         const projectSelect = document.getElementById('edit-entity-project');
         const profileList = document.getElementById('edit-entity-profiles');
@@ -5477,6 +5500,10 @@ updateTimeline(shouldScroll = false) {
         if (emailInput) {
             emailInput.style.display = type === 'profiles' ? 'block' : 'none';
             emailInput.value = entity.email || '';
+        }
+        if (roleInput) {
+            roleInput.style.display = type === 'profiles' ? 'block' : 'none';
+            roleInput.value = entity.role || '';
         }
         if (projectSelect) {
             projectSelect.style.display = type === 'teams' ? 'block' : 'none';
@@ -5512,6 +5539,7 @@ updateTimeline(shouldScroll = false) {
         const title = document.getElementById('edit-entity-title');
         const nameInput = document.getElementById('edit-entity-name');
         const emailInput = document.getElementById('edit-entity-email');
+        const roleInput = document.getElementById('edit-entity-role');
         const notesInput = document.getElementById('edit-entity-notes');
         const projectSelect = document.getElementById('edit-entity-project');
         const profileList = document.getElementById('edit-entity-profiles');
@@ -5527,6 +5555,10 @@ updateTimeline(shouldScroll = false) {
         if (emailInput) {
             emailInput.style.display = type === 'profiles' ? 'block' : 'none';
             emailInput.value = '';
+        }
+        if (roleInput) {
+            roleInput.style.display = type === 'profiles' ? 'block' : 'none';
+            roleInput.value = '';
         }
         if (projectSelect) {
             projectSelect.style.display = type === 'teams' ? 'block' : 'none';
@@ -5572,6 +5604,7 @@ updateTimeline(shouldScroll = false) {
 
         const nameInput = document.getElementById('edit-entity-name');
         const emailInput = document.getElementById('edit-entity-email');
+        const roleInput = document.getElementById('edit-entity-role');
         const notesInput = document.getElementById('edit-entity-notes');
         const projectSelect = document.getElementById('edit-entity-project');
         const profileList = document.getElementById('edit-entity-profiles');
@@ -5596,6 +5629,9 @@ updateTimeline(shouldScroll = false) {
         }
         if (type === 'profiles' && emailInput) {
             entity.email = emailInput.value.trim();
+        }
+        if (type === 'profiles' && roleInput) {
+            entity.role = roleInput.value.trim();
         }
         if (type === 'teams' && projectSelect) {
             entity.projectId = projectSelect.value || '';
@@ -6292,9 +6328,10 @@ document.addEventListener('mousedown', (e) => {
                     <div style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.6);">PROFILES</div>
                     <button onclick="ENGINE.addEntity('profiles')" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding:6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor:pointer;">ADD PROFILE</button>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <input id="settings-profiles-name" placeholder="Profile name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                     <input id="settings-profiles-email" placeholder="Email" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+                    <input id="settings-profiles-role" placeholder="Role" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
                 </div>
                 <div style="margin-bottom: 12px;">
                     <input id="settings-profiles-notes" placeholder="Notes (optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none; width: 100%;">
@@ -6411,6 +6448,7 @@ document.addEventListener('mousedown', (e) => {
         <div style="display:flex; flex-direction:column; gap: 12px;">
             <input id="edit-entity-name" placeholder="Name" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <input id="edit-entity-email" placeholder="Email" style="display:none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
+            <input id="edit-entity-role" placeholder="Role" style="display:none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius: 8px; font-size: 12px; outline:none;">
             <select id="edit-entity-project" class="subtle-select" style="display:none;"></select>
             <select id="edit-entity-category" class="subtle-select" style="display:none;"></select>
             <div id="edit-entity-profiles" style="display:none; flex-direction:column; gap:6px; max-height: 160px; overflow-y: auto;"></div>
