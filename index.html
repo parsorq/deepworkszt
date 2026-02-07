@@ -5153,8 +5153,10 @@ renderDay() {
                     <div style="color: white; font-weight: 600; font-size: 14px; line-height: 1.25;">${this.escapeHTML(session.label || 'Session')}</div>
                     <div style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px;">${startStr} – ${endStr} · ${durationStr}</div>
                     <div style="height: 1px; background: rgba(255,255,255,0.08); margin: 8px 0;"></div>
-                    <div style="font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); text-transform: uppercase;">Details</div>
-                    <div style="font-size: 11px; color: rgba(255,255,255,0.5);">${this.escapeHTML(detailsStr)}</div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0;">
+                        <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); text-transform: uppercase; flex-shrink: 0;">Details</span>
+                        <span style="font-size: 11px; color: rgba(255,255,255,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHTML(detailsStr)}</span>
+                    </div>
                 </div>`;
         }
 
