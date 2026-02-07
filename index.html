@@ -3318,12 +3318,12 @@ closeModal() {
     const modal = document.getElementById('modal-overlay');
     if (modal) modal.style.display = 'none';
 
-    // Reset sidebar button
-    const btn = document.querySelector('.btn-focus');
+    // Reset sidebar button to match initial design
+    const btn = document.getElementById('commence-btn') || document.querySelector('.btn-focus');
     if (btn) {
         btn.innerText = "START";
-        btn.style.background = "white";
-        btn.style.color = "black";
+        btn.style.background = "linear-gradient(90deg, #00F2FE, #4FACFE)";
+        btn.style.color = "#0B0E14";
     }
 },
 
@@ -3965,7 +3965,8 @@ saveSession() {
     }
 
     void this.saveEvent(event);
-    document.getElementById('modal-overlay').style.display = 'none';
+    const modal = document.getElementById('modal-overlay');
+    if (modal) modal.style.display = 'none';
     this.renderDay();
 },
 
@@ -4122,7 +4123,7 @@ async ensureSheetStructure() {
     this.sheetInfo = sheetInfo;
 
     await Promise.all([
-        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget', 'allDay', 'widgets']),
+        this.writeHeaders(this.sheetNames.events, ['id', 'date', 'start', 'end', 'label', 'type', 'agenda', 'stakeholders', 'notes', 'budget', 'allDay', 'widgets', 'location']),
         this.writeHeaders(this.sheetNames.transactions, ['id', 'date', 'time', 'item', 'description', 'amount', 'category', 'subcategory', 'eventId']),
         this.writeHeaders(this.sheetNames.meta, ['key', 'value']),
         this.writeHeaders(this.sheetNames.teams, ['id', 'name', 'projectId', 'profileIds', 'notes', 'createdAt', 'updatedAt']),
@@ -4150,7 +4151,7 @@ async loadData() {
     const [eventsRes, txRes, metaRes, teamsRes, profilesRes, institutionsRes, projectsRes, categoriesRes, subcategoriesRes] = await Promise.all([
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:L`
+            range: `${this.sheetNames.events}!A:M`
         }),
         gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: this.userSheetId,
@@ -4199,7 +4200,7 @@ async loadData() {
     this.db = {};
     eventsRows.slice(1).forEach((row) => {
         if (row.length < 6) return;
-        const [id, date, start, end, label, type, agenda, stakeholders, notes, budget, allDay, widgetsRaw] = row;
+        const [id, date, start, end, label, type, agenda, stakeholders, notes, budget, allDay, widgetsRaw, location] = row;
         const dateKey = this.normalizeDateKey(date);
         if (!dateKey) return;
         let widgets = {};
@@ -4219,7 +4220,8 @@ async loadData() {
             notes: notes || '',
             budget: budget || '',
             allDay: allDay === '1' || allDay === 'true',
-            widgets
+            widgets,
+            location: location || ''
         };
         this.db[dateKey].push(ev);
     });
@@ -4451,20 +4453,21 @@ async saveEvent(event, skipLog = false) {
         event.notes || '',
         event.budget || '',
         event.allDay ? '1' : '0',
-        JSON.stringify(widgets)
+        JSON.stringify(widgets),
+        event.location || ''
     ];
     const rowIndex = await this.findRowById(this.sheetNames.events, event.id);
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A${rowIndex}:L${rowIndex}`,
+            range: `${this.sheetNames.events}!A${rowIndex}:M${rowIndex}`,
             valueInputOption: 'RAW',
             resource: { values: [row] }
         });
     } else {
         await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: this.userSheetId,
-            range: `${this.sheetNames.events}!A:L`,
+            range: `${this.sheetNames.events}!A:M`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
@@ -6011,7 +6014,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
 commence() {
     this.isMeetingActive = !this.isMeetingActive;
     const btn = document.getElementById('commence-btn');
-    
+    if (!btn) return;
     if (this.isMeetingActive) {
         btn.innerText = "TERMINATE SESSION";
         btn.style.background = "rgba(255, 69, 58, 0.25)"; 
@@ -6019,8 +6022,8 @@ commence() {
         // Start recording time logic...
     } else {
         btn.innerText = "START";
-        btn.style.background = "#FFFFFF";
-        btn.style.color = "#000000";
+        btn.style.background = "linear-gradient(90deg, #00F2FE, #4FACFE)";
+        btn.style.color = "#0B0E14";
         // Finalize transaction logic...
     }
 }
