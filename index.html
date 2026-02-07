@@ -301,11 +301,11 @@ body.dragging .reminder-marker {
     padding: 10px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
-#date-calendar-popup { width: 220px; }
+#date-calendar-popup { width: 240px; box-sizing: border-box; overflow: hidden; }
 #date-calendar-popup .cal-month { font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-align: center; }
-#date-calendar-popup .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-#date-calendar-popup .cal-dow { font-size: 9px; color: rgba(255,255,255,0.4); text-align: center; padding: 4px 0; }
-#date-calendar-popup .cal-day { font-size: 11px; color: rgba(255,255,255,0.9); text-align: center; padding: 6px; border-radius: 6px; cursor: pointer; }
+#date-calendar-popup .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; width: 100%; box-sizing: border-box; min-width: 0; }
+#date-calendar-popup .cal-dow { font-size: 9px; color: rgba(255,255,255,0.4); text-align: center; padding: 4px 0; box-sizing: border-box; min-width: 0; }
+#date-calendar-popup .cal-day { font-size: 11px; color: rgba(255,255,255,0.9); text-align: center; padding: 4px 2px; border-radius: 6px; cursor: pointer; box-sizing: border-box; min-width: 0; overflow: hidden; }
 #date-calendar-popup .cal-day:hover { background: rgba(255,255,255,0.1); }
 #date-calendar-popup .cal-day.other { color: rgba(255,255,255,0.35); }
 #date-calendar-popup .cal-day.selected { background: rgba(0,122,255,0.35); }
@@ -3520,6 +3520,7 @@ createFromDragCreateType(type, start, end) {
     void this.saveEvent(newEvent, true);
     this.logAction('add', 'event', newEvent.id, { start, end, date: this.selectedDate, type: newEvent.type, label: newEvent.label });
     this.renderDay();
+    this.openMeeting(this.db[this.selectedDate].length - 1);
 },
 
 hideQuickCreateMenu() {
