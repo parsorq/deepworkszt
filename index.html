@@ -1920,6 +1920,7 @@ async init() {
         if (e.pointerType === 'mouse' && e.ctrlKey) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
+        if (e.target.closest('#drag-create-type-menu')) return;
         if (this.getReminderAtPoint(e.clientX, e.clientY) !== null) return;
         if (e.target.closest('.reminder-marker')) return;
         if (e.target.closest('.transaction-marker')) return;
@@ -2056,6 +2057,7 @@ async init() {
         if (e.target.closest('.date-nav')) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
+        if (e.target.closest('#drag-create-type-menu')) return;
         if (e.target.closest('#modal-overlay')) return;
         const bounds = this.getEventsBounds();
         if (!bounds) return;
@@ -2456,6 +2458,7 @@ handleMouseDown(e) {
     this.hideBlockMenu();
     if (e.target.closest('#quick-create-menu')) return;
     if (e.target.closest('#block-context-menu')) return;
+    if (e.target.closest('#drag-create-type-menu')) return;
     this.startDragFromEvent(e);
 },
 
@@ -2513,6 +2516,7 @@ handleMouseMove(e) {
     }
     // Constrain to 0-24 hour range
     this.dragEndH = Math.max(0, Math.min(24, rawH));
+    this.dragEndClient = { x: e.clientX, y: e.clientY };
 
     // Use requestAnimationFrame for smooth updates
     requestAnimationFrame(() => this.updateGhost());
@@ -2554,25 +2558,8 @@ handleMouseUp() {
     const hasOverlap = this.db[this.selectedDate].some(s => s.type !== 'REMINDER' && (start < s.end && end > s.start));
 
     if (!hasOverlap && (end - start) >= 0.25) {
-        const newEvent = {
-            id: this.generateEventId(),
-            start,
-            end,
-            label: "New Session",
-            type: 'MEETING',
-            isNew: true,
-            date: this.selectedDate,
-            agenda: '',
-            stakeholders: '',
-            notes: '',
-            budget: '',
-            allDay: false,
-            widgets: {}
-        };
-        this.db[this.selectedDate].push(newEvent);
-        this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
-    void this.saveEvent(newEvent, true);
-    this.logAction('add', 'event', newEvent.id, { start, end, date: this.selectedDate, type: newEvent.type, label: newEvent.label });
+        const cursor = this.dragEndClient || this.dragStartClient || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        this.showDragCreateTypeMenu(cursor.x, cursor.y, start, end);
     }
 
     // Clean up drag state
@@ -2582,6 +2569,7 @@ handleMouseUp() {
     this.dragEndH = null;
     this.dragHasMoved = false;
     this.dragStartClient = null;
+    this.dragEndClient = null;
 
     // Hide the ghost
     const ghost = document.getElementById('ghost-selection');
@@ -3113,6 +3101,7 @@ removeAgendaItemAt(index) {
 showQuickCreateMenu(x, y, startH) {
     this.quickCreateStartH = startH;
     this.hideBlockMenu();
+    this.hideDragCreateTypeMenu();
     let menu = document.getElementById('quick-create-menu');
     if (!menu) {
         menu = document.createElement('div');
@@ -3132,6 +3121,62 @@ showQuickCreateMenu(x, y, startH) {
     menu.style.display = 'flex';
 },
 
+showDragCreateTypeMenu(x, y, start, end) {
+    this.hideQuickCreateMenu();
+    this.hideBlockMenu();
+    let menu = document.getElementById('drag-create-type-menu');
+    if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'drag-create-type-menu';
+        menu.style.cssText = 'position: fixed; z-index: 2000; background: rgba(20,20,20,0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-width: 140px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);';
+        document.body.appendChild(menu);
+    }
+    menu.innerHTML = `
+        <button onclick="ENGINE.createFromDragCreateType('MEETING', ${start}, ${end})" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Event</button>
+        <button onclick="ENGINE.createFromDragCreateType('TASK', ${start}, ${end})" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Task</button>
+    `;
+    const offsetX = 12;
+    const offsetY = 8;
+    menu.style.left = '';
+    menu.style.top = '';
+    menu.style.display = 'flex';
+    const menuRect = menu.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x + offsetX));
+    const top = Math.min(window.innerHeight - menuRect.height - 12, Math.max(12, y + offsetY));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+},
+
+hideDragCreateTypeMenu() {
+    const menu = document.getElementById('drag-create-type-menu');
+    if (menu) menu.style.display = 'none';
+},
+
+createFromDragCreateType(type, start, end) {
+    this.hideDragCreateTypeMenu();
+    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
+    const newEvent = {
+        id: this.generateEventId(),
+        start,
+        end,
+        label: type === 'MEETING' ? 'New Session' : 'New Task',
+        type,
+        isNew: true,
+        date: this.selectedDate,
+        agenda: '',
+        stakeholders: '',
+        notes: '',
+        budget: '',
+        allDay: false,
+        widgets: {}
+    };
+    this.db[this.selectedDate].push(newEvent);
+    this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
+    void this.saveEvent(newEvent, true);
+    this.logAction('add', 'event', newEvent.id, { start, end, date: this.selectedDate, type: newEvent.type, label: newEvent.label });
+    this.renderDay();
+},
+
 hideQuickCreateMenu() {
     const menu = document.getElementById('quick-create-menu');
     if (menu) menu.style.display = 'none';
@@ -3140,6 +3185,7 @@ hideQuickCreateMenu() {
 hideAllMenus() {
     this.hideBlockMenu();
     this.hideQuickCreateMenu();
+    this.hideDragCreateTypeMenu();
     this.hideTransactionMenu();
     this.hideModalRowMenu();
 },
@@ -3152,6 +3198,10 @@ hideMenusOnOutsideClick(e) {
     const quick = document.getElementById('quick-create-menu');
     if (quick && quick.style.display === 'flex' && !e.target.closest('#quick-create-menu')) {
         this.hideQuickCreateMenu();
+    }
+    const dragType = document.getElementById('drag-create-type-menu');
+    if (dragType && dragType.style.display === 'flex' && !e.target.closest('#drag-create-type-menu')) {
+        this.hideDragCreateTypeMenu();
     }
     const txMenu = document.getElementById('transaction-context-menu');
     if (txMenu && txMenu.style.display === 'flex' && !e.target.closest('#transaction-context-menu')) {
@@ -6173,7 +6223,7 @@ window.addEventListener('mouseup', () => {
 // Auto-dismiss context menus on left click only
 document.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
-    if (e.target.closest('#quick-create-menu') || e.target.closest('#block-context-menu')) return;
+    if (e.target.closest('#quick-create-menu') || e.target.closest('#block-context-menu') || e.target.closest('#drag-create-type-menu')) return;
     if (ENGINE.hideQuickCreateMenu) ENGINE.hideQuickCreateMenu();
     if (ENGINE.hideBlockMenu) ENGINE.hideBlockMenu();
 });
