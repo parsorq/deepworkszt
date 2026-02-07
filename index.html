@@ -2035,6 +2035,33 @@ async init() {
     document.addEventListener('mousedown', (e) => {
         this.hideMenusOnOutsideClick(e);
     }, true);
+    document.addEventListener('click', (e) => {
+        if (e.button !== 0) return;
+        const modal = document.getElementById('modal-overlay');
+        if (!modal || modal.style.display !== 'flex' || !this.expandedWidget) return;
+        const row = e.target.closest('[data-stakeholder-idx], [data-agenda-idx]');
+        if (!row) return;
+        const inStakeholder = row.closest('#stakeholder-list');
+        const inAgenda = row.closest('#agenda-items-list');
+        if (!inStakeholder && !inAgenda) return;
+        if ((this.expandedWidget === 'stakeholders' && !inStakeholder) || (this.expandedWidget === 'agenda' && !inAgenda)) return;
+        const typ = inStakeholder ? 'stakeholder' : 'agenda';
+        const idx = parseInt(row.getAttribute(typ === 'stakeholder' ? 'data-stakeholder-idx' : 'data-agenda-idx'), 10);
+        if (Number.isNaN(idx)) return;
+        const input = row.querySelector('input');
+        if (!input || !input.readOnly) return;
+        e.preventDefault();
+        e.stopPropagation();
+        input.style.pointerEvents = 'auto';
+        input.readOnly = false;
+        input.focus();
+        const onBlur = () => {
+            input.style.pointerEvents = 'none';
+            input.readOnly = true;
+            input.removeEventListener('blur', onBlur);
+        };
+        input.addEventListener('blur', onBlur, { once: true });
+    }, true);
     document.addEventListener('pointerdown', (e) => {
         this.hideMenusOnOutsideClick(e);
     }, true);
@@ -3444,8 +3471,12 @@ switchTab(view, el) {
     // Helper to add new agenda items dynamically
     addAgendaPoint() {
         const list = document.getElementById('agenda-items-list');
-        const count = list.children.length + 1;
+        if (!list) return;
+        const idx = list.children.length;
+        const count = idx + 1;
         const div = document.createElement('div');
+        div.className = 'modal-panel-row';
+        div.setAttribute('data-agenda-idx', String(idx));
         div.style.cssText = "display:flex; align-items:center; gap:12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03);";
         div.innerHTML = `
             <span style="font-family:'SF Mono'; font-size:10px; color:#007AFF; opacity:0.4;">0${count}</span>
@@ -6078,6 +6109,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
         if (itemInput) itemInput.value = '';
         if (amountInput) amountInput.value = this.formatAmount(0);
         this.renderPanelExpenses();
+        setTimeout(() => { const first = document.getElementById('timeblock-expense-item'); if (first) first.focus(); }, 0);
     },
 
     setTimeblockExpenseSign(sign) {
@@ -6351,6 +6383,20 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
             if (target.id === 'timeblock-start' || target.id === 'timeblock-end' || target.id === 'transaction-time') {
                 const normalized = this.normalizeTimeInput(target.value);
                 if (normalized) target.value = normalized;
+            }
+            const list = target.closest('#stakeholder-list') || target.closest('#agenda-items-list');
+            if (list && (!e.relatedTarget || !list.contains(e.relatedTarget))) {
+                const inputs = list.querySelectorAll('input');
+                if (inputs.length && !inputs[inputs.length - 1].value.trim()) {
+                    const ev = this.getActiveEvent();
+                    if (ev) {
+                        const trimmed = Array.from(inputs).slice(0, -1).map(i => i.value.trim()).filter(Boolean);
+                        if (list.id === 'stakeholder-list') ev.stakeholders = trimmed.join('|');
+                        else ev.agenda = trimmed.join('|');
+                        this.saveSessionWithoutClosing();
+                        this.updatePanelContext();
+                    }
+                }
             }
         });
         document.addEventListener('input', (e) => {
