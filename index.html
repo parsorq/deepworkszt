@@ -1256,6 +1256,31 @@ body.logged-out #tablet-shell {
 </head>
 
 <body class="mode-architect lens-both logged-out">
+<script>
+(function() {
+    function showFallback(msg) {
+        if (document.getElementById('engine-load-fallback')) return;
+        var el = document.createElement('div');
+        el.id = 'engine-load-fallback';
+        el.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.9);z-index:9999;padding:20px;box-sizing:border-box;';
+        el.innerHTML = '<div style="color:rgba(255,255,255,0.9);font-size:16px;text-align:center;max-width:360px;">' + (msg || 'Loading…') + '</div>';
+        document.body.appendChild(el);
+    }
+    window.onerror = function(m, u, l, c, e) {
+        showFallback('Error: ' + (m || 'script error') + (l ? ' (line ' + l + ')' : ''));
+        return true;
+    };
+    function check() {
+        if (!document.body) return;
+        if (document.body.classList.contains('logged-out') && !document.getElementById('engine-login-overlay') && !document.getElementById('engine-restoring-overlay')) {
+            showFallback('Loading…');
+        }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', check);
+    else check();
+    setTimeout(check, 2000);
+})();
+</script>
 <div id="tablet-shell">
     <div id="content-area">
         <div class="header-top">
@@ -1428,12 +1453,12 @@ body.logged-out #tablet-shell {
 </div>
 
 <script>
-const GOOGLE_CLIENT_ID = window.LOGSZT_CONFIG?.googleClientId
+const GOOGLE_CLIENT_ID = (window.LOGSZT_CONFIG && window.LOGSZT_CONFIG.googleClientId)
     || localStorage.getItem('LOGSZT_GOOGLE_CLIENT_ID')
     || '942992080405-taq2kl6gche5fk591eib692abi7svvb8.apps.googleusercontent.com';
-const MASTER_REGISTRY_SHEET_ID = window.LOGSZT_CONFIG?.masterRegistrySheetId
+const MASTER_REGISTRY_SHEET_ID = (window.LOGSZT_CONFIG && window.LOGSZT_CONFIG.masterRegistrySheetId)
     || '1t9WclgP_VyDu4BWyyvnAFjVza7p5fuwJ73X6t5NAGs8';
-const USER_TEMPLATE_SHEET_ID = window.LOGSZT_CONFIG?.userTemplateSheetId
+const USER_TEMPLATE_SHEET_ID = (window.LOGSZT_CONFIG && window.LOGSZT_CONFIG.userTemplateSheetId)
     || '1-HtYYGeSRQdSf0gH3Fpudi_nBuLl6jJnZZQjSKHp7pw';
 const ENGINE_USER_FILE_NAME = 'ENGINE_USER_DATA_V1';
 const GOOGLE_SCOPES = [
@@ -1727,7 +1752,8 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
 
 function finalizeLoginSuccess() {
     document.body.classList.remove('logged-out');
-    document.getElementById('login-fallback')?.remove();
+    var lf = document.getElementById('login-fallback'); if (lf) lf.remove();
+    var fb = document.getElementById('engine-load-fallback'); if (fb) fb.remove();
     if (loginOverlay && loginOverlay.parentNode) loginOverlay.remove();
 }
 
@@ -1736,6 +1762,7 @@ const RESTORE_TIMEOUT_MS = 12000;
 
 function showRestoringOverlay() {
     if (document.getElementById('engine-restoring-overlay')) return;
+    document.getElementById('engine-load-fallback') && document.getElementById('engine-load-fallback').remove();
     const el = document.createElement('div');
     el.id = 'engine-restoring-overlay';
     el.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);z-index:1999;backdrop-filter:blur(12px);';
@@ -1843,7 +1870,8 @@ function showLoginUI() {
         </div>
     `;
     document.body.appendChild(loginOverlay);
-    document.getElementById('login-fallback')?.remove();
+    document.getElementById('login-fallback') && document.getElementById('login-fallback').remove();
+    document.getElementById('engine-load-fallback') && document.getElementById('engine-load-fallback').remove();
 
     const btn = document.getElementById('engine-login-btn');
     const configPanel = document.getElementById('engine-login-config');
