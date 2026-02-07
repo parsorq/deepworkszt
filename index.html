@@ -277,6 +277,21 @@ body.dragging .reminder-marker {
     cursor: grabbing !important;
 }
 
+.block-resize-handle {
+    flex-shrink: 0;
+    height: 8px;
+    min-height: 8px;
+    cursor: ns-resize;
+    background: transparent;
+    transition: background 0.12s ease;
+}
+.block-resize-handle:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+.block-resize-handle:active {
+    background: rgba(255, 255, 255, 0.12);
+}
+
 
 /* Two-column ledger layout */
 .ledger-grid {
@@ -1885,6 +1900,13 @@ const ENGINE = {
     moveTxEl: null,
     moveTxPointerId: null,
     moveTxTempH: null,
+    isResizing: false,
+    resizeEventIdx: null,
+    resizeEdge: null,
+    resizeStartY: null,
+    resizeStartStart: null,
+    resizeStartEnd: null,
+    resizePointerId: null,
     undoStack: [],
     undoLimit: 30,
 
@@ -2658,6 +2680,27 @@ handleMouseMove(e) {
         requestAnimationFrame(() => this.updateGhost());
         return;
     }
+    if (this.isResizing) {
+        if (this.resizePointerId !== null && e.pointerId !== this.resizePointerId) return;
+        const deltaY = e.clientY - this.resizeStartY;
+        const deltaH = deltaY / this.HOUR_HEIGHT;
+        const step = 0.25;
+        let newStart = this.resizeStartStart;
+        let newEnd = this.resizeStartEnd;
+        if (this.resizeEdge === 'top') {
+            newStart = this.resizeStartStart + deltaH;
+            newStart = Math.round(newStart / step) * step;
+            newStart = Math.max(0, Math.min(this.resizeStartEnd - step, newStart));
+        } else {
+            newEnd = this.resizeStartEnd + deltaH;
+            newEnd = Math.round(newEnd / step) * step;
+            newEnd = Math.max(this.resizeStartStart + step, Math.min(24, newEnd));
+        }
+        this.dragStartH = newStart;
+        this.dragEndH = newEnd;
+        requestAnimationFrame(() => this.updateGhost());
+        return;
+    }
 
     if (!this.isDragging) return;
     if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
@@ -2693,6 +2736,10 @@ handleMouseUp() {
     }
     if (this.isMoving) {
         this.finishMoveEvent();
+        return;
+    }
+    if (this.isResizing) {
+        this.finishResize();
         return;
     }
     if (!this.isDragging) return;
@@ -2757,7 +2804,7 @@ updateGhost() {
         eventsCol.appendChild(g);
     }
 
-    if (!this.isDragging && !this.isMoving) {
+    if (!this.isDragging && !this.isMoving && !this.isResizing) {
         g.style.display = 'none';
         return;
     }
@@ -2928,6 +2975,13 @@ clearMoveState() {
     this.moveOffsetH = 0;
     this.moveStartH = null;
     this.moveType = null;
+    this.isResizing = false;
+    this.resizeEventIdx = null;
+    this.resizeEdge = null;
+    this.resizeStartY = null;
+    this.resizeStartStart = null;
+    this.resizeStartEnd = null;
+    this.resizePointerId = null;
 },
 
 recordUndo(action) {
@@ -2959,7 +3013,7 @@ undoLastAction() {
         this.renderDay();
         return;
     }
-    if (action.type === 'moveEvent') {
+    if (action.type === 'moveEvent' || action.type === 'resizeEvent') {
         const events = this.db[action.date] || [];
         const ev = events.find((item) => item.id === action.id);
         if (ev) {
@@ -3121,14 +3175,83 @@ finishMoveEvent() {
     this.renderDay();
 },
 
+startResizeDrag(idx, blockEl, e, edge) {
+    const events = this.db[this.selectedDate] || [];
+    const ev = events[idx];
+    if (!ev || ev.type === 'REMINDER') return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.clearMoveState();
+    this.isResizing = true;
+    document.body.classList.add('dragging');
+    this.resizeEventIdx = idx;
+    this.resizeEdge = edge;
+    this.resizeStartY = e.clientY;
+    this.resizeStartStart = ev.start;
+    this.resizeStartEnd = ev.end;
+    this.dragStartH = ev.start;
+    this.dragEndH = ev.end;
+    this.resizePointerId = e.pointerId !== undefined ? e.pointerId : null;
+    if (e.pointerId !== undefined && e.target && e.target.setPointerCapture) {
+        try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    requestAnimationFrame(() => this.updateGhost());
+},
+
+finishResize() {
+    const events = this.db[this.selectedDate] || [];
+    const idx = this.resizeEventIdx;
+    if (idx === null || !events[idx]) {
+        this.isResizing = false;
+        document.body.classList.remove('dragging');
+        this.clearMoveState();
+        const ghost = document.getElementById('ghost-selection');
+        if (ghost) ghost.style.display = 'none';
+        this.renderDay();
+        return;
+    }
+    const step = 0.25;
+    let start = Math.round(this.dragStartH / step) * step;
+    let end = Math.round(this.dragEndH / step) * step;
+    start = Math.max(0, Math.min(24, start));
+    end = Math.max(0, Math.min(24, end));
+    if (end - start < step) end = start + step;
+    if (end > 24) end = 24;
+    if (start < 0) start = 0;
+    const overlap = events.some((ev, i) => {
+        if (i === idx || ev.type === 'REMINDER') return false;
+        return start < ev.end && end > ev.start;
+    });
+    this.isResizing = false;
+    document.body.classList.remove('dragging');
+    this.clearMoveState();
+    if (overlap) {
+        const ghost = document.getElementById('ghost-selection');
+        if (ghost) ghost.style.display = 'none';
+        this.renderDay();
+        return;
+    }
+    const prevStart = events[idx].start;
+    const prevEnd = events[idx].end;
+    events[idx].start = start;
+    events[idx].end = end;
+    this.recordUndo({ type: 'resizeEvent', id: events[idx].id, date: events[idx].date, fromStart: prevStart, fromEnd: prevEnd });
+    void this.saveEvent(events[idx]);
+    const ghost = document.getElementById('ghost-selection');
+    if (ghost) ghost.style.display = 'none';
+    this.renderDay();
+},
+
 handlePointerMove(e) {
     this.handleMouseMove(e);
 },
 
 handlePointerUp(e) {
     if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
+    if (this.isResizing && this.resizePointerId !== null && e.pointerId !== this.resizePointerId) return;
     this.handleMouseUp();
     this.dragPointerId = null;
+    this.resizePointerId = null;
 },
 
 showBlockMenu(x, y, idx) {
@@ -5173,11 +5296,12 @@ renderDay() {
                 </div>`;
         }
 
+        const showResizeHandles = session.type !== 'REMINDER';
         html += `
             <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
                 data-block-idx="${idx}"
                 onmousedown="event.stopPropagation()"
-                onpointerdown="event.stopPropagation(); ENGINE.startMoveDrag(${idx}, this, event)"
+                onpointerdown="event.stopPropagation(); if (!event.target.classList.contains('block-resize-handle')) ENGINE.startMoveDrag(${idx}, this, event)"
                 oncontextmenu="event.preventDefault(); event.stopPropagation(); ENGINE.handleContextMenu(event)"
                 style="
                     top: ${topPos}px;
@@ -5189,8 +5313,12 @@ renderDay() {
                     cursor: pointer;
                     z-index: 60;
                     pointer-events: all;
+                    display: flex;
+                    flex-direction: column;
                 ">
-                ${blockContent}
+                ${showResizeHandles ? `<div class="block-resize-handle block-resize-top" data-block-idx="${idx}" onpointerdown="event.stopPropagation(); ENGINE.startResizeDrag(${idx}, this, event, 'top')"></div>` : ''}
+                <div style="flex: 1; min-height: 0; overflow: hidden;">${blockContent}</div>
+                ${showResizeHandles ? `<div class="block-resize-handle block-resize-bottom" data-block-idx="${idx}" onpointerdown="event.stopPropagation(); ENGINE.startResizeDrag(${idx}, this, event, 'bottom')"></div>` : ''}
             </div>`;
         session.isNew = false;
     });
