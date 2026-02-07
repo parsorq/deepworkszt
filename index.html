@@ -492,16 +492,22 @@ body.dragging .reminder-marker {
     overflow: visible;
 }
 
-/* Settings registry: ensure inputs/selects/buttons are clickable and can receive focus */
-#settings-overlay .meeting-panel {
-    pointer-events: auto;
+/* Settings registry: ensure overlay and all form controls are clickable and can receive focus */
+#settings-overlay {
+    pointer-events: auto !important;
+}
+#settings-overlay * {
+    pointer-events: auto !important;
 }
 #settings-overlay input,
 #settings-overlay select,
 #settings-overlay textarea,
 #settings-overlay button,
 #settings-overlay label {
-    pointer-events: auto !important;
+    cursor: text;
+}
+#settings-overlay button {
+    cursor: pointer;
 }
 
 /* Edit Meeting: 3 areas — top fixed, middle flexible+scrollable, bottom fixed */
@@ -1959,6 +1965,16 @@ async init() {
         this.startDragFromEvent(e);
     }, true);
     document.addEventListener('contextmenu', (e) => {
+        if (e.target.closest('#settings-overlay')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (e.target.closest('.ledger-transactions-col') && !e.target.closest('.transaction-marker')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         const modal = document.getElementById('modal-overlay');
         if (modal && modal.style.display === 'flex') {
             const rect = modal.getBoundingClientRect();
