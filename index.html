@@ -5118,9 +5118,7 @@ renderDay() {
 
         const topPos = session.start * this.HOUR_HEIGHT;
         const duration = session.end - session.start;
-        const rawHeight = (session.end - session.start) * this.HOUR_HEIGHT;
-        // 30m blocks get minimum height so 3 lines fit; everything else uses raw height
-        const height = duration > 0.25 && duration <= 0.5 ? Math.max(rawHeight, 156) : rawHeight;
+        const height = (session.end - session.start) * this.HOUR_HEIGHT;
         const durationStr = duration >= 1 ? `${Math.floor(duration)}h ${Math.round((duration % 1) * 60)}m` : `${Math.round(duration * 60)}m`;
         const startStr = formatTime(session.start);
         const endStr = formatTime(session.end);
