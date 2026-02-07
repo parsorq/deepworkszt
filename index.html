@@ -5285,6 +5285,12 @@ openMeeting(idx) {
     }
 
     this.updatePanelContext();
+    const events = this.db[this.selectedDate] || [];
+    const ev = idx !== null ? events[idx] : null;
+    if (ev && ev.isNew) {
+        const footer = document.querySelector('.meeting-panel--editor .meeting-panel-footer');
+        if (footer) footer.style.display = 'flex';
+    }
 },
 
 togglePreRead(el) {
