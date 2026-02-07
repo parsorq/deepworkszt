@@ -515,7 +515,7 @@ body.dragging .reminder-marker {
     height: 85vh;
     overflow-y: auto;
     box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
-    animation: modalSlideIn 0.2s ease-out;
+    animation: modalSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: auto;
 }
 
@@ -722,8 +722,8 @@ body.dragging .reminder-marker {
 }
 
 @keyframes modalSlideIn {
-    from { opacity: 0.92; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 /* Date Navigation */
@@ -2253,6 +2253,30 @@ async init() {
         e.preventDefault();
         this.undoLastAction();
     });
+    (() => {
+        let lastAcc = { x: 0, y: 0, z: 0 }, lastTime = 0;
+        const threshold = 18, minInterval = 600;
+        const onMotion = (e) => {
+            const a = e.accelerationIncludingGravity || e.acceleration || {};
+            const x = (a.x || 0), y = (a.y || 0), z = (a.z || 0);
+            const now = Date.now();
+            if (lastTime && now - lastTime < minInterval) return;
+            const delta = Math.abs(x - lastAcc.x) + Math.abs(y - lastAcc.y) + Math.abs(z - lastAcc.z);
+            lastAcc = { x, y, z }; lastTime = now;
+            if (delta > threshold && this.undoStack.length > 0) {
+                this.undoLastAction();
+            }
+        };
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            document.body.addEventListener('click', () => {
+                DeviceMotionEvent.requestPermission().then((p) => {
+                    if (p === 'granted') window.addEventListener('devicemotion', onMotion, { passive: true });
+                }).catch(() => {});
+            }, { once: true });
+        } else {
+            window.addEventListener('devicemotion', onMotion, { passive: true });
+        }
+    })();
     document.addEventListener('mousemove', (e) => {
         this.updateBlockHover(e.clientX, e.clientY);
     }, true);
@@ -3010,6 +3034,7 @@ recordUndo(action) {
     if (!action) return;
     this.undoStack.push(action);
     if (this.undoStack.length > this.undoLimit) this.undoStack.shift();
+    this.updateUndoUI();
 },
 
 undoLastAction() {
@@ -3076,6 +3101,13 @@ undoLastAction() {
             this.renderDay();
         }
     }
+    this.updateUndoUI();
+},
+
+updateUndoUI() {
+    const el = document.getElementById('undo-pill');
+    if (!el) return;
+    el.style.display = this.undoStack.length > 0 ? 'flex' : 'none';
 },
 
 startMoveTransaction(idx, el, e) {
@@ -3786,7 +3818,25 @@ switchTab(view, el) {
     }).join('');
     },
     
+cancelNewBlock() {
+    const events = this.db[this.selectedDate] || [];
+    const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+    if (ev && ev.isNew) {
+        events.splice(this.currentEventIdx, 1);
+        if (events.length === 0) delete this.db[this.selectedDate];
+        this.renderDay();
+    }
+    this.closeModal();
+},
+
 closeModal() {
+    const events = this.db[this.selectedDate] || [];
+    const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+    if (ev && ev.isNew) {
+        events.splice(this.currentEventIdx, 1);
+        if (events.length === 0) delete this.db[this.selectedDate];
+        this.renderDay();
+    }
     this.isMeetingActive = false;
     this.currentEventIdx = null;
     this.expandedWidget = null;
@@ -3839,7 +3889,8 @@ applyExpandedWidget() {
 
     if (!this.expandedWidget) {
         if (container) container.classList.remove('widget-single-view');
-        if (footer) footer.style.display = 'flex';
+        const isNew = this.currentEventIdx !== null && (this.db[this.selectedDate] || [])[this.currentEventIdx]?.isNew;
+        if (footer) footer.style.display = isNew ? 'flex' : 'none';
         show(backBar, 'none');
         show(notes); show(urlRow, 'grid'); show(url); show(stakeholders); show(agenda); show(timeblockExpenses);
         return;
@@ -3969,7 +4020,7 @@ updatePanelContext() {
                     <input id="timeblock-notes-input" class="active-input-row" placeholder="Capture a quick note or decision…" style="flex:1; min-width:0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px; outline:none; box-shadow: 0 0 0 1px rgba(0,255,135,0.2);" data-notes-continue>
                     <button type="button" id="timeblock-notes-add" onclick="ENGINE.addNoteOnly()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; flex-shrink:0;">ADD</button>
                 </div>
-                <div id="timeblock-notes-history" class="internal-scroll" style="display:flex; flex-direction:column; gap:2px; max-height:96px; overflow-y:auto; padding:0;">
+                <div id="timeblock-notes-history" class="internal-scroll" style="display:flex; flex-direction:column; gap:2px; min-height:84px; max-height:140px; overflow-y:auto; padding:0;">
                     ${noteDisplayItems.length ? noteDisplayItems.map(({ date, text }) => `
                         <div class="modal-panel-row" style="color: rgba(255,255,255,0.85); font-size: 11px; padding: 2px 0; border: none; background: none; border-radius: 4px;" title="${this.escapeAttribute(text)}">
                             ${date ? `<span style="color: rgba(255,255,255,0.5); font-family:'SF Mono'; font-size:10px; margin-right:8px;">${this.formatNoteDate(date)}</span>` : ''}${this.escapeAttribute(text)}
@@ -4011,7 +4062,7 @@ updatePanelContext() {
                 <div style="display:flex; justify-content:flex-end; align-items:center; min-height: 22px; flex-shrink: 0;">
                     <span onclick="ENGINE.addStakeholder()" style="color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ INVITE</span>
                 </div>
-                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 0; max-height: 96px; padding-bottom: 12px;">
+                <div id="stakeholder-list" class="internal-scroll" style="overflow-y: auto; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height: 84px; max-height: 140px; padding-bottom: 12px;">
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map((name, i) => `
                         <div class="modal-panel-row" data-stakeholder-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 6px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
@@ -4038,7 +4089,7 @@ updatePanelContext() {
                 <div style="display:flex; justify-content:flex-end; margin: 8px 0 4px;">
                     <button onclick="ENGINE.addAgendaPoint()" style="background:transparent; border:none; color: rgba(0,255,135,0.7); font-size:9px; font-weight:800; cursor:pointer;">+ ADD POINT</button>
                 </div>
-                <div id="agenda-items-list" class="internal-scroll" style="display: flex; flex-direction: column; height: 108px; overflow-y: auto;">
+                <div id="agenda-items-list" class="internal-scroll" style="display: flex; flex-direction: column; min-height: 84px; max-height: 140px; overflow-y: auto;">
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
                         <div class="modal-panel-row" data-agenda-idx="${i}" style="display:flex; align-items:center; gap:10px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 6px;">
                             <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
@@ -4094,7 +4145,7 @@ updatePanelContext() {
                     <select id="timeblock-expense-subcategory" class="subtle-select"></select>
                     <button type="button" id="timeblock-expense-add" tabindex="0" onclick="ENGINE.addTimeblockExpense()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); font-size:10px; font-weight:800; padding:0 12px; border-radius:8px; cursor:pointer; height: 34px;">ADD</button>
                 </div>
-                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 4px; min-height: 28px; max-height: 100px; overflow-y: auto; margin-top: 8px;">
+                <div id="timeblock-expense-list" class="internal-scroll" style="display:flex; flex-direction:column; gap: 4px; min-height: 84px; max-height: 140px; overflow-y: auto; margin-top: 8px;">
                     ${expenseDisplayItems.length ? expenseDisplayItems.map(tx => {
                         const categoryLabel = (tx.category || tx.subcategory)
                             ? `${tx.category ? this.escapeHTML(tx.category) : ''}${tx.subcategory ? ` / ${this.escapeHTML(tx.subcategory)}` : ''}`
@@ -4367,6 +4418,12 @@ applyAfterSaveFocus() {
 },
 
 saveSession() {
+    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
+    const sessions = this.db[this.selectedDate];
+    const targetIdx = this.currentEventIdx !== null ? this.currentEventIdx : (sessions.length - 1);
+    const event = sessions[targetIdx];
+    if (!event) return;
+
     const titleInput = document.getElementById('strategic-objective-input');
     const title = titleInput ? titleInput.value : "New Infrastructure Session";
     const dateInput = document.getElementById('timeblock-date');
@@ -4387,12 +4444,6 @@ saveSession() {
 
     const agenda = Array.from(agendaInputs).map(input => input.value.trim()).filter(Boolean).join('|');
     const stakeholders = Array.from(stakeholderInputs).map(input => input.value.trim()).filter(Boolean).join('|');
-
-    if (!this.db[this.selectedDate]) this.db[this.selectedDate] = [];
-    const sessions = this.db[this.selectedDate];
-    const targetIdx = this.currentEventIdx !== null ? this.currentEventIdx : (sessions.length - 1);
-    const event = sessions[targetIdx];
-    if (!event) return;
 
     event.label = title;
     event.type = this.activeType;
@@ -4426,6 +4477,11 @@ saveSession() {
     }
 
     void this.saveEvent(event);
+    if (event.isNew) {
+        event.isNew = false;
+        this.updatePanelContext();
+        return;
+    }
     const modal = document.getElementById('modal-overlay');
     if (modal) modal.style.display = 'none';
     this.renderDay();
@@ -6859,6 +6915,7 @@ document.addEventListener('mousedown', (e) => {
 </script>
 
 <!-- Modal Overlay - Centered Glass Panel -->
+<div id="undo-pill" style="display: none; position: fixed; bottom: 24px; left: 24px; z-index: 900; align-items: center; justify-content: center; padding: 10px 16px; background: rgba(28,30,36,0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" onclick="ENGINE.undoLastAction()" role="button" tabindex="0">Undo</div>
 <div id="modal-overlay" oncontextmenu="event.preventDefault(); event.stopPropagation();">
     <div class="meeting-panel meeting-panel--editor" oncontextmenu="event.preventDefault(); event.stopPropagation();">
         <div class="meeting-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
@@ -6872,8 +6929,8 @@ document.addEventListener('mousedown', (e) => {
         <div id="fixed-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px;"></div>
         <div id="dynamic-fields-container" class="meeting-panel-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; align-items: start; align-content: start;"></div>
         <div class="meeting-panel-footer" style="display: flex; gap: 12px; margin-top: 0; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
-            <button onclick="ENGINE.closeModal()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; color: rgba(255,255,255,0.45); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
+            <button id="modal-cancel-btn" onclick="ENGINE.cancelNewBlock()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; color: rgba(255,255,255,0.45); font-weight: 600; cursor: pointer;">CANCEL</button>
+            <button id="modal-save-btn" onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
     </div>
 </div>
