@@ -5058,7 +5058,7 @@ renderDay() {
     if (!container) return;
 
     this.HOUR_HEIGHT = 200;
-    const colors = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', EVENT: '#FF9500' };
+    const colors = { MEETING: 'rgba(0, 122, 255, 0.72)', REMINDER: 'rgba(50, 215, 75, 0.72)', TASK: 'rgba(255, 59, 48, 0.72)', EVENT: 'rgba(255, 149, 0, 0.72)' };
 
     // Format time helper
     const formatTime = (h) => {
@@ -5155,9 +5155,9 @@ renderDay() {
 
         let blockContent = '';
         if (isSingleLine) {
-            // 15m: type, label, start – end · length all on one line
+            // 15m: type, label, start – end · length all on one line with horizontal breathing room
             blockContent = `
-                <div style="padding: 6px 10px; pointer-events: auto; display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; height: 100%; min-width: 0;">
+                <div style="padding: 6px 12px; pointer-events: auto; display: flex; align-items: center; flex-wrap: nowrap; gap: 14px; height: 100%; min-width: 0;">
                     <span style="color: ${color}; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; flex-shrink: 0;">${session.type}</span>
                     <span style="color: white; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">${this.escapeHTML(session.label || 'Session')}</span>
                     <span style="font-family: 'SF Mono'; font-size: 11px; color: rgba(255,255,255,0.5); flex-shrink: 0;">${startStr} – ${endStr} · ${durationStr}</span>
