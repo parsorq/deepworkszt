@@ -2402,32 +2402,18 @@ async init() {
         }
     });
 
-    // Modal close on click outside (new block: show confirm/cancel popup at cursor)
+    // Modal close on click outside
     const modal = document.getElementById('modal-overlay');
     const backdrop = document.getElementById('modal-overlay-backdrop');
     if (backdrop) {
         backdrop.addEventListener('click', (e) => {
             e.stopPropagation();
-            const confirmPopup = document.getElementById('confirm-cancel-block-popup');
-            if (confirmPopup && confirmPopup.style.display === 'flex') return;
-            const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
-            if (evt && evt.isNew === true) {
-                this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
-                return;
-            }
             this.closeModal();
         });
     }
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                const confirmPopup = document.getElementById('confirm-cancel-block-popup');
-                if (confirmPopup && confirmPopup.style.display === 'flex') return;
-                const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
-                if (evt && evt.isNew === true) {
-                    this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
-                    return;
-                }
                 this.closeModal();
             }
         });
@@ -3472,39 +3458,6 @@ hideBlockMenu() {
     if (menu) menu.style.display = 'none';
 },
 
-showConfirmCancelBlockPopup(clientX, clientY) {
-    let popup = document.getElementById('confirm-cancel-block-popup');
-    if (!popup) {
-        popup = document.createElement('div');
-        popup.id = 'confirm-cancel-block-popup';
-        popup.style.cssText = 'position: fixed; z-index: 3100; background: rgba(22,27,34,0.98); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 16px; display: none; flex-direction: column; gap: 8px; min-width: 160px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);';
-        popup.addEventListener('click', (e) => e.stopPropagation());
-        document.body.appendChild(popup);
-    }
-    popup.innerHTML = `
-        <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-bottom: 4px;">Confirm or cancel block?</div>
-        <div style="display: flex; gap: 8px;">
-            <button type="button" id="confirm-cancel-block-cancel" style="flex: 1; padding: 8px 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 11px; font-weight: 600; cursor: pointer;">Cancel</button>
-            <button type="button" id="confirm-cancel-block-ok" style="flex: 1; padding: 8px 12px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 8px; color: var(--btn-accent-text); font-size: 11px; font-weight: 700; cursor: pointer;">Confirm</button>
-        </div>
-    `;
-    popup.style.display = 'flex';
-    popup.style.left = (clientX + 12) + 'px';
-    popup.style.top = (clientY + 12) + 'px';
-    const rect = popup.getBoundingClientRect();
-    let left = clientX + 12;
-    let top = clientY + 12;
-    if (left + rect.width > window.innerWidth - 12) left = window.innerWidth - rect.width - 12;
-    if (top + rect.height > window.innerHeight - 12) top = window.innerHeight - rect.height - 12;
-    if (left < 12) left = 12;
-    if (top < 12) top = 12;
-    popup.style.left = left + 'px';
-    popup.style.top = top + 'px';
-    const hide = () => { popup.style.display = 'none'; };
-    popup.querySelector('#confirm-cancel-block-cancel').onclick = () => { hide(); this.cancelNewBlock(); };
-    popup.querySelector('#confirm-cancel-block-ok').onclick = () => { hide(); this.saveSession(); this.closeModal(); };
-},
-
 showDeleteConfirm(onConfirm) {
     let overlay = document.getElementById('delete-confirm-overlay');
     if (!overlay) {
@@ -3738,7 +3691,6 @@ createFromDragCreateType(type, start, end) {
         widgets: {}
     };
     this.db[this.selectedDate].push(newEvent);
-    // Do not call saveEvent here; block is only in local state until user Save or Confirm in popup.
     this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
     this.renderDay();
     this.openMeeting(this.db[this.selectedDate].length - 1);
@@ -4024,25 +3976,7 @@ cancelNewBlock() {
     this.closeModal();
 },
 
-requestCloseMeetingPanel() {
-    const events = this.db[this.selectedDate] || [];
-    const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
-    if (ev && ev.isNew === true) {
-        this.showConfirmCancelBlockPopup(window.innerWidth / 2 - 80, window.innerHeight / 2 - 40);
-        return;
-    }
-    this.closeModal();
-},
-
 closeModal() {
-    const events = this.db[this.selectedDate] || [];
-    const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
-    // Only remove event from day when it was unsaved (isNew); after Save, isNew is false so we do not remove.
-    if (ev && ev.isNew) {
-        events.splice(this.currentEventIdx, 1);
-        if (events.length === 0) delete this.db[this.selectedDate];
-        this.renderDay();
-    }
     this.isMeetingActive = false;
     this.currentEventIdx = null;
     this.expandedWidget = null;
@@ -4184,15 +4118,12 @@ updatePanelContext() {
 
     modalTitle.innerText = `${activeEvent ? 'EDIT' : 'NEW'} ${this.activeType}`;
 
-    const isNew = activeEvent && activeEvent.isNew === true;
-    const headerSaveCancel = document.getElementById('meeting-panel-header-save-cancel');
     const headerActions = document.getElementById('meeting-panel-header-actions');
     const widgetsBtn = document.getElementById('edit-meeting-widgets-btn');
     const deleteBtn = document.getElementById('delete-event-btn');
-    if (headerSaveCancel) headerSaveCancel.style.display = isNew ? 'flex' : 'none';
     if (headerActions) headerActions.style.display = 'flex';
-    if (widgetsBtn) widgetsBtn.style.display = isNew ? 'none' : 'inline-flex';
-    if (deleteBtn) deleteBtn.style.display = isNew ? 'none' : (activeEvent ? 'inline-block' : 'none');
+    if (widgetsBtn) widgetsBtn.style.display = 'inline-flex';
+    if (deleteBtn) deleteBtn.style.display = activeEvent ? 'inline-block' : 'none';
 
     if (ENGINE.activeTypeContext.isRemote === undefined) ENGINE.activeTypeContext.isRemote = true;
     const isRemote = ENGINE.activeTypeContext.isRemote;
@@ -4709,7 +4640,7 @@ saveSession() {
     if (event.isNew) {
         event.isNew = false;
         this.updatePanelContext();
-        return; // Keep panel open with normal header (no Save/Cancel) so user can keep editing.
+        return;
     }
     const modal = document.getElementById('modal-overlay');
     if (modal) modal.style.display = 'none';
@@ -7207,14 +7138,10 @@ document.addEventListener('mousedown', (e) => {
     <div class="meeting-panel meeting-panel--editor" style="position: relative; z-index: 1;" oncontextmenu="event.preventDefault(); event.stopPropagation();">
         <div class="meeting-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
-            <div id="meeting-panel-header-save-cancel" style="display: none; gap: 8px; align-items: center;">
-                <button type="button" onclick="ENGINE.saveSession()" style="padding: 10px 18px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer;">Save</button>
-                <button type="button" onclick="ENGINE.cancelNewBlock()" style="padding: 10px 18px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer;">Cancel</button>
-            </div>
             <div id="meeting-panel-header-actions" style="display: flex; gap: 8px; align-items: center;">
                 <button id="edit-meeting-widgets-btn" onclick="ENGINE.openEditMeetingSettings()" aria-label="Edit Meeting widgets" style="background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); width: 32px; height: 32px; border-radius: 8px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">⚙</button>
                 <button id="delete-event-btn" onclick="ENGINE.showDeleteConfirm(function(){ ENGINE.deleteCurrentEvent(); })" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
-                <button id="modal-close-btn" onclick="ENGINE.requestCloseMeetingPanel()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
+                <button id="modal-close-btn" onclick="ENGINE.closeModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
             </div>
         </div>
         <div id="fixed-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px;"></div>
