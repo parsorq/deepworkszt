@@ -2087,7 +2087,7 @@ async init() {
     // Global capture handlers for ledger interactions
     document.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
-        if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+        if (document.getElementById('delete-confirm-overlay')?.style.display === 'block') return;
         if (e.target.closest('#delete-confirm-overlay')) return;
         if (e.target.closest('#modal-overlay')) return;
         if (e.target.closest('#settings-overlay')) return;
@@ -2359,7 +2359,7 @@ async init() {
     }, true);
     document.addEventListener('dblclick', (e) => {
         if (e.button !== 0) return;
-        if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+        if (document.getElementById('delete-confirm-overlay')?.style.display === 'block') return;
         if (e.target.closest('#delete-confirm-overlay')) return;
         if (e.target.closest('.date-nav')) return;
         if (e.target.closest('#quick-create-menu')) return;
@@ -2773,7 +2773,7 @@ setBurnGear(val) {
 
 handleMouseDown(e) {
     this.hideBlockMenu();
-    if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+    if (document.getElementById('delete-confirm-overlay')?.style.display === 'block') return;
     if (e.target.closest('#delete-confirm-overlay')) return;
     if (e.target.closest('#quick-create-menu')) return;
     if (e.target.closest('#block-context-menu')) return;
@@ -2865,7 +2865,7 @@ handleMouseMove(e) {
 },
 
 handleMouseUp() {
-    if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+    if (document.getElementById('delete-confirm-overlay')?.style.display === 'block') return;
     if (this.moveTxIdx !== null) {
         this.finishMoveTransaction();
         return;
@@ -3419,7 +3419,7 @@ handlePointerMove(e) {
 },
 
 handlePointerUp(e) {
-    if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+    if (document.getElementById('delete-confirm-overlay')?.style.display === 'block') return;
     if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
     if (this.isResizing && this.resizePointerId !== null && e.pointerId !== this.resizePointerId) return;
     this.handleMouseUp();
@@ -3437,7 +3437,7 @@ showBlockMenu(x, y, idx) {
     }
     menu.innerHTML = `
         <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideBlockMenu(); ENGINE.openMeeting(${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
-        <button type="button" onmousedown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); ENGINE.hideBlockMenu(); ENGINE.showDeleteConfirm(function(){ ENGINE.deleteEvent(${idx}); });" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+        <button type="button" onmousedown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); ENGINE.hideBlockMenu(); ENGINE.showDeleteConfirm(function(){ ENGINE.deleteEvent(${idx}); }, event.clientX, event.clientY);" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
     `;
     const menuRect = menu.getBoundingClientRect();
     const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
@@ -3452,15 +3452,15 @@ hideBlockMenu() {
     if (menu) menu.style.display = 'none';
 },
 
-showDeleteConfirm(onConfirm) {
+showDeleteConfirm(onConfirm, clientX, clientY) {
     let overlay = document.getElementById('delete-confirm-overlay');
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'delete-confirm-overlay';
-        overlay.style.cssText = 'position: fixed; inset: 0; z-index: 9998; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto;';
+        overlay.style.cssText = 'position: fixed; inset: 0; z-index: 9998; display: none; background: rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto;';
         overlay.innerHTML = `
             <div id="delete-confirm-backdrop" style="position: absolute; inset: 0; pointer-events: auto;"></div>
-            <div id="delete-confirm-dialog" style="position: relative; z-index: 1; background: rgba(22,27,34,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 24px; display: flex; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); pointer-events: auto;">
+            <div id="delete-confirm-dialog" style="position: fixed; z-index: 1; background: rgba(22,27,34,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 24px; display: flex; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); pointer-events: auto;">
                 <button type="button" id="delete-confirm-cancel" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Cancel</button>
                 <button type="button" id="delete-confirm-ok" style="background: rgba(255,69,58,0.25); border: 1px solid rgba(255,69,58,0.4); color: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Confirm</button>
             </div>
@@ -3495,7 +3495,20 @@ showDeleteConfirm(onConfirm) {
         });
     }
     overlay._pendingCallback = onConfirm;
-    overlay.style.display = 'flex';
+    overlay.style.display = 'block';
+    const dialog = overlay.querySelector('#delete-confirm-dialog');
+    const offset = 12;
+    let left = (typeof clientX === 'number' ? clientX : window.innerWidth / 2 - 80) + offset;
+    let top = (typeof clientY === 'number' ? clientY : window.innerHeight / 2 - 40) + offset;
+    if (dialog) {
+        const rect = dialog.getBoundingClientRect();
+        if (left + rect.width > window.innerWidth - offset) left = window.innerWidth - rect.width - offset;
+        if (top + rect.height > window.innerHeight - offset) top = window.innerHeight - rect.height - offset;
+        if (left < offset) left = offset;
+        if (top < offset) top = offset;
+        dialog.style.left = left + 'px';
+        dialog.style.top = top + 'px';
+    }
 },
 
 showTransactionMenu(x, y, idx) {
@@ -3508,7 +3521,7 @@ showTransactionMenu(x, y, idx) {
     }
     menu.innerHTML = `
         <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideTransactionMenu(); ENGINE.openTransactionModalWithData('', ${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
-        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.showDeleteConfirm(function(){ ENGINE.hideTransactionMenu(); ENGINE.deleteTransaction(${idx}); });" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.showDeleteConfirm(function(){ ENGINE.hideTransactionMenu(); ENGINE.deleteTransaction(${idx}); }, event.clientX, event.clientY);" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
     `;
     const menuRect = menu.getBoundingClientRect();
     const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
@@ -3567,7 +3580,7 @@ showModalRowMenu(x, y, type, index) {
                 ENGINE.showDeleteConfirm(() => {
                     if (typ === 'stakeholder') ENGINE.removeStakeholderAt(idx);
                     else ENGINE.removeAgendaItemAt(idx);
-                });
+                }, e.clientX, e.clientY);
             }
         });
     });
@@ -7088,7 +7101,7 @@ document.addEventListener('mousedown', (e) => {
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
             <div id="meeting-panel-header-actions" style="display: flex; gap: 8px; align-items: center;">
                 <button id="edit-meeting-widgets-btn" onclick="ENGINE.openEditMeetingSettings()" aria-label="Edit Meeting widgets" style="background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); width: 32px; height: 32px; border-radius: 8px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">⚙</button>
-                <button id="delete-event-btn" onclick="ENGINE.showDeleteConfirm(function(){ ENGINE.deleteCurrentEvent(); })" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
+                <button id="delete-event-btn" onclick="ENGINE.showDeleteConfirm(function(){ ENGINE.deleteCurrentEvent(); }, event.clientX, event.clientY)" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
                 <button id="modal-close-btn" onclick="ENGINE.closeModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
             </div>
         </div>
