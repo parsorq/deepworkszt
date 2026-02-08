@@ -4707,8 +4707,8 @@ async ensureUserStorage() {
     const emailKey = this.userEmail.trim().toLowerCase();
     const storageKey = `ENGINE_USER_FILE_ID_${emailKey}`;
     const customId = localStorage.getItem(ENGINE_CUSTOM_SHEET_KEY);
-    const cachedId = localStorage.getItem(storageKey);
 
+    // When customId is set, treat it as the only source: one gapi get; on success use it and skip cachedId/list/copy/create
     if (customId) {
         if (!this.isValidSpreadsheetId(customId)) {
             localStorage.removeItem(ENGINE_CUSTOM_SHEET_KEY);
@@ -4716,13 +4716,18 @@ async ensureUserStorage() {
             try {
                 await gapi.client.sheets.spreadsheets.get({ spreadsheetId: customId });
                 this.userSheetId = customId;
+                await this.ensureSheetStructure();
+                return;
             } catch (err) {
+                localStorage.removeItem(ENGINE_CUSTOM_SHEET_KEY);
                 this.userSheetId = null;
             }
         }
     }
 
-    if (!this.userSheetId && cachedId && this.isValidSpreadsheetId(cachedId)) {
+    const cachedId = localStorage.getItem(storageKey);
+
+    if (cachedId && this.isValidSpreadsheetId(cachedId)) {
         try {
             await gapi.client.sheets.spreadsheets.get({ spreadsheetId: cachedId });
             this.userSheetId = cachedId;
@@ -4759,7 +4764,7 @@ async ensureUserStorage() {
         }
     }
 
-    if (this.userSheetId && !customId) {
+    if (this.userSheetId) {
         localStorage.setItem(storageKey, this.userSheetId);
     }
 
