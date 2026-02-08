@@ -3717,6 +3717,7 @@ createFromDragCreateType(type, start, end) {
     };
     this.db[this.selectedDate].push(newEvent);
     this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
+    void this.saveEvent(newEvent);
     this.renderDay();
     this.openMeeting(this.db[this.selectedDate].length - 1);
 },
