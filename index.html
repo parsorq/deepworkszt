@@ -1632,7 +1632,6 @@ async function handleLogin(promptMode = 'consent') {
                 }
                 googleAccessToken = response.access_token;
                 gapi.client.setToken({ access_token: googleAccessToken });
-                try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage setItem failed', e); }
                 try {
                     const profile = await fetchUserProfile();
                     const allowed = await validateMasterRegistry(profile.email);
@@ -1677,7 +1676,6 @@ function handleLoginInteractive(promptMode = 'select_account') {
                 }
                 googleAccessToken = response.access_token;
                 gapi.client.setToken({ access_token: googleAccessToken });
-                try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage setItem failed', e); }
                 try {
                     const profile = await fetchUserProfile();
                     const allowed = await validateMasterRegistry(profile.email);
@@ -1728,7 +1726,6 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
         }
         googleAccessToken = response.access_token;
         gapi.client.setToken({ access_token: googleAccessToken });
-        try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (_) {}
         try {
             const profile = await fetchUserProfile();
             const allowed = await validateMasterRegistry(profile.email);
@@ -1831,7 +1828,6 @@ function tryRestoreSession() {
                     }
                     googleAccessToken = response.access_token;
                     gapi.client.setToken({ access_token: googleAccessToken });
-                    try { localStorage.setItem('ENGINE_ACCESS_TOKEN', googleAccessToken); } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage setItem failed', e); }
                     fetchUserProfile().then(function(profile) {
                         return validateMasterRegistry(profile.email).then(function(allowed) {
                             if (!allowed) { doneRestore(true); return; }
@@ -1854,33 +1850,8 @@ function tryRestoreSession() {
 }
 
 function tryRestoreWithStoredToken(lastUser, doneRestore, finalizeLoginSuccess) {
-    var stored = null;
-    try { stored = localStorage.getItem('ENGINE_ACCESS_TOKEN'); } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage getItem failed', e); }
-    if (!stored || !lastUser) return Promise.resolve(false);
-    googleAccessToken = stored;
-    if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
-        gapi.client.setToken({ access_token: googleAccessToken });
-    }
-    return fetchUserProfile().then(function(profile) {
-        if (!profile || (profile.email || '').trim().toLowerCase() !== lastUser.trim().toLowerCase()) {
-            throw new Error('User mismatch');
-        }
-        return validateMasterRegistry(profile.email).then(function(allowed) {
-            if (!allowed) throw new Error('Not allowed');
-            ENGINE.userEmail = profile.email;
-            localStorage.setItem('ENGINE_LAST_USER', profile.email);
-            return ENGINE.init();
-        });
-    }).then(function() {
-        doneRestore(false);
-        finalizeLoginSuccess();
-        return true;
-    }).catch(function(err) {
-        if (err && err.unauthorized) {
-            try { localStorage.removeItem('ENGINE_ACCESS_TOKEN'); } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage removeItem failed', e); }
-        }
-        return false;
-    });
+    // Access token is no longer persisted; restore only via Google silent auth (prompt: 'none') in tryRestoreSession.
+    return Promise.resolve(false);
 }
 
 function showLoginUI() {
@@ -5842,7 +5813,6 @@ updateTimeline(shouldScroll = false) {
         }
         try {
             localStorage.removeItem('ENGINE_LAST_USER');
-            localStorage.removeItem('ENGINE_ACCESS_TOKEN');
         } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage clear on logout failed', e); }
         googleAccessToken = null;
         if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
