@@ -4692,15 +4692,19 @@ async ensureUserStorage() {
     const cachedId = localStorage.getItem(storageKey);
 
     if (customId) {
-        try {
-            await gapi.client.sheets.spreadsheets.get({ spreadsheetId: customId });
-            this.userSheetId = customId;
-        } catch (err) {
-            this.userSheetId = null;
+        if (!this.isValidSpreadsheetId(customId)) {
+            localStorage.removeItem(ENGINE_CUSTOM_SHEET_KEY);
+        } else {
+            try {
+                await gapi.client.sheets.spreadsheets.get({ spreadsheetId: customId });
+                this.userSheetId = customId;
+            } catch (err) {
+                this.userSheetId = null;
+            }
         }
     }
 
-    if (!this.userSheetId && cachedId) {
+    if (!this.userSheetId && cachedId && this.isValidSpreadsheetId(cachedId)) {
         try {
             await gapi.client.sheets.spreadsheets.get({ spreadsheetId: cachedId });
             this.userSheetId = cachedId;
@@ -5016,8 +5020,18 @@ parseSubcategories(rows) {
         return '';
     },
 
+    isValidSpreadsheetId(id) {
+        if (id == null || typeof id !== 'string') return false;
+        const s = id.trim();
+        if (s.length === 0) return false;
+        if (s.length < 44 || s.length > 50) return false;
+        if (/[^a-zA-Z0-9-]/.test(s)) return false;
+        if (s.includes('/') || s.includes(':') || s.includes(' ')) return false;
+        return true;
+    },
+
     async setCustomSheetId(sheetId) {
-        if (!sheetId) throw new Error('Missing sheet ID');
+        if (!sheetId || !this.isValidSpreadsheetId(sheetId)) throw new Error('Invalid sheet URL or ID');
         await this.ensureUserStorage();
         await gapi.client.sheets.spreadsheets.get({ spreadsheetId: sheetId });
         localStorage.setItem(ENGINE_CUSTOM_SHEET_KEY, sheetId);
@@ -5995,8 +6009,8 @@ updateTimeline(shouldScroll = false) {
             customSheetApply.addEventListener('click', async () => {
                 const value = customSheetInput ? customSheetInput.value.trim() : '';
                 const sheetId = this.parseSheetId(value);
-                if (!sheetId) {
-                    setStatus('Enter a valid Google Sheet URL or ID.', true);
+                if (!sheetId || !this.isValidSpreadsheetId(sheetId)) {
+                    setStatus('Invalid sheet URL or ID.', true);
                     return;
                 }
                 setStatus('Checking access...');
@@ -6004,7 +6018,7 @@ updateTimeline(shouldScroll = false) {
                     await this.setCustomSheetId(sheetId);
                     setStatus('Personal file updated.');
                 } catch (err) {
-                    setStatus('Unable to access that sheet. Check sharing.', true);
+                    setStatus(err && err.message === 'Invalid sheet URL or ID' ? 'Invalid sheet URL or ID.' : 'Unable to access that sheet. Check sharing.', true);
                 }
             });
         }
