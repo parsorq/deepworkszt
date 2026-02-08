@@ -4059,18 +4059,18 @@ updatePanelContext() {
         <div style="grid-column: span 2; pointer-events: all; display: grid; grid-template-columns: 1fr auto; gap: 16px; margin-bottom: 18px; padding: 0 4px;">
             <div style="flex: 1;">
                 <label style="color: ${activeColor}; font-weight: 800; font-size: 10px; letter-spacing: 2px; text-transform:uppercase;">${headerLabel}</label>
-                <input id="strategic-objective-input" type="text" value="${activeEvent?.label || `New ${headerLabel}`}" placeholder="${titlePlaceholder}" 
+                <input id="strategic-objective-input" type="text" value="${this.escapeAttribute(activeEvent?.label || `New ${headerLabel}`)}" placeholder="${this.escapeAttribute(titlePlaceholder)}" 
                        style="background:transparent; border:none; color:white; font-size:30px; font-weight:700; width:100%; outline:none; letter-spacing: -1px;">
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                 <div style="display: flex; gap: 8px; align-items:center;">
-                    <input id="timeblock-date" type="text" value="${this.formatDate(eventDate)}" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 140px;">
+                    <input id="timeblock-date" type="text" value="${this.escapeAttribute(this.formatDate(eventDate))}" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; width: 140px;">
                     ${this.activeType === 'REMINDER' ? `<label style="display:flex; align-items:center; gap:6px; font-size:10px; color: rgba(255,255,255,0.6);">
                         <input id="timeblock-all-day" type="checkbox" ${activeEvent?.allDay ? 'checked' : ''} />
                         All day
                     </label>` : ''}
-                    <input id="timeblock-start" type="text" class="time-input" value="${eventStart}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; min-width: 4.5em; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
-                    <input id="timeblock-end" type="text" class="time-input" value="${eventEnd}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; min-width: 4.5em; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
+                    <input id="timeblock-start" type="text" class="time-input" value="${this.escapeAttribute(eventStart)}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; min-width: 4.5em; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
+                    <input id="timeblock-end" type="text" class="time-input" value="${this.escapeAttribute(eventEnd)}" placeholder="HH:MM" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: 'SF Mono'; font-size: 12px; padding: 7px 10px; border-radius: 8px; min-width: 4.5em; ${this.activeType === 'REMINDER' && activeEvent?.allDay ? 'display:none;' : ''}">
                 </div>
                 <div id="timeblock-duration" style="font-family:'SF Mono'; font-size: 10px; color: rgba(255,255,255,0.5); ${this.activeType === 'REMINDER' ? 'display:none;' : ''}">
                     ${this.getDurationLabel(eventStart, eventEnd)}
@@ -4105,7 +4105,7 @@ updatePanelContext() {
                 <div id="timeblock-notes-history" class="internal-scroll" style="display:flex; flex-direction:column; gap:2px; min-height:84px; max-height:140px; overflow-y:auto; padding:0;">
                     ${noteDisplayItems.length ? noteDisplayItems.map(({ date, text }) => `
                         <div class="modal-panel-row" style="color: rgba(255,255,255,0.85); font-size: 11px; padding: 2px 0; border: none; background: none; border-radius: 4px;" title="${this.escapeAttribute(text)}">
-                            ${date ? `<span style="color: rgba(255,255,255,0.5); font-family:'SF Mono'; font-size:10px; margin-right:8px;">${this.formatNoteDate(date)}</span>` : ''}${this.escapeAttribute(text)}
+                            ${date ? `<span style="color: rgba(255,255,255,0.5); font-family:'SF Mono'; font-size:10px; margin-right:8px;">${this.formatNoteDate(date)}</span>` : ''}${this.escapeHTML(text)}
                         </div>
                     `).join('') : ''}
                 </div>
@@ -4148,7 +4148,7 @@ updatePanelContext() {
                     ${(stakeholderItems.length ? stakeholderItems : ['']).map((name, i) => `
                         <div class="modal-panel-row" data-stakeholder-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 6px;">
                             <span style="color:${activeColor}; flex-shrink:0;">●</span>
-                            <input type="text" value="${name}" placeholder="Name or org..." class="${name ? 'edit-via-context-only' : 'edit-inline'}" data-inline-edit="${name ? '' : 'true'}" style="flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;" ${name ? 'readonly' : ''}>
+                            <input type="text" value="${this.escapeAttribute(name)}" placeholder="Name or org..." class="${name ? 'edit-via-context-only' : 'edit-inline'}" data-inline-edit="${name ? '' : 'true'}" style="flex:1; min-width:0; background:transparent; border:none; color:white; font-size:12px; outline:none;" ${name ? 'readonly' : ''}>
                         </div>
                     `).join('')}
                 </div>
@@ -4175,7 +4175,7 @@ updatePanelContext() {
                     ${(agendaItems.length ? agendaItems : ['']).map((item, i) => `
                         <div class="modal-panel-row" data-agenda-idx="${i}" style="display:flex; align-items:center; gap:10px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); border-radius: 6px;">
                             <span style="font-family:'SF Mono'; font-size:10px; color:${activeColor}; opacity:0.4;">0${i + 1}</span>
-                            <input type="text" value="${item}" placeholder="Decision, objective, or question..." class="${item ? 'edit-via-context-only' : 'edit-inline'}" data-inline-edit="${item ? '' : 'true'}" style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;" ${item ? 'readonly' : ''}>
+                            <input type="text" value="${this.escapeAttribute(item)}" placeholder="Decision, objective, or question..." class="${item ? 'edit-via-context-only' : 'edit-inline'}" data-inline-edit="${item ? '' : 'true'}" style="flex:1; background:transparent; border:none; color:white; font-size:13px; outline:none; opacity:0.85;" ${item ? 'readonly' : ''}>
                             <div style="width:12px; height:12px; border: 1px solid rgba(255,255,255,0.1); border-radius:3px;"></div>
                         </div>
                     `).join('')}
@@ -5624,10 +5624,12 @@ renderAllDayReminders(items) {
         container.innerHTML = '<div style="color: rgba(255,255,255,0.35); font-size: 11px;">No all-day reminders.</div>';
         return;
     }
+    const ALLOWED_REMINDER_COLORS = ['rgba(0, 122, 255, 0.72)', 'rgba(50, 215, 75, 0.72)', 'rgba(255, 59, 48, 0.72)', 'rgba(255, 149, 0, 0.72)'];
+    const safeColor = (c) => (c && ALLOWED_REMINDER_COLORS.includes(c)) ? c : ALLOWED_REMINDER_COLORS[0];
     container.innerHTML = items.map(item => `
         <div onclick="ENGINE.openMeeting(${item.idx})" class="data-row" style="display:flex; align-items:center; gap:8px; padding: 6px 8px; border-radius: 8px; cursor: pointer;">
-            <div style="width:6px; height:6px; border-radius:50%; background:${item.color}; opacity:0.85;"></div>
-            <div style="font-size:11px; color: rgba(255,255,255,0.8); font-weight:600;">${item.label}</div>
+            <div style="width:6px; height:6px; border-radius:50%; background:${safeColor(item.color)}; opacity:0.85;"></div>
+            <div style="font-size:11px; color: rgba(255,255,255,0.8); font-weight:600;">${this.escapeHTML(item.label)}</div>
         </div>
     `).join('');
 },
@@ -6058,7 +6060,7 @@ updateTimeline(shouldScroll = false) {
         if (roleInput) {
             roleInput.style.display = type === 'profiles' ? 'block' : 'none';
             if (type === 'profiles') {
-                const roleOpts = ['<option value="">Role</option>'].concat((this.roles || []).map(r => `<option value="${String(r.name || '').replace(/"/g, '&quot;')}">${String(r.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`));
+                const roleOpts = ['<option value="">Role</option>'].concat((this.roles || []).map(r => `<option value="${this.escapeAttribute(r.name || '')}">${this.escapeHTML(r.name || '')}</option>`));
                 roleInput.innerHTML = roleOpts.join('');
             }
             roleInput.value = entity.role || '';
@@ -6066,7 +6068,7 @@ updateTimeline(shouldScroll = false) {
         if (projectSelect) {
             projectSelect.style.display = type === 'teams' ? 'block' : 'none';
             const options = ['<option value="">Link to Project</option>']
-                .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
+                .concat(this.projects.map(project => `<option value="${this.escapeAttribute(project.id)}">${this.escapeHTML(project.name)}</option>`));
             projectSelect.innerHTML = options.join('');
             projectSelect.value = entity.projectId || '';
         }
@@ -6075,15 +6077,15 @@ updateTimeline(shouldScroll = false) {
             const selected = (entity.profileIds || '').split(',').filter(Boolean);
             profileList.innerHTML = this.profiles.map(profile => `
                 <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
-                    <input type="checkbox" value="${profile.id}" ${selected.includes(profile.id) ? 'checked' : ''}>
-                    ${profile.name} (${profile.email || 'no email'})
+                    <input type="checkbox" value="${this.escapeAttribute(profile.id)}" ${selected.includes(profile.id) ? 'checked' : ''}>
+                    ${this.escapeHTML(profile.name)} (${this.escapeHTML(profile.email || 'no email')})
                 </label>
             `).join('');
         }
         if (categorySelect) {
             categorySelect.style.display = type === 'subcategories' ? 'block' : 'none';
             const options = ['<option value="">Link to Category</option>']
-                .concat(this.categories.map(category => `<option value="${category.name}">${category.name}</option>`));
+                .concat(this.categories.map(category => `<option value="${this.escapeAttribute(category.name)}">${this.escapeHTML(category.name)}</option>`));
             categorySelect.innerHTML = options.join('');
             categorySelect.value = entity.category || '';
         }
@@ -6118,7 +6120,7 @@ updateTimeline(shouldScroll = false) {
         if (roleInput) {
             roleInput.style.display = type === 'profiles' ? 'block' : 'none';
             if (type === 'profiles') {
-                const roleOpts = ['<option value="">Role</option>'].concat((this.roles || []).map(r => `<option value="${String(r.name || '').replace(/"/g, '&quot;')}">${String(r.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`));
+                const roleOpts = ['<option value="">Role</option>'].concat((this.roles || []).map(r => `<option value="${this.escapeAttribute(r.name || '')}">${this.escapeHTML(r.name || '')}</option>`));
                 roleInput.innerHTML = roleOpts.join('');
             }
             roleInput.value = '';
@@ -6126,7 +6128,7 @@ updateTimeline(shouldScroll = false) {
         if (projectSelect) {
             projectSelect.style.display = type === 'teams' ? 'block' : 'none';
             const options = ['<option value="">Link to Project</option>']
-                .concat(this.projects.map(project => `<option value="${project.id}">${project.name}</option>`));
+                .concat(this.projects.map(project => `<option value="${this.escapeAttribute(project.id)}">${this.escapeHTML(project.name)}</option>`));
             projectSelect.innerHTML = options.join('');
             projectSelect.value = '';
         }
@@ -6134,15 +6136,15 @@ updateTimeline(shouldScroll = false) {
             profileList.style.display = type === 'teams' ? 'flex' : 'none';
             profileList.innerHTML = this.profiles.map(profile => `
                 <label style="display:flex; align-items:center; gap:8px; font-size:11px; color: rgba(255,255,255,0.7);">
-                    <input type="checkbox" value="${profile.id}">
-                    ${profile.name} (${profile.email || 'no email'})
+                    <input type="checkbox" value="${this.escapeAttribute(profile.id)}">
+                    ${this.escapeHTML(profile.name)} (${this.escapeHTML(profile.email || 'no email')})
                 </label>
             `).join('');
         }
         if (categorySelect) {
             categorySelect.style.display = type === 'subcategories' ? 'block' : 'none';
             const options = ['<option value="">Link to Category</option>']
-                .concat(this.categories.map(category => `<option value="${category.name}">${category.name}</option>`));
+                .concat(this.categories.map(category => `<option value="${this.escapeAttribute(category.name)}">${this.escapeHTML(category.name)}</option>`));
             categorySelect.innerHTML = options.join('');
             categorySelect.value = '';
         }
@@ -6260,8 +6262,8 @@ populateSelectOptions(select, items, selectedValue, placeholder, includeManage =
     if (selectedValue && !normalizedItems.includes(selectedValue)) {
         normalizedItems.unshift(selectedValue);
     }
-    const options = [`<option value="">${placeholder}</option>`]
-        .concat(normalizedItems.map(item => `<option value="${item}">${item}</option>`));
+    const options = [`<option value="">${this.escapeHTML(placeholder)}</option>`]
+        .concat(normalizedItems.map(item => `<option value="${this.escapeAttribute(item)}">${this.escapeHTML(String(item))}</option>`));
     if (includeManage) {
         options.push('<option value="__divider__" disabled>────────</option>');
         options.push('<option value="__create__">Create</option>');
