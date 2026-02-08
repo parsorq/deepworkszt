@@ -1745,7 +1745,7 @@ function runGoogleSignIn(setBusy, setIdle, onSuccess) {
             finalizeLoginSuccess();
             onSuccess();
         } catch (err) {
-            console.error('Login failed:', err);
+            console.error('Login failed:', err?.message || 'Unknown error');
             setLoginStatus(err?.message || 'Login failed.', true);
             setIdle();
         }
@@ -1800,7 +1800,7 @@ function tryRestoreSession() {
         }
         showRestoringOverlay();
     } catch (e) {
-        console.error('tryRestoreSession', e);
+        console.error('tryRestoreSession failed:', e?.message || 'Unknown error');
         if (typeof showLoginUI === 'function') showLoginUI();
         return;
     }
@@ -2469,13 +2469,13 @@ restoreLogQueue() {
         if (Array.isArray(parsed) && parsed.length) {
             this.logQueue = parsed.concat(this.logQueue);
         }
-    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('restoreLogQueue failed', e); }
+    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('restoreLogQueue failed:', e?.message || 'Unknown error'); }
 },
 
 persistLogQueue() {
     try {
         localStorage.setItem('ENGINE_LOG_QUEUE', JSON.stringify(this.logQueue.slice(0, 200)));
-    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('persistLogQueue failed', e); }
+    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('persistLogQueue failed:', e?.message || 'Unknown error'); }
 },
 restoreViewState() {
     try {
@@ -2485,7 +2485,7 @@ restoreViewState() {
         if (state && state.view) this.initialView = state.view;
         if (state && state.view === 'day') this.selectedDate = getLocalDateISO();
         else if (state && state.date) this.selectedDate = state.date;
-    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('restoreViewState failed', e); }
+    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('restoreViewState failed:', e?.message || 'Unknown error'); }
 },
 
 saveViewState(viewOverride = null) {
@@ -2493,7 +2493,7 @@ saveViewState(viewOverride = null) {
     const payload = { view, date: this.selectedDate };
     try {
         localStorage.setItem('ENGINE_VIEW_STATE', JSON.stringify(payload));
-    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('saveViewState failed', e); }
+    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('saveViewState failed:', e?.message || 'Unknown error'); }
 },
 
 getTabElement(view) {
@@ -5803,17 +5803,31 @@ updateTimeline(shouldScroll = false) {
         }
     },
 
+    sanitizeLogDetails(details) {
+        if (!details || typeof details !== 'object') return {};
+        const sensitiveKeys = ['access_token', 'refresh_token', 'token', 'body', 'message', 'content', 'accesstoken', 'refreshtoken'];
+        const out = {};
+        const maxLen = 200;
+        for (const [k, v] of Object.entries(details)) {
+            if (sensitiveKeys.includes(String(k).toLowerCase())) continue;
+            if (typeof v === 'string' && v.length > maxLen) out[k] = v.slice(0, maxLen) + '…';
+            else out[k] = v;
+        }
+        return out;
+    },
+
     logAction(action, section, entityId = '', details = {}) {
         const key = action === 'settings' ? 'settings' : action;
         if (!this.logSettings || !this.logSettings[key]) return;
         if (!this.userEmail) return;
+        const safeDetails = this.sanitizeLogDetails(details || {});
         const entry = [
             new Date().toISOString(),
             this.userEmail,
             action,
             section,
             entityId || '',
-            JSON.stringify(details || {})
+            JSON.stringify(safeDetails)
         ];
         this.logQueue.push(entry);
         this.persistLogQueue();
@@ -5895,7 +5909,7 @@ updateTimeline(shouldScroll = false) {
         }
         try {
             localStorage.removeItem('ENGINE_LAST_USER');
-        } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage clear on logout failed', e); }
+        } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('localStorage clear on logout failed:', e?.message || 'Unknown error'); }
         googleAccessToken = null;
         if (typeof gapi !== 'undefined' && gapi.client && gapi.client.setToken) {
             gapi.client.setToken(null);
@@ -7075,7 +7089,7 @@ function initLoginUI() {
         _loginUIInited = true;
         tryRestoreSession();
     } catch (e) {
-        console.error('initLoginUI', e);
+        console.error('initLoginUI failed:', e?.message || 'Unknown error');
         if (typeof showLoginUI === 'function') showLoginUI();
     }
 }
