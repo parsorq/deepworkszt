@@ -2054,6 +2054,7 @@ const ENGINE = {
     logFlushTimer: null,
     logRetryCount: 0,
     logRetryTimer: null,
+    renderScheduleTimer: null,
     metaRowIndex: {},
 
 
@@ -3839,10 +3840,20 @@ switchTab(view, el) {
     this.saveViewState(view);
 },
 
+    // Use render() for one-off updates (init, single user action e.g. change role/lens). Use scheduleRender() when the trigger can fire repeatedly in quick succession (e.g. date nav, filters) to avoid re-rendering on every keystroke or scroll.
     render() {
         this.renderDay();
         this.renderMonth();
         this.renderYear();
+    },
+
+    // Debounced render: use when the trigger can fire rapidly. If a timer is already scheduled, does not schedule another. Use render() for one-off updates.
+    scheduleRender() {
+        if (this.renderScheduleTimer != null) return;
+        this.renderScheduleTimer = setTimeout(() => {
+            this.renderScheduleTimer = null;
+            this.render();
+        }, 120);
     },
 
     // Helper to add new agenda items dynamically
