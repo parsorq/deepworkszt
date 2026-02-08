@@ -6058,6 +6058,12 @@ updateTimeline(shouldScroll = false) {
         };
         if (customSheetApply && !customSheetApply.dataset.bound) {
             customSheetApply.dataset.bound = 'true';
+            customSheetApply.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (customSheetReset) customSheetReset.focus();
+                }
+            });
             customSheetApply.addEventListener('click', async () => {
                 const value = customSheetInput ? customSheetInput.value.trim() : '';
                 const sheetId = this.parseSheetId(value);
