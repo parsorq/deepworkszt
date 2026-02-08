@@ -715,12 +715,6 @@ body.dragging .reminder-marker {
     flex-shrink: 0;
 }
 
-.meeting-panel--editor .meeting-panel-footer {
-    flex: 0 0 auto;
-    margin-top: 0;
-    border-top: 1px solid rgba(255,255,255,0.08);
-}
-
 @keyframes modalSlideIn {
     from { opacity: 0; transform: scale(0.97); }
     to { opacity: 1; transform: scale(1); }
@@ -3681,7 +3675,6 @@ createFromDragCreateType(type, start, end) {
         end,
         label: type === 'MEETING' ? 'New Session' : 'New Task',
         type,
-        isNew: true,
         date: this.selectedDate,
         agenda: '',
         stakeholders: '',
@@ -3745,7 +3738,6 @@ createQuickEvent(type) {
         end,
         label: type === 'REMINDER' ? 'New Reminder' : 'New Task',
         type,
-        isNew: true,
         date: this.selectedDate,
         agenda: '',
         stakeholders: '',
@@ -3965,17 +3957,6 @@ switchTab(view, el) {
     }).join('');
     },
     
-cancelNewBlock() {
-    const events = this.db[this.selectedDate] || [];
-    const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
-    if (ev && ev.isNew) {
-        events.splice(this.currentEventIdx, 1);
-        if (events.length === 0) delete this.db[this.selectedDate];
-        this.renderDay();
-    }
-    this.closeModal();
-},
-
 closeModal() {
     this.isMeetingActive = false;
     this.currentEventIdx = null;
@@ -4015,7 +3996,6 @@ openMeetingUrl() {
 
 applyExpandedWidget() {
     const container = document.getElementById('dynamic-fields-container');
-    const footer = document.getElementById('meeting-panel-footer');
     const backBar = document.getElementById('widget-back-bar');
     const notes = document.getElementById('widget-notes');
     const urlRow = document.getElementById('widget-url-row');
@@ -4029,18 +4009,11 @@ applyExpandedWidget() {
 
     if (!this.expandedWidget) {
         if (container) container.classList.remove('widget-single-view');
-        const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
-        const isNew = this.currentEventIdx !== null && evt && evt.isNew === true;
-        if (footer) {
-            footer.style.display = isNew ? 'flex' : 'none';
-            footer.style.visibility = isNew ? 'visible' : '';
-        }
         show(backBar, 'none');
         show(notes); show(urlRow, 'grid'); show(url); show(stakeholders); show(agenda); show(timeblockExpenses);
         return;
     }
     if (container) container.classList.add('widget-single-view');
-    if (footer) footer.style.display = 'none';
     show(backBar, 'flex');
     const exp = this.expandedWidget;
     if (exp === 'notes') {
@@ -4084,11 +4057,6 @@ updatePanelContext() {
     if (headerEl) {
         headerEl.style.position = 'relative';
         headerEl.style.zIndex = '101';
-    }
-    const footerEl = document.getElementById('meeting-panel-footer');
-    if (footerEl) {
-        footerEl.style.position = 'relative';
-        footerEl.style.zIndex = '101';
     }
     fixedContainer.style.pointerEvents = "auto";
     fixedContainer.style.zIndex = "100";
@@ -4637,11 +4605,6 @@ saveSession() {
     }
 
     void this.saveEvent(event);
-    if (event.isNew) {
-        event.isNew = false;
-        this.updatePanelContext();
-        return;
-    }
     const modal = document.getElementById('modal-overlay');
     if (modal) modal.style.display = 'none';
     this.renderDay();
@@ -5445,19 +5408,6 @@ openMeeting(idx) {
     }
 
     this.updatePanelContext();
-    const ev = idx !== null ? events[idx] : null;
-    if (ev && ev.isNew === true) {
-        const footer = document.getElementById('meeting-panel-footer');
-        if (footer) {
-            footer.style.display = 'flex';
-            footer.style.visibility = 'visible';
-        }
-        const raf = window.requestAnimationFrame || function(f) { setTimeout(f, 0); };
-        raf(() => {
-            const f = document.getElementById('meeting-panel-footer');
-            if (f && ev && ev.isNew) f.style.display = 'flex';
-        });
-    }
 },
 
 togglePreRead(el) {
@@ -5544,7 +5494,6 @@ renderDay() {
                     </div>
                 `);
             }
-            session.isNew = false;
             return;
         }
 
@@ -5607,7 +5556,7 @@ renderDay() {
 
         const showResizeHandles = session.type !== 'REMINDER';
         html += `
-            <div class="block-space ${session.isNew ? 'block-creation-anim' : ''}"
+            <div class="block-space"
                 data-block-idx="${idx}"
                 onmousedown="event.stopPropagation()"
                 onpointerdown="event.stopPropagation(); if (!event.target.classList.contains('block-resize-handle')) ENGINE.startMoveDrag(${idx}, this, event)"
@@ -5629,7 +5578,6 @@ renderDay() {
                 <div style="flex: 1; min-height: 0; overflow: hidden;">${blockContent}</div>
                 ${showResizeHandles ? `<div class="block-resize-handle block-resize-bottom" data-block-idx="${idx}" onpointerdown="event.stopPropagation(); ENGINE.startResizeDrag(${idx}, this, event, 'bottom')"></div>` : ''}
             </div>`;
-        session.isNew = false;
     });
 
     if (reminderMarkers.length) {
@@ -7146,10 +7094,6 @@ document.addEventListener('mousedown', (e) => {
         </div>
         <div id="fixed-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px;"></div>
         <div id="dynamic-fields-container" class="meeting-panel-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; align-items: start; align-content: start;"></div>
-        <div id="meeting-panel-footer" class="meeting-panel-footer" style="display: none; gap: 12px; margin-top: 0; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
-            <button id="modal-cancel-btn" onclick="ENGINE.cancelNewBlock()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; color: rgba(255,255,255,0.45); font-weight: 600; cursor: pointer;">CANCEL</button>
-            <button id="modal-save-btn" onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
-        </div>
     </div>
 </div>
 
