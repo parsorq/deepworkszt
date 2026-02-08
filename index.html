@@ -2885,18 +2885,21 @@ handleMouseUp() {
         const ev = idx !== null ? events[idx] : null;
         const wasClick = ev && this.moveStartH !== null && Math.abs(this.moveStartH - ev.start) < 0.02;
         if (wasClick) {
+            const openPanel = this.moveButton === 0;
             if (this.moveBlockEl) {
                 this.moveBlockEl.classList.remove('block-moving');
-                this.moveBlockEl.classList.add('block-click-subtle');
-                const el = this.moveBlockEl;
-                setTimeout(() => el.classList.remove('block-click-subtle'), 220);
+                if (openPanel) {
+                    this.moveBlockEl.classList.add('block-click-subtle');
+                    const el = this.moveBlockEl;
+                    setTimeout(() => el.classList.remove('block-click-subtle'), 220);
+                }
             }
             this.clearMoveState();
             this.isMoving = false;
             document.body.classList.remove('dragging');
             const ghost = document.getElementById('ghost-selection');
             if (ghost) ghost.style.display = 'none';
-            this.openMeeting(idx);
+            if (openPanel) this.openMeeting(idx);
             return;
         }
         this.finishMoveEvent();
@@ -3141,6 +3144,7 @@ clearMoveState() {
     this.moveLastClientX = null;
     this.moveLastClientY = null;
     this.moveType = null;
+    this.moveButton = null;
     this.isResizing = false;
     this.resizeEventIdx = null;
     this.resizeEdge = null;
@@ -3287,6 +3291,7 @@ startMoveDrag(idx, blockEl, e, mode = 'block') {
     if (mode === 'block' && ev.type === 'REMINDER') return;
     if (mode === 'reminder' && ev.type !== 'REMINDER') return;
     this.clearMoveState();
+    this.moveButton = e.button;
     this.isMoving = true;
     document.body.classList.add('dragging');
     this.moveEventIdx = idx;
