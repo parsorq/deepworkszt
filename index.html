@@ -2211,14 +2211,26 @@ async init() {
         }
     }, true);
 
-    // Enter in transaction overlay saves when focus is on SAVE
+    // Enter in transaction overlay: move to next input/select, or from last to SAVE; Enter on SAVE saves and closes
+    const TRANSACTION_FOCUS_ORDER = ['transaction-amount', 'transaction-item', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category', 'transaction-subcategory', 'transaction-save'];
     document.addEventListener('keydown', (e) => {
         const overlay = document.getElementById('transaction-overlay');
         if (!overlay || overlay.style.display !== 'flex' || !e.target || !e.target.closest || !e.target.closest('#transaction-overlay')) return;
-        if (e.key === 'Enter' && e.target.id === 'transaction-save') {
+        if (e.key !== 'Enter') return;
+        const id = e.target.id;
+        if (id === 'transaction-save') {
             e.preventDefault();
             e.stopPropagation();
             this.saveTransactionModal();
+            return;
+        }
+        const idx = TRANSACTION_FOCUS_ORDER.indexOf(id);
+        if (idx === -1) return;
+        e.preventDefault();
+        const nextId = TRANSACTION_FOCUS_ORDER[idx + 1];
+        if (nextId) {
+            const next = document.getElementById(nextId);
+            if (next) next.focus();
         }
     }, true);
 
@@ -6848,16 +6860,7 @@ initCategoryDropdowns(categorySelect, subcategorySelect, selectedCategory, selec
                 this.updateTransactionTypeUI(sign);
             });
         }
-        const inputIds = ['transaction-amount', 'transaction-item', 'transaction-desc', 'transaction-date', 'transaction-time', 'transaction-category', 'transaction-subcategory'];
-        inputIds.forEach((id) => {
-            const input = document.getElementById(id);
-            if (!input) return;
-            input.addEventListener('keydown', (e) => {
-                if (e.key !== 'Enter') return;
-                e.preventDefault();
-                this.saveTransactionModal();
-            });
-        });
+        // Enter-to-next and Enter-on-SAVE handled in global keydown (TRANSACTION_FOCUS_ORDER)
     },
 
     normalizeTimeInput(value) {
