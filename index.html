@@ -2400,18 +2400,28 @@ async init() {
 
     // Modal close on click outside (new block: show confirm/cancel popup at cursor)
     const modal = document.getElementById('modal-overlay');
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            const panel = modal.querySelector('.meeting-panel');
-            const clickedOutsidePanel = panel && !panel.contains(e.target) && modal.contains(e.target);
-            const clickedBackdrop = e.target === modal;
-            if (!clickedBackdrop && !clickedOutsidePanel) return;
+    const backdrop = document.getElementById('modal-overlay-backdrop');
+    if (backdrop) {
+        backdrop.addEventListener('click', (e) => {
+            e.stopPropagation();
             const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
             if (evt && evt.isNew === true) {
                 this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
                 return;
             }
             this.closeModal();
+        });
+    }
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
+                if (evt && evt.isNew === true) {
+                    this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
+                    return;
+                }
+                this.closeModal();
+            }
         });
     }
 
@@ -4092,7 +4102,16 @@ updatePanelContext() {
     const activeColor = { MEETING: '#007AFF', REMINDER: '#32D74B', TASK: '#FF3B30', EVENT: '#FF9500' }[this.activeType];
     
     // --- 0. INTERACTION LAYER ---
-    // Allow pointer events so inputs (title, notes, url, stakeholders, agenda, expenses) are clickable in both full and expanded widget view
+    const headerEl = document.querySelector('.meeting-panel--editor .meeting-panel-header');
+    if (headerEl) {
+        headerEl.style.position = 'relative';
+        headerEl.style.zIndex = '101';
+    }
+    const footerEl = document.getElementById('meeting-panel-footer');
+    if (footerEl) {
+        footerEl.style.position = 'relative';
+        footerEl.style.zIndex = '101';
+    }
     fixedContainer.style.pointerEvents = "auto";
     fixedContainer.style.zIndex = "100";
     container.style.pointerEvents = "auto";
@@ -7130,7 +7149,8 @@ document.addEventListener('mousedown', (e) => {
 <!-- Modal Overlay - Centered Glass Panel -->
 <div id="undo-pill" style="display: none; position: fixed; bottom: 24px; left: 24px; z-index: 900; align-items: center; justify-content: center; padding: 10px 16px; background: rgba(28,30,36,0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" onclick="typeof ENGINE !== 'undefined' && ENGINE.undoLastAction && ENGINE.undoLastAction()" role="button" tabindex="0" aria-label="Undo last action">Undo</div>
 <div id="modal-overlay" oncontextmenu="event.preventDefault(); event.stopPropagation();">
-    <div class="meeting-panel meeting-panel--editor" oncontextmenu="event.preventDefault(); event.stopPropagation();">
+    <div id="modal-overlay-backdrop" style="position: absolute; inset: 0; z-index: 0; cursor: default;"></div>
+    <div class="meeting-panel meeting-panel--editor" style="position: relative; z-index: 1;" oncontextmenu="event.preventDefault(); event.stopPropagation();">
         <div class="meeting-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
             <div style="display: flex; gap: 8px; align-items: center;">
