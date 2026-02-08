@@ -3251,11 +3251,17 @@ finishMoveTransaction() {
     }
     const targetH = typeof this.moveTxTempH === 'number' ? this.moveTxTempH : null;
     if (targetH === null) {
+        const idxToOpen = idx;
+        const el = this.moveTxEl;
         this.moveTxIdx = null;
         this.moveTxEl = null;
         this.moveTxPointerId = null;
         document.body.classList.remove('dragging');
-        this.renderDay();
+        if (el) {
+            el.classList.add('block-click-subtle');
+            setTimeout(() => el.classList.remove('block-click-subtle'), 220);
+        }
+        this.openTransactionModalWithData('', idxToOpen);
         return;
     }
     const hours = Math.floor(targetH);
