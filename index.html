@@ -5047,8 +5047,8 @@ parseSubcategories(rows) {
         if (id == null || typeof id !== 'string') return false;
         const s = id.trim();
         if (s.length === 0) return false;
-        if (s.length < 44 || s.length > 50) return false;
-        if (/[^a-zA-Z0-9-]/.test(s)) return false;
+        if (s.length < 40 || s.length > 55) return false;
+        if (/[^a-zA-Z0-9_-]/.test(s)) return false;
         if (s.includes('/') || s.includes(':') || s.includes(' ')) return false;
         return true;
     },
