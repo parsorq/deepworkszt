@@ -1818,31 +1818,51 @@ function tryRestoreSession() {
         restoreTimeoutId = setTimeout(() => doneRestore(true), 25000);
         tryRestoreWithStoredToken(lastUser, doneRestore, finalizeLoginSuccess).then(function(ok) {
             if (ok) return;
+            var silentAuthRetried = false;
+            function onToken(response) {
+                if (response.error) {
+                    if (!silentAuthRetried) {
+                        silentAuthRetried = true;
+                        setTimeout(function() {
+                            tokenClient.requestAccessToken({ prompt: 'none', login_hint: lastUser });
+                        }, 800);
+                        return;
+                    }
+                    doneRestore(true);
+                    return;
+                }
+                googleAccessToken = response.access_token;
+                gapi.client.setToken({ access_token: googleAccessToken });
+                fetchUserProfile().then(function(profile) {
+                    return validateMasterRegistry(profile.email).then(function(allowed) {
+                        if (!allowed) { doneRestore(true); return; }
+                        ENGINE.userEmail = profile.email;
+                        localStorage.setItem('ENGINE_LAST_USER', profile.email);
+                        return ENGINE.init();
+                    });
+                }).then(function() {
+                    doneRestore(false);
+                    finalizeLoginSuccess();
+                }).catch(function() { doneRestore(true); });
+            }
             var tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: GOOGLE_CLIENT_ID,
                 scope: GOOGLE_SCOPES,
-                callback: function(response) {
-                    if (response.error) {
-                        doneRestore(true);
+                callback: onToken,
+                error_callback: function() {
+                    if (!silentAuthRetried) {
+                        silentAuthRetried = true;
+                        setTimeout(function() {
+                            tokenClient.requestAccessToken({ prompt: 'none', login_hint: lastUser });
+                        }, 800);
                         return;
                     }
-                    googleAccessToken = response.access_token;
-                    gapi.client.setToken({ access_token: googleAccessToken });
-                    fetchUserProfile().then(function(profile) {
-                        return validateMasterRegistry(profile.email).then(function(allowed) {
-                            if (!allowed) { doneRestore(true); return; }
-                            ENGINE.userEmail = profile.email;
-                            localStorage.setItem('ENGINE_LAST_USER', profile.email);
-                            return ENGINE.init();
-                        });
-                    }).then(function() {
-                        doneRestore(false);
-                        finalizeLoginSuccess();
-                    }).catch(function() { doneRestore(true); });
-                },
-                error_callback: function() { doneRestore(true); }
+                    doneRestore(true);
+                }
             });
-            tokenClient.requestAccessToken({ prompt: 'none', login_hint: lastUser });
+            setTimeout(function() {
+                tokenClient.requestAccessToken({ prompt: 'none', login_hint: lastUser });
+            }, 400);
         });
     }).catch(() => {
         doneRestore(true);
