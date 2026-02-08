@@ -2408,6 +2408,8 @@ async init() {
     if (backdrop) {
         backdrop.addEventListener('click', (e) => {
             e.stopPropagation();
+            const confirmPopup = document.getElementById('confirm-cancel-block-popup');
+            if (confirmPopup && confirmPopup.style.display === 'flex') return;
             const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
             if (evt && evt.isNew === true) {
                 this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
@@ -2419,6 +2421,8 @@ async init() {
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
+                const confirmPopup = document.getElementById('confirm-cancel-block-popup');
+                if (confirmPopup && confirmPopup.style.display === 'flex') return;
                 const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
                 if (evt && evt.isNew === true) {
                     this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
@@ -3474,6 +3478,7 @@ showConfirmCancelBlockPopup(clientX, clientY) {
         popup = document.createElement('div');
         popup.id = 'confirm-cancel-block-popup';
         popup.style.cssText = 'position: fixed; z-index: 3100; background: rgba(22,27,34,0.98); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 16px; display: none; flex-direction: column; gap: 8px; min-width: 160px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);';
+        popup.addEventListener('click', (e) => e.stopPropagation());
         document.body.appendChild(popup);
     }
     popup.innerHTML = `
@@ -3733,6 +3738,7 @@ createFromDragCreateType(type, start, end) {
         widgets: {}
     };
     this.db[this.selectedDate].push(newEvent);
+    // Do not call saveEvent here; block is only in local state until user Save or Confirm in popup.
     this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
     this.renderDay();
     this.openMeeting(this.db[this.selectedDate].length - 1);
@@ -4031,6 +4037,7 @@ requestCloseMeetingPanel() {
 closeModal() {
     const events = this.db[this.selectedDate] || [];
     const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+    // Only remove event from day when it was unsaved (isNew); after Save, isNew is false so we do not remove.
     if (ev && ev.isNew) {
         events.splice(this.currentEventIdx, 1);
         if (events.length === 0) delete this.db[this.selectedDate];
@@ -4702,7 +4709,7 @@ saveSession() {
     if (event.isNew) {
         event.isNew = false;
         this.updatePanelContext();
-        return;
+        return; // Keep panel open with normal header (no Save/Cancel) so user can keep editing.
     }
     const modal = document.getElementById('modal-overlay');
     if (modal) modal.style.display = 'none';
