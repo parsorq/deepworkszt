@@ -3895,11 +3895,17 @@ switchTab(view, el) {
     },
 
     getRecordsContextForChat() {
+        const MAX_DAYS_EVENTS = 30;
+        const MAX_TRANSACTIONS = 100;
+        const MAX_NOTES_SNIPPET = 200;
+        const MAX_AGENDA_SNIPPET = 200;
+        const MAX_STAKEHOLDERS_SNIPPET = 200;
+        const MAX_TX_DESC = 80;
+
         const lines = [];
         const now = new Date();
-    const today = getLocalDateISO(now);
-        const daysBack = 60;
-        for (let d = 0; d < daysBack; d++) {
+        const today = getLocalDateISO(now);
+        for (let d = 0; d < MAX_DAYS_EVENTS; d++) {
             const date = new Date(now);
             date.setDate(date.getDate() - d);
             const dateStr = getLocalDateISO(date);
@@ -3909,16 +3915,19 @@ switchTab(view, el) {
             events.forEach(ev => {
                 const start = typeof ev.start === 'number' ? (ev.start < 24 ? `${Math.floor(ev.start)}:${String(Math.round((ev.start % 1) * 60)).padStart(2,'0')}` : '') : (ev.start || '');
                 const end = typeof ev.end === 'number' ? (ev.end < 24 ? `${Math.floor(ev.end)}:${String(Math.round((ev.end % 1) * 60)).padStart(2,'0')}` : '') : (ev.end || '');
-                const notesSnippet = (ev.notes || '').toString().slice(0, 200);
-                const agenda = (ev.agenda || '').split('|').filter(Boolean);
-                const stakeholders = (ev.stakeholders || '').split('|').filter(Boolean);
-                lines.push(`- ${ev.label || 'Session'} (${ev.type || 'MEETING'}) ${start}-${end}. Notes: ${notesSnippet || '(none)'}. Agenda: ${agenda.length} items. Stakeholders: ${stakeholders.join(', ') || '(none)'}. Budget: ${ev.budget || '(none)'}`);
+                const notesSnippet = (ev.notes || '').toString().slice(0, MAX_NOTES_SNIPPET);
+                const agendaRaw = (ev.agenda || '').split('|').filter(Boolean);
+                const agendaSnippet = agendaRaw.join(' | ').slice(0, MAX_AGENDA_SNIPPET);
+                const stakeholdersRaw = (ev.stakeholders || '').split('|').filter(Boolean);
+                const stakeholdersSnippet = stakeholdersRaw.join(', ').slice(0, MAX_STAKEHOLDERS_SNIPPET);
+                const agendaStr = agendaSnippet || (agendaRaw.length ? agendaRaw.length + ' items' : '(none)');
+                lines.push(`- ${ev.label || 'Session'} (${ev.type || 'MEETING'}) ${start}-${end}. Notes: ${notesSnippet || '(none)'}. Agenda: ${agendaStr}. Stakeholders: ${stakeholdersSnippet || '(none)'}. Budget: ${ev.budget || '(none)'}`);
             });
         }
         lines.push('\n## Transactions (recent)');
-        const txs = (this.transactions || []).slice(0, 200);
+        const txs = (this.transactions || []).slice(0, MAX_TRANSACTIONS);
         txs.forEach(tx => {
-            const desc = (tx.item || tx.desc || tx.description || '').toString().slice(0, 80);
+            const desc = (tx.item || tx.desc || tx.description || '').toString().slice(0, MAX_TX_DESC);
             lines.push(`- ${tx.date || ''} ${tx.time || ''} | ${desc} | ${tx.amount != null ? tx.amount : ''} | ${tx.category || ''} / ${tx.subcategory || ''}`);
         });
         return lines.join('\n');
