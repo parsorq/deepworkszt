@@ -2093,6 +2093,8 @@ async init() {
     // Global capture handlers for ledger interactions
     document.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
+        if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+        if (e.target.closest('#delete-confirm-overlay')) return;
         if (e.target.closest('#modal-overlay')) return;
         if (e.target.closest('#settings-overlay')) return;
         if (e.target.closest('#edit-entity-overlay')) return;
@@ -2363,6 +2365,8 @@ async init() {
     }, true);
     document.addEventListener('dblclick', (e) => {
         if (e.button !== 0) return;
+        if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+        if (e.target.closest('#delete-confirm-overlay')) return;
         if (e.target.closest('.date-nav')) return;
         if (e.target.closest('#quick-create-menu')) return;
         if (e.target.closest('#block-context-menu')) return;
@@ -2785,6 +2789,8 @@ setBurnGear(val) {
 
 handleMouseDown(e) {
     this.hideBlockMenu();
+    if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
+    if (e.target.closest('#delete-confirm-overlay')) return;
     if (e.target.closest('#quick-create-menu')) return;
     if (e.target.closest('#block-context-menu')) return;
     if (e.target.closest('#drag-create-type-menu')) return;
@@ -2875,6 +2881,7 @@ handleMouseMove(e) {
 },
 
 handleMouseUp() {
+    if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
     if (this.moveTxIdx !== null) {
         this.finishMoveTransaction();
         return;
@@ -3428,6 +3435,7 @@ handlePointerMove(e) {
 },
 
 handlePointerUp(e) {
+    if (document.getElementById('delete-confirm-overlay')?.style.display === 'flex') return;
     if (this.dragPointerId !== null && e.pointerId !== this.dragPointerId) return;
     if (this.isResizing && this.resizePointerId !== null && e.pointerId !== this.resizePointerId) return;
     this.handleMouseUp();
@@ -3497,14 +3505,26 @@ showDeleteConfirm(onConfirm) {
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'delete-confirm-overlay';
-        overlay.style.cssText = 'position: fixed; inset: 0; z-index: 3000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);';
+        overlay.style.cssText = 'position: fixed; inset: 0; z-index: 9998; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto;';
         overlay.innerHTML = `
-            <div style="background: rgba(22,27,34,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 24px; display: flex; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4);">
+            <div id="delete-confirm-backdrop" style="position: absolute; inset: 0; pointer-events: auto;"></div>
+            <div id="delete-confirm-dialog" style="position: relative; z-index: 1; background: rgba(22,27,34,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 24px; display: flex; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); pointer-events: auto;">
                 <button type="button" id="delete-confirm-cancel" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Cancel</button>
                 <button type="button" id="delete-confirm-ok" style="background: rgba(255,69,58,0.25); border: 1px solid rgba(255,69,58,0.4); color: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Confirm</button>
             </div>
         `;
         document.body.appendChild(overlay);
+        const stopIfBackdrop = (e) => {
+            const t = e.target;
+            if (t === overlay || t.id === 'delete-confirm-backdrop') {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        };
+        overlay.addEventListener('pointerdown', stopIfBackdrop, true);
+        overlay.addEventListener('pointerup', stopIfBackdrop, true);
+        overlay.addEventListener('mousedown', stopIfBackdrop, true);
+        overlay.addEventListener('mouseup', stopIfBackdrop, true);
         overlay.querySelector('#delete-confirm-cancel').addEventListener('click', () => {
             overlay.style.display = 'none';
             if (overlay._pendingCallback) overlay._pendingCallback = null;
@@ -3516,7 +3536,7 @@ showDeleteConfirm(onConfirm) {
             if (typeof cb === 'function') cb();
         });
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
+            if (e.target === overlay || e.target.id === 'delete-confirm-backdrop') {
                 overlay.style.display = 'none';
                 overlay._pendingCallback = null;
             }
