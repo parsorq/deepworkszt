@@ -1209,6 +1209,17 @@ body.logged-out #tablet-shell {
     to { transform: scaleY(1); opacity: 1; }
 }
 
+/* Subtle click feedback on block (no heavy animation) */
+.block-click-subtle {
+    animation: blockClickSubtle 0.2s ease-out forwards;
+}
+
+@keyframes blockClickSubtle {
+    0% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.2); }
+    70% { box-shadow: 0 0 0 4px rgba(0, 242, 254, 0.12); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0); }
+}
+
 /* Subtle Financial Buttons */
 .tx-btn {
     flex: 1;
@@ -2391,14 +2402,16 @@ async init() {
     const modal = document.getElementById('modal-overlay');
     if (modal) {
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
-                if (evt && evt.isNew === true) {
-                    this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
-                    return;
-                }
-                this.closeModal();
+            const panel = modal.querySelector('.meeting-panel');
+            const clickedOutsidePanel = panel && !panel.contains(e.target) && modal.contains(e.target);
+            const clickedBackdrop = e.target === modal;
+            if (!clickedBackdrop && !clickedOutsidePanel) return;
+            const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
+            if (evt && evt.isNew === true) {
+                this.showConfirmCancelBlockPopup(e.clientX, e.clientY);
+                return;
             }
+            this.closeModal();
         });
     }
 
@@ -2866,9 +2879,9 @@ handleMouseUp() {
             const y = this.moveLastClientY != null ? this.moveLastClientY : 0;
             if (this.moveBlockEl) {
                 this.moveBlockEl.classList.remove('block-moving');
-                this.moveBlockEl.classList.add('block-creation-anim');
+                this.moveBlockEl.classList.add('block-click-subtle');
                 const el = this.moveBlockEl;
-                setTimeout(() => el.classList.remove('block-creation-anim'), 300);
+                setTimeout(() => el.classList.remove('block-click-subtle'), 220);
             }
             this.clearMoveState();
             this.isMoving = false;
@@ -2992,15 +3005,9 @@ handleContextMenu(e) {
     this.hideBlockMenu();
 
     const reminderIdx = this.getReminderAtPoint(e.clientX, e.clientY);
-    if (reminderIdx !== null) {
-        this.showBlockMenu(e.clientX, e.clientY, reminderIdx);
-        return;
-    }
+    if (reminderIdx !== null) return;
     const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
-    if (eventIdx !== null) {
-        this.showBlockMenu(e.clientX, e.clientY, eventIdx);
-        return;
-    }
+    if (eventIdx !== null) return;
     const startH = this.getHourAtClientY(e.clientY);
     if (startH !== null) this.showQuickCreateMenu(e.clientX, e.clientY, startH);
 },
@@ -3439,7 +3446,7 @@ showConfirmCancelBlockPopup(clientX, clientY) {
     if (!popup) {
         popup = document.createElement('div');
         popup.id = 'confirm-cancel-block-popup';
-        popup.style.cssText = 'position: fixed; z-index: 3100; background: rgba(22,27,34,0.98); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 160px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);';
+        popup.style.cssText = 'position: fixed; z-index: 3100; background: rgba(22,27,34,0.98); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 16px; display: none; flex-direction: column; gap: 8px; min-width: 160px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);';
         document.body.appendChild(popup);
     }
     popup.innerHTML = `
@@ -3449,6 +3456,9 @@ showConfirmCancelBlockPopup(clientX, clientY) {
             <button type="button" id="confirm-cancel-block-ok" style="flex: 1; padding: 8px 12px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 8px; color: var(--btn-accent-text); font-size: 11px; font-weight: 700; cursor: pointer;">Confirm</button>
         </div>
     `;
+    popup.style.display = 'flex';
+    popup.style.left = (clientX + 12) + 'px';
+    popup.style.top = (clientY + 12) + 'px';
     const rect = popup.getBoundingClientRect();
     let left = clientX + 12;
     let top = clientY + 12;
@@ -3458,7 +3468,6 @@ showConfirmCancelBlockPopup(clientX, clientY) {
     if (top < 12) top = 12;
     popup.style.left = left + 'px';
     popup.style.top = top + 'px';
-    popup.style.display = 'block';
     const hide = () => { popup.style.display = 'none'; };
     popup.querySelector('#confirm-cancel-block-cancel').onclick = () => { hide(); this.cancelNewBlock(); };
     popup.querySelector('#confirm-cancel-block-ok').onclick = () => { hide(); this.saveSession(); this.closeModal(); };
@@ -4018,7 +4027,7 @@ openMeetingUrl() {
 
 applyExpandedWidget() {
     const container = document.getElementById('dynamic-fields-container');
-    const footer = document.querySelector('.meeting-panel--editor .meeting-panel-footer');
+    const footer = document.getElementById('meeting-panel-footer');
     const backBar = document.getElementById('widget-back-bar');
     const notes = document.getElementById('widget-notes');
     const urlRow = document.getElementById('widget-url-row');
@@ -4034,7 +4043,10 @@ applyExpandedWidget() {
         if (container) container.classList.remove('widget-single-view');
         const evt = (this.db[this.selectedDate] || [])[this.currentEventIdx];
         const isNew = this.currentEventIdx !== null && evt && evt.isNew === true;
-        if (footer) footer.style.display = isNew ? 'flex' : 'none';
+        if (footer) {
+            footer.style.display = isNew ? 'flex' : 'none';
+            footer.style.visibility = isNew ? 'visible' : '';
+        }
         show(backBar, 'none');
         show(notes); show(urlRow, 'grid'); show(url); show(stakeholders); show(agenda); show(timeblockExpenses);
         return;
@@ -5431,14 +5443,15 @@ openMeeting(idx) {
     this.updatePanelContext();
     const ev = idx !== null ? events[idx] : null;
     if (ev && ev.isNew === true) {
-        const footer = document.querySelector('.meeting-panel--editor .meeting-panel-footer');
+        const footer = document.getElementById('meeting-panel-footer');
         if (footer) {
             footer.style.display = 'flex';
             footer.style.visibility = 'visible';
         }
         const raf = window.requestAnimationFrame || function(f) { setTimeout(f, 0); };
-        raf(function() {
-            if (footer) footer.style.display = 'flex';
+        raf(() => {
+            const f = document.getElementById('meeting-panel-footer');
+            if (f && ev && ev.isNew) f.style.display = 'flex';
         });
     }
 },
@@ -7128,7 +7141,7 @@ document.addEventListener('mousedown', (e) => {
         </div>
         <div id="fixed-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px;"></div>
         <div id="dynamic-fields-container" class="meeting-panel-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; align-items: start; align-content: start;"></div>
-        <div class="meeting-panel-footer" style="display: flex; gap: 12px; margin-top: 0; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+        <div id="meeting-panel-footer" class="meeting-panel-footer" style="display: none; gap: 12px; margin-top: 0; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
             <button id="modal-cancel-btn" onclick="ENGINE.cancelNewBlock()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; color: rgba(255,255,255,0.45); font-weight: 600; cursor: pointer;">CANCEL</button>
             <button id="modal-save-btn" onclick="ENGINE.saveSession()" style="flex: 2; padding: 14px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); border-radius: 12px; color: var(--btn-accent-text); font-weight: 700; cursor: pointer;">SAVE</button>
         </div>
