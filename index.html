@@ -2885,8 +2885,6 @@ handleMouseUp() {
         const ev = idx !== null ? events[idx] : null;
         const wasClick = ev && this.moveStartH !== null && Math.abs(this.moveStartH - ev.start) < 0.02;
         if (wasClick) {
-            const x = this.moveLastClientX != null ? this.moveLastClientX : 0;
-            const y = this.moveLastClientY != null ? this.moveLastClientY : 0;
             if (this.moveBlockEl) {
                 this.moveBlockEl.classList.remove('block-moving');
                 this.moveBlockEl.classList.add('block-click-subtle');
@@ -2898,7 +2896,7 @@ handleMouseUp() {
             document.body.classList.remove('dragging');
             const ghost = document.getElementById('ghost-selection');
             if (ghost) ghost.style.display = 'none';
-            this.showBlockMenu(x, y, idx);
+            this.openMeeting(idx);
             return;
         }
         this.finishMoveEvent();
@@ -3015,9 +3013,15 @@ handleContextMenu(e) {
     this.hideBlockMenu();
 
     const reminderIdx = this.getReminderAtPoint(e.clientX, e.clientY);
-    if (reminderIdx !== null) return;
+    if (reminderIdx !== null) {
+        this.showBlockMenu(e.clientX, e.clientY, reminderIdx);
+        return;
+    }
     const eventIdx = this.getEventAtPoint(e.clientX, e.clientY);
-    if (eventIdx !== null) return;
+    if (eventIdx !== null) {
+        this.showBlockMenu(e.clientX, e.clientY, eventIdx);
+        return;
+    }
     const startH = this.getHourAtClientY(e.clientY);
     if (startH !== null) this.showQuickCreateMenu(e.clientX, e.clientY, startH);
 },
@@ -3436,7 +3440,7 @@ showBlockMenu(x, y, idx) {
     }
     menu.innerHTML = `
         <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.hideBlockMenu(); ENGINE.openMeeting(${idx});" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Edit</button>
-        <button onclick="event.stopPropagation(); event.preventDefault(); ENGINE.showDeleteConfirm(function(){ ENGINE.hideBlockMenu(); ENGINE.deleteEvent(${idx}); });" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
+        <button type="button" onmousedown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); ENGINE.hideBlockMenu(); ENGINE.showDeleteConfirm(function(){ ENGINE.deleteEvent(${idx}); });" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Delete</button>
     `;
     const menuRect = menu.getBoundingClientRect();
     const left = Math.min(window.innerWidth - menuRect.width - 12, Math.max(12, x));
