@@ -3694,7 +3694,7 @@ showDragCreateTypeMenu(x, y, start, end) {
         document.body.appendChild(menu);
     }
     menu.innerHTML = `
-        <button onclick="ENGINE.createFromDragCreateType('MEETING', ${start}, ${end})" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Event</button>
+        <button onclick="ENGINE.createFromDragCreateType('MEETING', ${start}, ${end})" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Meeting</button>
         <button onclick="ENGINE.createFromDragCreateType('TASK', ${start}, ${end})" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Task</button>
     `;
     const offsetX = 12;
@@ -3734,8 +3734,6 @@ createFromDragCreateType(type, start, end) {
     };
     this.db[this.selectedDate].push(newEvent);
     this.recordUndo({ type: 'addEvent', event: { ...newEvent } });
-    void this.saveEvent(newEvent, true);
-    this.logAction('add', 'event', newEvent.id, { start, end, date: this.selectedDate, type: newEvent.type, label: newEvent.label });
     this.renderDay();
     this.openMeeting(this.db[this.selectedDate].length - 1);
 },
@@ -4020,6 +4018,16 @@ cancelNewBlock() {
     this.closeModal();
 },
 
+requestCloseMeetingPanel() {
+    const events = this.db[this.selectedDate] || [];
+    const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
+    if (ev && ev.isNew === true) {
+        this.showConfirmCancelBlockPopup(window.innerWidth / 2 - 80, window.innerHeight / 2 - 40);
+        return;
+    }
+    this.closeModal();
+},
+
 closeModal() {
     const events = this.db[this.selectedDate] || [];
     const ev = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
@@ -4168,6 +4176,16 @@ updatePanelContext() {
         : (this.activeType === 'TASK' ? 'Add a task title' : 'Add a clear session title');
 
     modalTitle.innerText = `${activeEvent ? 'EDIT' : 'NEW'} ${this.activeType}`;
+
+    const isNew = activeEvent && activeEvent.isNew === true;
+    const headerSaveCancel = document.getElementById('meeting-panel-header-save-cancel');
+    const headerActions = document.getElementById('meeting-panel-header-actions');
+    const widgetsBtn = document.getElementById('edit-meeting-widgets-btn');
+    const deleteBtn = document.getElementById('delete-event-btn');
+    if (headerSaveCancel) headerSaveCancel.style.display = isNew ? 'flex' : 'none';
+    if (headerActions) headerActions.style.display = 'flex';
+    if (widgetsBtn) widgetsBtn.style.display = isNew ? 'none' : 'inline-flex';
+    if (deleteBtn) deleteBtn.style.display = isNew ? 'none' : (activeEvent ? 'inline-block' : 'none');
 
     if (ENGINE.activeTypeContext.isRemote === undefined) ENGINE.activeTypeContext.isRemote = true;
     const isRemote = ENGINE.activeTypeContext.isRemote;
@@ -7182,10 +7200,14 @@ document.addEventListener('mousedown', (e) => {
     <div class="meeting-panel meeting-panel--editor" style="position: relative; z-index: 1;" oncontextmenu="event.preventDefault(); event.stopPropagation();">
         <div class="meeting-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 id="modal-main-title" style="margin: 0; color: white; font-size: 20px; font-weight: 600;">NEW MEETING</h2>
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div id="meeting-panel-header-save-cancel" style="display: none; gap: 8px; align-items: center;">
+                <button type="button" onclick="ENGINE.saveSession()" style="padding: 10px 18px; background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer;">Save</button>
+                <button type="button" onclick="ENGINE.cancelNewBlock()" style="padding: 10px 18px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer;">Cancel</button>
+            </div>
+            <div id="meeting-panel-header-actions" style="display: flex; gap: 8px; align-items: center;">
                 <button id="edit-meeting-widgets-btn" onclick="ENGINE.openEditMeetingSettings()" aria-label="Edit Meeting widgets" style="background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); width: 32px; height: 32px; border-radius: 8px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">⚙</button>
                 <button id="delete-event-btn" onclick="ENGINE.showDeleteConfirm(function(){ ENGINE.deleteCurrentEvent(); })" style="background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: none;">DELETE</button>
-                <button onclick="ENGINE.closeModal()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
+                <button id="modal-close-btn" onclick="ENGINE.requestCloseMeetingPanel()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; transition: all 0.15s;">&times;</button>
             </div>
         </div>
         <div id="fixed-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px;"></div>
