@@ -5037,6 +5037,12 @@ parseSubcategories(rows) {
         localStorage.setItem(ENGINE_CUSTOM_SHEET_KEY, sheetId);
         this.userSheetId = sheetId;
         await this.ensureSheetStructure();
+        await this.loadData();
+        this.render();
+        this.renderTransactions();
+        this.updatePanelContext();
+        this.updateDateDisplay();
+        if (typeof this.initFinancialPulse === 'function') this.initFinancialPulse();
     },
 
     clearCustomSheetId() {
@@ -6029,6 +6035,12 @@ updateTimeline(shouldScroll = false) {
                 if (customSheetInput) customSheetInput.value = '';
                 setStatus('Personal file reset to default.');
                 await this.ensureUserStorage();
+                await this.loadData();
+                this.render();
+                this.renderTransactions();
+                this.updatePanelContext();
+                this.updateDateDisplay();
+                if (typeof this.initFinancialPulse === 'function') this.initFinancialPulse();
             });
         }
     },
