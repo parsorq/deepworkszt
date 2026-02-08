@@ -6041,6 +6041,15 @@ updateTimeline(shouldScroll = false) {
             if (!customSheetInput.dataset.bound) {
                 customSheetInput.value = current;
             }
+            if (!customSheetInput.dataset.boundKeydown) {
+                customSheetInput.dataset.boundKeydown = 'true';
+                customSheetInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab' || e.key === 'Enter') {
+                        e.preventDefault();
+                        if (customSheetApply) customSheetApply.focus();
+                    }
+                });
+            }
         }
         const setStatus = (msg, isError = false) => {
             if (!customSheetStatus) return;
