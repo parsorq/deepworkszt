@@ -2057,6 +2057,7 @@ const ENGINE = {
     logFlushTimer: null,
     logRetryCount: 0,
     logRetryTimer: null,
+    metaRowIndex: {},
 
 
 async init() {
@@ -4952,8 +4953,13 @@ async loadData() {
     });
 
     const meta = {};
-    metaRows.slice(1).forEach(([key, value]) => {
-        if (key) meta[key] = value;
+    this.metaRowIndex = {};
+    metaRows.slice(1).forEach((row, i) => {
+        const key = row && row[0];
+        if (key) {
+            meta[key] = row[1];
+            this.metaRowIndex[key] = i + 2;
+        }
     });
     if (meta.currentNet) this.currentNet = parseFloat(meta.currentNet);
     if (meta.editMeetingWidgets) {
@@ -5274,7 +5280,7 @@ async saveLogSettings() {
     if (!this.userSheetId) return;
     await this.ensureUserStorage();
     const key = 'logSettings';
-    const rowIndex = await this.findRowById(this.sheetNames.meta, key);
+    const rowIndex = this.metaRowIndex && this.metaRowIndex[key];
     const row = [key, JSON.stringify(this.logSettings)];
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
@@ -5291,6 +5297,7 @@ async saveLogSettings() {
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
         });
+        // metaRowIndex for new key will be set on next loadData
     }
 },
 
@@ -5298,7 +5305,7 @@ async saveEditMeetingWidgets() {
     if (!this.userSheetId) return;
     await this.ensureUserStorage();
     const key = 'editMeetingWidgets';
-    const rowIndex = await this.findRowById(this.sheetNames.meta, key);
+    const rowIndex = this.metaRowIndex && this.metaRowIndex[key];
     const row = [key, JSON.stringify(this.editMeetingWidgets)];
     if (rowIndex) {
         await gapi.client.sheets.spreadsheets.values.update({
@@ -5315,6 +5322,51 @@ async saveEditMeetingWidgets() {
             insertDataOption: 'INSERT_ROWS',
             resource: { values: [row] }
         });
+        // metaRowIndex for new key will be set on next loadData
+    }
+},
+
+async persistSettingsMeta() {
+    if (!this.userSheetId) return;
+    await this.ensureUserStorage();
+    const keysToPersist = ['logSettings', 'editMeetingWidgets'];
+    const data = [];
+    const appendRows = [];
+    const appendKeys = [];
+    for (const key of keysToPersist) {
+        const value = key === 'logSettings' ? JSON.stringify(this.logSettings) : JSON.stringify(this.editMeetingWidgets);
+        const rowIndex = this.metaRowIndex && this.metaRowIndex[key];
+        if (rowIndex) {
+            data.push({ range: `${this.sheetNames.meta}!A${rowIndex}:B${rowIndex}`, values: [[key, value]] });
+        } else {
+            appendRows.push([key, value]);
+            appendKeys.push(key);
+        }
+    }
+    if (data.length) {
+        await gapi.client.sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: this.userSheetId,
+            resource: { valueInputOption: 'RAW', data }
+        });
+    }
+    if (appendRows.length) {
+        const res = await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: this.userSheetId,
+            range: `${this.sheetNames.meta}!A:B`,
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            resource: { values: appendRows }
+        });
+        const updatedRange = res.result && res.result.updates && res.result.updates.updatedRange;
+        if (updatedRange && this.metaRowIndex && appendKeys.length) {
+            const match = String(updatedRange).match(/!A(\d+)(?::B(\d+))?$/);
+            if (match) {
+                let startRow = parseInt(match[1], 10);
+                for (const k of appendKeys) {
+                    this.metaRowIndex[k] = startRow++;
+                }
+            }
+        }
     }
 },
 
@@ -5399,7 +5451,6 @@ renderEditMeetingWidgets() {
             const checked = input.checked;
             if (scope === 'default') {
                 this.editMeetingWidgets[key] = checked;
-                void this.saveEditMeetingWidgets();
             } else {
                 const events = this.db[this.selectedDate] || [];
                 const activeEvent = this.currentEventIdx !== null ? events[this.currentEventIdx] : null;
@@ -5920,6 +5971,7 @@ updateTimeline(shouldScroll = false) {
     closeSettings() {
         const overlay = document.getElementById('settings-overlay');
         if (overlay) overlay.style.display = 'none';
+        void this.persistSettingsMeta();
     },
 
     logOut() {
@@ -6023,7 +6075,6 @@ updateTimeline(shouldScroll = false) {
             input.dataset.bound = 'true';
             input.addEventListener('change', () => {
                 this.logSettings[key] = !!input.checked;
-                void this.saveLogSettings();
                 this.logAction('settings', 'settings', 'log-settings', { ...this.logSettings });
             });
         };
