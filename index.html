@@ -3886,12 +3886,18 @@ switchTab(view, el) {
         }
         this.renderRecordsChatMessages();
         overlay.style.display = 'flex';
+        overlay.style.visibility = 'visible';
+        overlay.style.pointerEvents = 'auto';
         setTimeout(() => document.getElementById('records-chat-input')?.focus(), 100);
     },
 
     closeRecordsChat() {
         const overlay = document.getElementById('records-chat-overlay');
-        if (overlay) overlay.style.display = 'none';
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.style.visibility = '';
+            overlay.style.pointerEvents = '';
+        }
     },
 
     getRecordsContextForChat() {
@@ -7496,9 +7502,9 @@ document.addEventListener('mousedown', (e) => {
     </div>
 </div>
 
-<!-- Records Chat Overlay -->
-<div id="records-chat-overlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 1400; flex-direction:column; justify-content:center; align-items:center; padding: 24px;">
-    <div class="meeting-panel" style="max-width: 520px; width: 100%; height: 70vh; max-height: 560px; display: flex; flex-direction: column;">
+<!-- Records Chat Overlay (Ask about your records) -->
+<div id="records-chat-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; width:100%; height:100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 24px; pointer-events: auto;">
+    <div class="meeting-panel" style="max-width: 520px; width: 100%; height: 70vh; max-height: 560px; display: flex; flex-direction: column; pointer-events: auto; background: rgba(22,27,34,0.98); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 24px 48px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-shrink: 0;">
             <h2 style="margin:0; color:white; font-size: 18px; font-weight: 600;">Ask about your records</h2>
             <button onclick="ENGINE.closeRecordsChat()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
