@@ -1448,7 +1448,6 @@ body.logged-out #tablet-shell {
         </div>
 
         <button onclick="ENGINE.openAudit()" style="width: 100%; margin-top: 20px; background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px;">AUDIT LEDGER</button>
-        <button onclick="ENGINE.openRecordsChat()" style="width: 100%; margin-top: 10px; background: rgba(0,242,254,0.08); border: 1px solid rgba(0,242,254,0.25); color: rgba(255,255,255,0.85); padding: 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px; cursor: pointer;">ASK ABOUT RECORDS</button>
 
         <div id="system-health" style="margin-top: 18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; letter-spacing:1px; color: rgba(177,189,211,0.8);">
@@ -1488,7 +1487,6 @@ const GOOGLE_DISCOVERY_DOCS = [
 /* Timeouts & intervals (ms) */
 const GOOGLE_READY_TIMEOUT_MS = 15000;
 const RESTORE_TIMEOUT_MS = 22000;
-const CHAT_FETCH_TIMEOUT_MS = 30000;
 const CLOCK_INTERVAL_MS = 1000;
 
 let googleAccessToken = null;
@@ -2050,7 +2048,6 @@ const ENGINE = {
     nextEventId: 100, // For generating unique IDs
     editMeetingWidgets: { stakeholders: true, agenda: true, timeblockExpenses: true },
     editMeetingDraftWidgets: {},
-    chatMessages: [],
     expandedWidget: null,
     logSettings: { add: false, edit: false, delete: false, settings: false },
     logQueue: [],
@@ -3876,108 +3873,6 @@ switchTab(view, el) {
     closeAudit() {
         const overlay = document.getElementById('audit-overlay');
         if (overlay) overlay.style.display = 'none';
-    },
-
-    openRecordsChat() {
-        const overlay = document.getElementById('records-chat-overlay');
-        if (!overlay) return;
-        if (!this.chatMessages.length) {
-            this.chatMessages = [{ role: 'assistant', content: 'Ask me anything about your sessions and transactions—e.g. spending by category, notes from a date, or who was in a meeting.' }];
-        }
-        this.renderRecordsChatMessages();
-        overlay.style.display = 'flex';
-        overlay.style.visibility = 'visible';
-        overlay.style.pointerEvents = 'auto';
-        setTimeout(() => document.getElementById('records-chat-input')?.focus(), 100);
-    },
-
-    closeRecordsChat() {
-        const overlay = document.getElementById('records-chat-overlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-            overlay.style.visibility = '';
-            overlay.style.pointerEvents = '';
-        }
-    },
-
-    getRecordsContextForChat() {
-        const MAX_DAYS_EVENTS = 30;
-        const MAX_TRANSACTIONS = 100;
-        const MAX_NOTES_SNIPPET = 200;
-        const MAX_AGENDA_SNIPPET = 200;
-        const MAX_STAKEHOLDERS_SNIPPET = 200;
-        const MAX_TX_DESC = 80;
-
-        const lines = [];
-        const now = new Date();
-        const today = getLocalDateISO(now);
-        for (let d = 0; d < MAX_DAYS_EVENTS; d++) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - d);
-            const dateStr = getLocalDateISO(date);
-            const events = this.db[dateStr];
-            if (!events || !events.length) continue;
-            lines.push(`\n## Events ${dateStr}`);
-            events.forEach(ev => {
-                const start = typeof ev.start === 'number' ? (ev.start < 24 ? `${Math.floor(ev.start)}:${String(Math.round((ev.start % 1) * 60)).padStart(2,'0')}` : '') : (ev.start || '');
-                const end = typeof ev.end === 'number' ? (ev.end < 24 ? `${Math.floor(ev.end)}:${String(Math.round((ev.end % 1) * 60)).padStart(2,'0')}` : '') : (ev.end || '');
-                const notesSnippet = (ev.notes || '').toString().slice(0, MAX_NOTES_SNIPPET);
-                const agendaRaw = (ev.agenda || '').split('|').filter(Boolean);
-                const agendaSnippet = agendaRaw.join(' | ').slice(0, MAX_AGENDA_SNIPPET);
-                const stakeholdersRaw = (ev.stakeholders || '').split('|').filter(Boolean);
-                const stakeholdersSnippet = stakeholdersRaw.join(', ').slice(0, MAX_STAKEHOLDERS_SNIPPET);
-                const agendaStr = agendaSnippet || (agendaRaw.length ? agendaRaw.length + ' items' : '(none)');
-                lines.push(`- ${ev.label || 'Session'} (${ev.type || 'MEETING'}) ${start}-${end}. Notes: ${notesSnippet || '(none)'}. Agenda: ${agendaStr}. Stakeholders: ${stakeholdersSnippet || '(none)'}. Budget: ${ev.budget || '(none)'}`);
-            });
-        }
-        lines.push('\n## Transactions (recent)');
-        const txs = (this.transactions || []).slice(0, MAX_TRANSACTIONS);
-        txs.forEach(tx => {
-            const desc = (tx.item || tx.desc || tx.description || '').toString().slice(0, MAX_TX_DESC);
-            lines.push(`- ${tx.date || ''} ${tx.time || ''} | ${desc} | ${tx.amount != null ? tx.amount : ''} | ${tx.category || ''} / ${tx.subcategory || ''}`);
-        });
-        return lines.join('\n');
-    },
-
-    renderRecordsChatMessages() {
-        const container = document.getElementById('records-chat-messages');
-        if (!container) return;
-        container.innerHTML = this.chatMessages.map(m => {
-            const isUser = m.role === 'user';
-            return `<div style="align-self: ${isUser ? 'flex-end' : 'flex-start'}; max-width: 90%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; ${isUser ? 'background: rgba(0,242,254,0.12); border: 1px solid rgba(0,242,254,0.2); color: #fff;' : 'background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);'}">${this.escapeHTML(m.content)}</div>`;
-        }).join('');
-        container.scrollTop = container.scrollHeight;
-    },
-
-    async sendRecordsChatMessage() {
-        const input = document.getElementById('records-chat-input');
-        const text = input && input.value ? input.value.trim() : '';
-        if (!text) return;
-        if (input) input.value = '';
-        this.chatMessages.push({ role: 'user', content: text });
-        this.renderRecordsChatMessages();
-        const context = this.getRecordsContextForChat();
-        this.chatMessages.push({ role: 'assistant', content: '…' });
-        this.renderRecordsChatMessages();
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), CHAT_FETCH_TIMEOUT_MS);
-        try {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: this.chatMessages.slice(0, -1), context }),
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            if (!res.ok) throw new Error(res.statusText || 'Request failed');
-            const data = await res.json();
-            this.chatMessages[this.chatMessages.length - 1] = { role: 'assistant', content: data.reply || data.message || 'No reply.' };
-        } catch (err) {
-            clearTimeout(timeoutId);
-            const msg = err && err.name === 'AbortError' ? 'Request timed out. Please try again.' : 'Chat is temporarily unavailable. Please try again later.';
-            this.chatMessages[this.chatMessages.length - 1] = { role: 'assistant', content: msg };
-        }
-        this.renderRecordsChatMessages();
     },
 
     renderAudit() {
@@ -7499,21 +7394,6 @@ document.addEventListener('mousedown', (e) => {
             <button onclick="ENGINE.closeAudit()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <div id="audit-transaction-list" style="display:flex; flex-direction:column; gap: 10px; max-height: 60vh; overflow-y: auto;"></div>
-    </div>
-</div>
-
-<!-- Records Chat Overlay (Ask about your records) -->
-<div id="records-chat-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; width:100%; height:100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px); z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 24px; pointer-events: auto;">
-    <div class="meeting-panel" style="max-width: 520px; width: 100%; height: 70vh; max-height: 560px; display: flex; flex-direction: column; pointer-events: auto; background: rgba(22,27,34,0.98); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 24px 48px rgba(0,0,0,0.5);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-shrink: 0;">
-            <h2 style="margin:0; color:white; font-size: 18px; font-weight: 600;">Ask about your records</h2>
-            <button onclick="ENGINE.closeRecordsChat()" style="background: var(--btn-accent-bg); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer;">&times;</button>
-        </div>
-        <div id="records-chat-messages" style="flex:1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 0; min-height: 0;"></div>
-        <div style="flex-shrink: 0; display: flex; gap: 8px; margin-top: 12px;">
-            <input type="text" id="records-chat-input" placeholder="e.g. What did I spend last week? Summarize my notes from Tuesday…" onkeydown="if(event.key==='Enter'){ event.preventDefault(); ENGINE.sendRecordsChatMessage(); }" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: white; padding: 12px 14px; border-radius: 10px; font-size: 13px; outline: none;">
-            <button type="button" onclick="ENGINE.sendRecordsChatMessage()" style="background: var(--btn-accent-bg-strong); border: 1px solid var(--btn-accent-border); color: var(--btn-accent-text); padding: 12px 18px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer;">Send</button>
-        </div>
     </div>
 </div>
 
