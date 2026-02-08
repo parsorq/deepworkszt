@@ -3,10 +3,20 @@
  * Expects POST body: { messages: [{ role, content }], context: string }
  * Returns: { reply: string }
  * Set OPENAI_API_KEY in Vercel (or env) to enable.
+ * CORS: set ALLOWED_ORIGINS (comma-separated), e.g. https://your-app.vercel.app,http://localhost,http://localhost:3000
  */
 
+const getAllowedOrigins = () => {
+  const raw = process.env.ALLOWED_ORIGINS || 'http://localhost,http://localhost:3000';
+  return raw.split(',').map((o) => o.trim()).filter(Boolean);
+};
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowed = getAllowedOrigins();
+  const origin = req.headers.origin;
+  if (origin && allowed.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
